@@ -147,6 +147,16 @@ const GachaMachineFlat = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Flat 扭蛋機" /> },
 );
 
+const SlotMachineAnime = dynamic(
+  () => import("@/games/anime/SlotMachine_Anime").then((m) => ({ default: m.SlotMachine_Anime })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 拉霸機" /> },
+);
+
+const PrizeRoomAnime = dynamic(
+  () => import("@/games/anime/PrizeRoom_Anime").then((m) => ({ default: m.PrizeRoom_Anime })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 房間" height={500} /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -165,7 +175,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
 type MiniGameId = "slot" | "claw" | "gacha";
-type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat";
+type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase1", label: "動畫效果", icon: "🎬" },
@@ -791,11 +801,11 @@ export default function AnimationsShowcasePage() {
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span> 或 <span className="text-indigo-300 font-semibold">Minimalist Flat</span> 七種渲染模式可切換比較。
+                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span> 或 <span className="text-pink-300 font-semibold">Anime/Manga</span> 八種渲染模式可切換比較。
                 </p>
-                {/* Six-way style toggle */}
+                {/* Eight-way style toggle */}
                 <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat"] as const).map((mode) => (
+                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
@@ -806,7 +816,7 @@ export default function AnimationsShowcasePage() {
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
                     >
-                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : "Flat"}
+                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
                     </button>
                   ))}
                 </div>
@@ -1030,6 +1040,37 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                         </>
+                      ) : miniGameStyle === "anime" ? (
+                        /* Anime/Manga versions */
+                        <>
+                          {activeMiniGame === "slot" && (
+                            <SlotMachineAnime
+                              key={`anime-slot-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "claw" && (
+                            <div key={`anime-claw-${miniGameKey}`} className="w-full flex items-center justify-center bg-gradient-to-b from-pink-100 to-blue-100" style={{ height: 480 }}>
+                              <div className="text-center space-y-3 px-8">
+                                <div className="text-4xl">🌸</div>
+                                <p className="text-2xl font-black text-pink-500" style={{ textShadow: "2px 2px 0 #222" }}>開發中</p>
+                                <p className="text-sm text-gray-500">Anime 夾娃娃機 Coming Soon</p>
+                              </div>
+                            </div>
+                          )}
+                          {activeMiniGame === "gacha" && (
+                            <div key={`anime-gacha-${miniGameKey}`} className="w-full flex items-center justify-center bg-gradient-to-b from-pink-100 to-blue-100" style={{ height: 480 }}>
+                              <div className="text-center space-y-3 px-8">
+                                <div className="text-4xl">🌸</div>
+                                <p className="text-2xl font-black text-pink-500" style={{ textShadow: "2px 2px 0 #222" }}>開發中</p>
+                                <p className="text-sm text-gray-500">Anime 扭蛋機 Coming Soon</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         /* 2D Canvas versions */
                         <>
@@ -1068,7 +1109,7 @@ export default function AnimationsShowcasePage() {
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
                       {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
-                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : " (2D Canvas)"}
+                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : " (2D Canvas)"}
                     </span>
                   </div>
                 </div>
@@ -1205,11 +1246,13 @@ export default function AnimationsShowcasePage() {
                     ? "手繪素描風格商店。筆記本紙背景，鉛筆線條，火柴人角色，塗鴉風裝飾。點擊地板移動角色，點擊 DRAW! 按鈕抽獎。"
                     : roomStyle === "flat"
                     ? "極簡扁平風格商店。純白背景，幾何圓形角色，無陰影無漸層。Notion 風格點陣底紋，點擊地板移動角色，靠近櫃台後點擊「抽獎」。"
+                    : roomStyle === "anime"
+                    ? "動漫/漫畫風格一番賞店。粉藍漸層天空，暖色木地板，條紋雨棚，Chibi 角色（大頭比例），粗黑輪廓，表情隨機應變（^_^ >_< O_O），點擊地板移動，靠近櫃台抽獎。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* Six-way style toggle */}
+                {/* Eight-way style toggle */}
                 <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat"] as const).map((mode) => (
+                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setRoomStyle(mode)}
@@ -1220,7 +1263,7 @@ export default function AnimationsShowcasePage() {
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
                     >
-                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : "Flat"}
+                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
                     </button>
                   ))}
                 </div>
@@ -1276,6 +1319,12 @@ export default function AnimationsShowcasePage() {
                           resultGrade={miniGameResult ?? undefined}
                           onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
                         />
+                      ) : roomStyle === "anime" ? (
+                        <PrizeRoomAnime
+                          key={`anime-room-${npcCount}`}
+                          npcCount={npcCount}
+                          onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
+                        />
                       ) : (
                         <IsometricRoom
                           npcCount={npcCount}
@@ -1298,6 +1347,8 @@ export default function AnimationsShowcasePage() {
                         ? "Hand-drawn Sketch — 鉛筆素描，火柴人，點擊移動"
                         : roomStyle === "flat"
                         ? "Minimalist Flat — 幾何圓形，純色填充，點擊移動"
+                        : roomStyle === "anime"
+                        ? "Anime/Manga — Chibi 角色，粗黑輪廓，一番賞店"
                         : "2.5D 等距房間"}
                     </span>
                   </div>
@@ -1384,6 +1435,13 @@ export default function AnimationsShowcasePage() {
                       <DebugCell label="解析度" value="480×380" />
                       <DebugCell label="特效" value="Zero shadows / Zero gradients" />
                       <DebugCell label="模式" value="Geometric Circles" highlight />
+                    </>
+                  ) : roomStyle === "anime" ? (
+                    <>
+                      <DebugCell label="渲染" value="Anime/Manga" highlight />
+                      <DebugCell label="解析度" value="480×380" />
+                      <DebugCell label="特效" value="Speed Lines + Chibi + Petals" />
+                      <DebugCell label="模式" value="一番賞 Shop" highlight />
                     </>
                   ) : (
                     <>
