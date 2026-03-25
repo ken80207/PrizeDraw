@@ -1,6 +1,7 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IServerAnnouncementRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
@@ -27,6 +28,7 @@ import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.RoomInstanceRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.ServerAnnouncementRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
@@ -91,4 +93,7 @@ public val repositoryModule =
 
         // Phase 20: Server Status / Maintenance Mode
         single<IServerAnnouncementRepository> { ServerAnnouncementRepositoryImpl() }
+
+        // Phase 21: Room Scaling
+        single<IRoomInstanceRepository> { RoomInstanceRepositoryImpl() }
     }

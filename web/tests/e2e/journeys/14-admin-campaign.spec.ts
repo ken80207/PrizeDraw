@@ -12,7 +12,7 @@ import { createKujiCampaign, publishCampaign, suspendCampaign } from '../helpers
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
 const ADMIN_BASE = process.env.TEST_ADMIN_URL ?? 'http://localhost:3002';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const NEW_CAMPAIGN_TITLE = `Admin E2E 測試活動 ${Date.now()}`;
 

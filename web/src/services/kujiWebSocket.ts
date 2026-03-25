@@ -10,7 +10,7 @@ const BASE_WS_URL =
   process.env.NEXT_PUBLIC_WS_BASE_URL ??
   (typeof window !== "undefined"
     ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
-    : "ws://localhost:8080");
+    : "ws://localhost:9092");
 
 const MAX_RETRIES = 5;
 const BASE_BACKOFF_MS = 1_000;

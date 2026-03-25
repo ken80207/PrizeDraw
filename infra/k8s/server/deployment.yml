@@ -28,7 +28,7 @@ spec:
       annotations:
         # Force pod restart when ConfigMap/Secret changes (via checksum annotation)
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "9092"
         prometheus.io/path: "/metrics"
     spec:
       # Graceful shutdown — give Ktor time to drain in-flight requests
@@ -53,7 +53,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 9092
               protocol: TCP
 
           # -------------------------------------------------------------------
@@ -74,7 +74,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 9092
               httpHeaders:
                 - name: Accept
                   value: application/json
@@ -87,7 +87,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /ready
-              port: 8080
+              port: 9092
               httpHeaders:
                 - name: Accept
                   value: application/json
@@ -101,7 +101,7 @@ spec:
           startupProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 9092
             failureThreshold: 30
             periodSeconds: 5
 
@@ -176,7 +176,7 @@ spec:
                 -XX:+UseZGC
                 -XX:+ZGenerational
                 -Djava.security.egd=file:/dev/./urandom
-                -Dserver.port=8080
+                -Dserver.port=9092
 
           volumeMounts:
             - name: tmp
@@ -208,7 +208,7 @@ metadata:
   labels:
     app: server
 data:
-  PORT: "8080"
+  PORT: "9092"
   JWT_ISSUER: "prizedraw"
   JWT_AUDIENCE: "prizedraw-api"
   JWT_ACCESS_EXPIRY_SECONDS: "900"

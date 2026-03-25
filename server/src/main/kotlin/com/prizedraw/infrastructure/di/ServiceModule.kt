@@ -4,9 +4,11 @@ import com.prizedraw.api.plugins.createMeterRegistry
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.IDrawSyncRepository
+import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.services.BroadcastService
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
+import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.StaffTokenService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.infrastructure.external.redis.RedisClient
@@ -81,6 +83,15 @@ public fun serviceModule(config: ApplicationConfig) =
                 broadcastRepository = get<IBroadcastRepository>(),
                 redisPubSub = get<RedisPubSub>(),
                 connectionManager = get<ConnectionManager>(),
+            )
+        }
+
+        // Phase 21: Room Scaling
+        single<RoomScalingService> {
+            RoomScalingService(
+                roomInstanceRepository = get<IRoomInstanceRepository>(),
+                redisClient = get<RedisClient>(),
+                redisPubSub = get<RedisPubSub>(),
             )
         }
     }

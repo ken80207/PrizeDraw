@@ -11,6 +11,7 @@ import com.prizedraw.api.plugins.configureStatusPages
 import com.prizedraw.api.plugins.configureWebSockets
 import com.prizedraw.application.events.OutboxWorker
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
+import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.infrastructure.di.databaseModule
 import com.prizedraw.infrastructure.di.externalModule
 import com.prizedraw.infrastructure.di.repositoryModule
@@ -21,10 +22,15 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.netty.EngineMain
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
+
+private val roomCleanupInterval = 2.minutes
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -71,6 +77,23 @@ fun Application.module() {
     val featureFlagRepository: IFeatureFlagRepository by inject()
     launch {
         featureFlagRepository.warmCache()
+    }
+
+    // --- Phase 21: Room Cleanup Job ---
+    // Deactivates empty room shards every 2 minutes, preserving at least 1 shard per campaign.
+    val roomScalingService: RoomScalingService by inject()
+    launch {
+        while (isActive) {
+            delay(roomCleanupInterval)
+            @Suppress("TooGenericExceptionCaught")
+            try {
+                roomScalingService.cleanupEmptyRooms()
+            } catch (e: Exception) {
+                // Log and continue — cleanup failures must never crash the application.
+                org.slf4j.LoggerFactory.getLogger("RoomCleanup")
+                    .warn("Room cleanup cycle failed: {}", e.message, e)
+            }
+        }
     }
 
     environment.monitor.subscribe(ApplicationStopped) {

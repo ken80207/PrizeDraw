@@ -17,4 +17,8 @@ public object CampaignEndpoints {
     // Unlimited-specific
     public const val UNLIMITED_LIST: String = "$BASE/unlimited"
     public const val UNLIMITED_BY_ID: String = "$BASE/unlimited/{campaignId}"
+
+    // Room scaling (Phase 21)
+    public const val CAMPAIGN_ROOMS: String = "$BASE/kuji/{campaignId}/rooms"
+    public const val CAMPAIGN_STATS: String = "$BASE/kuji/{campaignId}/stats"
 }

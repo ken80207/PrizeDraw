@@ -11,7 +11,7 @@ import { loginAsPlayer } from '../helpers/auth';
 import { topUpPoints } from '../helpers/api';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 // Coupon seeded by global-setup: TEST20 = 20% off
 const COUPON_CODE = 'TEST20';

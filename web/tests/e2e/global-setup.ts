@@ -28,7 +28,7 @@ import { TEST_ACCOUNTS, TEST_CAMPAIGNS } from './helpers/seed-data';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
 const COMPOSE_FILE = path.join(PROJECT_ROOT, 'infra/docker/docker-compose.test.yml');
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 const WEB_PORT = process.env.TEST_WEB_PORT ?? '3001';
 const ADMIN_PORT = process.env.TEST_ADMIN_PORT ?? '3002';
 const CS_PORT = process.env.TEST_CS_PORT ?? '3003';
@@ -79,7 +79,7 @@ export default async function globalSetup(): Promise<void> {
     //     env: {
     //       ...process.env,
     //       APP_ENV: 'test',
-    //       PORT: '8080',
+    //       PORT: '9092',
     //       DATABASE_URL: 'jdbc:postgresql://localhost:5433/prizedraw_test',
     //       DATABASE_USER: 'test',
     //       DATABASE_PASSWORD: 'test',

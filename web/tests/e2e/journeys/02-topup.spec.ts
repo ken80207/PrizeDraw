@@ -10,7 +10,7 @@ import { loginAsPlayer } from '../helpers/auth';
 import { getPlayerBalance, topUpPoints } from '../helpers/api';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 test.describe.serial('儲值旅程', () => {
   test.beforeEach(async ({ page }) => {

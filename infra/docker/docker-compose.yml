@@ -63,7 +63,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      PORT: 8080
+      PORT: 9092
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw}
       DATABASE_USER: ${POSTGRES_USER:-prizedraw}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-prizedraw}
@@ -77,9 +77,9 @@ services:
       STORAGE_BUCKET: ${STORAGE_BUCKET:-prizedraw}
       CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001}
     ports:
-      - "${SERVER_PORT:-8080}:8080"
+      - "${SERVER_PORT:-9092}:9092"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9092/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,8 +93,8 @@ services:
     depends_on:
       - server
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8080}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:9092}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:9092}
     ports:
       - "${WEB_PORT:-3000}:3000"
 
@@ -107,7 +107,7 @@ services:
     depends_on:
       - server
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:9092}
     ports:
       - "${ADMIN_PORT:-3001}:3000"
 
@@ -120,7 +120,7 @@ services:
     depends_on:
       - server
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:9092}
     ports:
       - "${CS_PORT:-3002}:3000"
 

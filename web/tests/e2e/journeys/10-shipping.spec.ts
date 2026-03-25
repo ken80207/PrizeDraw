@@ -11,7 +11,7 @@ import { loginAsPlayer, loginAsAdmin } from '../helpers/auth';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
 const ADMIN_BASE = process.env.TEST_ADMIN_URL ?? 'http://localhost:3002';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const SHIPPING_PRIZE = {
   id: 'prize-ship-001',

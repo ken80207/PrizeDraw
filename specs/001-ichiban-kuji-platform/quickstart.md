@@ -65,8 +65,8 @@ USE_MOCK_OAUTH=true  # Dev only — NEVER in production
 
 ```bash
 # web/.env.local & admin/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_WS_URL=ws://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:9092
+NEXT_PUBLIC_WS_URL=ws://localhost:9092
 ```
 
 ## 5. Build KMP Shared JS Module
@@ -94,7 +94,7 @@ pnpm --filter admin dev
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| API Server | http://localhost:8080 | Ktor API + WebSocket |
+| API Server | http://localhost:9092 | Ktor API + WebSocket |
 | Player Web | http://localhost:3000 | Next.js player app |
 | Admin | http://localhost:3001 | Next.js admin dashboard |
 | Mobile | Metro/AS emulator | KMP Compose Multiplatform |

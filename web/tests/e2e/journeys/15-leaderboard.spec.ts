@@ -10,7 +10,7 @@ import { TEST_ACCOUNTS, SEEDED_IDS } from '../helpers/seed-data';
 import { loginAsPlayer } from '../helpers/auth';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const MOCK_LEADERBOARD = {
   period: 'WEEKLY',

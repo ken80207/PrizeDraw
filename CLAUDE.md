@@ -113,7 +113,7 @@ kubectl apply -f infra/k8s/postgres/
 kubectl apply -f infra/k8s/redis/
 
 # Run load tests (requires k6)
-k6 run --env BASE_URL=http://localhost:8080 infra/k6/load-test.js
+k6 run --env BASE_URL=http://localhost:9092 infra/k6/load-test.js
 ```
 
 ## Code Style

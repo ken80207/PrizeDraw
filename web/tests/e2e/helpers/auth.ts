@@ -1,7 +1,7 @@
 import { type Page } from '@playwright/test';
 import { TEST_ACCOUNTS } from './seed-data';
 
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 /**
  * Log in as a player by injecting the pre-obtained JWT into localStorage /

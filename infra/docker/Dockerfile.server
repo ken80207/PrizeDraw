@@ -47,7 +47,7 @@ RUN chown -R prizedraw:prizedraw /app
 
 USER prizedraw
 
-EXPOSE 8080
+EXPOSE 9092
 
 # JVM tuning for containerized environment
 ENV JAVA_OPTS="\

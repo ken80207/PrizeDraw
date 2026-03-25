@@ -9,7 +9,7 @@ metadata:
   annotations:
     # Tell Prometheus to scrape this service's pods
     prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
+    prometheus.io/port: "9092"
     prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
@@ -25,5 +25,5 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: 8080
+      targetPort: 9092
       protocol: TCP

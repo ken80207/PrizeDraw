@@ -5,7 +5,7 @@
  * All functions accept an authorization token obtained via auth.ts helpers.
  */
 
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 // ---------------------------------------------------------------------------
 // Types

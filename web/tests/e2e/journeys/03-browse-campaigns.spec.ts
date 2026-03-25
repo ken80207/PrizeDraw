@@ -10,7 +10,7 @@ import { TEST_ACCOUNTS, TEST_CAMPAIGNS, SEEDED_IDS } from '../helpers/seed-data'
 import { loginAsPlayer } from '../helpers/auth';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 // Mock campaign data aligned with TEST_CAMPAIGNS seed
 const MOCK_KUJI = {

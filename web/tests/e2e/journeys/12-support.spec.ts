@@ -12,7 +12,7 @@ import { loginAsPlayer, loginAsCS } from '../helpers/auth';
 
 const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
 const CS_BASE = process.env.TEST_CS_URL ?? 'http://localhost:3003';
-const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const SUPPORT_TICKET = {
   id: 'ticket-001',

@@ -1,6 +1,7 @@
 package com.prizedraw.api.plugins
 
 import com.prizedraw.api.routes.adminAnnouncementRoutes
+import com.prizedraw.api.routes.roomRoutes
 import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminPricingRoutes
@@ -28,6 +29,7 @@ import com.prizedraw.application.ports.output.IQueueEntryRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
+import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
 import com.prizedraw.infrastructure.websocket.ConnectionManager
 import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
@@ -71,6 +73,7 @@ public fun Application.configureRouting() {
     val leaderboardAggregationJob: LeaderboardAggregationJob by inject()
     val drawSyncService: DrawSyncService by inject()
     val chatService: ChatService by inject()
+    val roomScalingService: RoomScalingService by inject()
 
     // Start the leaderboard background aggregation job once at startup
     leaderboardAggregationJob.start()
@@ -95,7 +98,10 @@ public fun Application.configureRouting() {
         // Phase 4: Campaign, Draw, WebSocket
         campaignRoutes()
         drawRoutes()
-        kujiWebSocketHandler(connectionManager, drawRepository, prizeRepository, drawSyncService)
+        kujiWebSocketHandler(connectionManager, drawRepository, prizeRepository, drawSyncService, roomScalingService)
+
+        // Phase 21: Room scaling REST endpoints
+        roomRoutes()
         queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository)
 
         // Phase 19+: Gameification — Chat, Broadcast, Draw Sync
