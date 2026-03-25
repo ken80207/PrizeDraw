@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export function Footer() {
+  const isDev = process.env.NODE_ENV === "development";
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -47,8 +48,16 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 text-center text-xs text-gray-400 dark:text-gray-500">
-          © 2026 PrizeDraw. All rights reserved.
+        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+          <span>© 2026 PrizeDraw. All rights reserved.</span>
+          {isDev && (
+            <Link
+              href="/dev"
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center gap-1"
+            >
+              🛠 Dev Tools
+            </Link>
+          )}
         </div>
       </div>
     </footer>
