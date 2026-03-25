@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SlotMachine } from "./SlotMachine";
+import { ClawMachine } from "./ClawMachine";
+import { GachaMachine } from "./GachaMachine";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -29,10 +32,22 @@ interface Character {
 
 type TileType = "FLOOR" | "WALL" | "COUNTER" | "CARPET" | "EMPTY";
 
+// Player draw flow phase machine
+type RoomPhase = "EXPLORING" | "AT_COUNTER" | "SELECTING_GAME" | "PLAYING" | "RESULT";
+
+type MiniGameKey = "slot" | "claw" | "gacha";
+
 export interface IsometricRoomProps {
   npcCount?: number;
   onStateChange?: (info: { yourPos: IsoPoint; queue: string[]; activeDrawer: string | null }) => void;
+  onDrawResult?: (grade: string, prizeName: string) => void;
+  resultGrade?: string;
+  resultPrizeName?: string;
+  playerNickname?: string;
 }
+
+// Counter tile: center between iso (6,4) and (7,4)
+const COUNTER_TILE: IsoPoint = { isoX: 6.5, isoY: 4 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -1085,19 +1100,41 @@ function makeNpc(id: number): Character {
 
 const GRADES = ["A賞", "B賞", "C賞", "D賞"];
 const DRAW_MESSAGES = ["好厲害！", "哇！", "羨慕！", "耶！", "好的！", "來了！", "必中！", "期待！", "恭喜！"];
+const NPC_REACTIONS = ["哇！", "好厲害！", "恭喜！", "A賞！！", "羨慕！", "太強了！"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProps) {
+export function IsometricRoom({
+  npcCount = 4,
+  onStateChange,
+  onDrawResult,
+  resultGrade,
+  resultPrizeName,
+  playerNickname = "你",
+}: IsometricRoomProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const tileMapRef = useRef(buildTileMap());
 
+  // ── Player draw flow ──
+  const [phase, setPhase] = useState<RoomPhase>("EXPLORING");
+  const phaseRef = useRef<RoomPhase>("EXPLORING");
+  const [activeGame, setActiveGame] = useState<MiniGameKey | null>(null);
+  const [lastResult, setLastResult] = useState<{ grade: string; prizeName: string } | null>(null);
+  // Counter button position in canvas-local pixels (updated each frame)
+  const [counterBtnPos, setCounterBtnPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Keep phaseRef in sync so the RAF loop can read it without stale closure
+  const setPhaseSync = useCallback((p: RoomPhase) => {
+    phaseRef.current = p;
+    setPhase(p);
+  }, []);
+
   const playerRef = useRef<Character>({
     id: "PLAYER",
-    nickname: "你",
+    nickname: playerNickname,
     shirtColor: "#fbbf24",
     skinColor: "#fcd9b0",
     pos: { isoX: 6, isoY: 10 },
@@ -1227,6 +1264,63 @@ export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProp
     }, (path.length * 500) + 500);
   }, []);
 
+  const handleGameResult = useCallback((grade: string) => {
+    const prize = resultPrizeName ?? `${grade} 獎品`;
+    setLastResult({ grade, prizeName: prize });
+    setPhaseSync("RESULT");
+
+    // Player state → celebrating
+    const player = playerRef.current;
+    player.state = "CELEBRATING";
+    const gradeColor: Record<string, string> = {
+      "A賞": "#fbbf24", "B賞": "#38bdf8", "C賞": "#34d399", "D賞": "#a78bfa",
+    };
+    const color = gradeColor[grade] ?? "#fbbf24";
+    player.bubble = { text: `✨ ${grade}！`, color, expiry: Date.now() + 4000, type: "prize" };
+
+    // A賞 special effects
+    if (grade === "A賞") {
+      flashRef.current = 1;
+      const ps = isoToScreen(player.pos);
+      sparklesRef.current = [...sparklesRef.current, ...spawnSparkles(ps.x, ps.y - 10, 60)];
+    } else {
+      const ps = isoToScreen(player.pos);
+      sparklesRef.current = [...sparklesRef.current, ...spawnSparkles(ps.x, ps.y - 10, 20)];
+    }
+
+    // NPC chat bubbles reacting
+    for (const npc of npcsRef.current) {
+      if (Math.random() > 0.4) {
+        const delay = Math.random() * 1200;
+        setTimeout(() => {
+          npc.bubble = {
+            text: NPC_REACTIONS[Math.floor(Math.random() * NPC_REACTIONS.length)] ?? "！",
+            color: "#94a3b8",
+            expiry: Date.now() + 2500,
+            type: "chat",
+          };
+        }, delay);
+      }
+    }
+
+    // Notify parent
+    onDrawResult?.(grade, prize);
+
+    // After 3s return to exploring
+    setTimeout(() => {
+      player.state = "IDLE";
+      setLastResult(null);
+      setPhaseSync("EXPLORING");
+      setActiveGame(null);
+    }, 3000);
+  }, [resultPrizeName, onDrawResult, setPhaseSync]);
+
+  const startGame = useCallback((key: MiniGameKey) => {
+    setActiveGame(key);
+    setPhaseSync("PLAYING");
+    playerRef.current.state = "DRAWING";
+  }, [setPhaseSync]);
+
   const addPrizeBubble = useCallback((grade: string) => {
     const player = playerRef.current;
     const gradeColor: Record<string, string> = {
@@ -1288,6 +1382,24 @@ export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProp
 
     moveCharacter(playerRef.current);
     for (const npc of npcsRef.current) moveCharacter(npc);
+
+    // ── Counter proximity check (player draw flow) ──
+    {
+      const player = playerRef.current;
+      const dist =
+        Math.abs(player.pos.isoX - COUNTER_TILE.isoX) +
+        Math.abs(player.pos.isoY - COUNTER_TILE.isoY);
+      const currentPhase = phaseRef.current;
+      if (dist <= 2.5 && currentPhase === "EXPLORING") {
+        setPhaseSync("AT_COUNTER");
+      } else if (dist > 3 && currentPhase === "AT_COUNTER") {
+        setPhaseSync("EXPLORING");
+      }
+
+      // Keep counter button position updated (in canvas-local px, then scaled to %)
+      const counterSc = isoToScreen(COUNTER_TILE);
+      setCounterBtnPos({ x: counterSc.x, y: counterSc.y - 55 });
+    }
 
     // NPC random wander
     if (now - lastNpcMoveRef.current > 3500 + Math.random() * 2000) {
@@ -1365,6 +1477,12 @@ export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProp
     drawAmbientLighting(ctx, t);
     drawAmbientParticles(ctx, t);
 
+    // Darken room behind mini-game modal
+    if (phaseRef.current === "PLAYING" || phaseRef.current === "RESULT") {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
     // A賞 win flash
     if (flashRef.current > 0) {
       ctx.fillStyle = `rgba(251,191,36,${flashRef.current * 0.3})`;
@@ -1395,7 +1513,7 @@ export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProp
     );
 
     rafRef.current = requestAnimationFrame(loop);
-  }, [simulateDraw]);
+  }, [simulateDraw, setPhaseSync]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(loop);
@@ -1409,16 +1527,125 @@ export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProp
   // Keep tileMap reference stable
   void tileMapRef.current;
 
+  // Convert canvas-local px coordinates to percentage-based CSS positions
+  // so they scale correctly when the canvas is shrunk via maxWidth / aspect ratio.
+  const counterBtnStyle = counterBtnPos
+    ? {
+        left: `${(counterBtnPos.x / CANVAS_W) * 100}%`,
+        top: `${(counterBtnPos.y / CANVAS_H) * 100}%`,
+        transform: "translate(-50%, -100%)",
+      }
+    : undefined;
+
+  // Effective result grade: prop override or mini-game callback value
+  const effectiveResultGrade = resultGrade ?? "D賞";
+
   return (
     <div className="flex flex-col items-center gap-4">
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_W}
-        height={CANVAS_H}
-        className="rounded-2xl border border-purple-800/60 shadow-2xl block cursor-pointer"
-        style={{ background: "#0a0f1a", maxWidth: "100%" }}
-        onClick={handleCanvasClick}
-      />
+      {/* Canvas container — must be relative so HTML overlays position correctly */}
+      <div
+        className="relative rounded-2xl"
+        style={{ width: "100%", maxWidth: `${CANVAS_W}px` }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          className="rounded-2xl border border-purple-800/60 shadow-2xl block cursor-pointer w-full h-auto"
+          style={{ background: "#0a0f1a" }}
+          onClick={phase === "EXPLORING" || phase === "AT_COUNTER" ? handleCanvasClick : undefined}
+        />
+
+        {/* Draw button — shows when near counter */}
+        {phase === "AT_COUNTER" && counterBtnStyle && (
+          <button
+            className="absolute z-10 animate-bounce px-4 py-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold text-sm shadow-lg shadow-orange-500/40 border-2 border-yellow-300 whitespace-nowrap pointer-events-auto"
+            style={counterBtnStyle}
+            onClick={() => setPhaseSync("SELECTING_GAME")}
+          >
+            🎰 抽獎!
+          </button>
+        )}
+
+        {/* Game selector overlay */}
+        {phase === "SELECTING_GAME" && (
+          <div
+            className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-2xl"
+            onClick={(e) => {
+              // Clicking the dim backdrop cancels selection
+              if (e.target === e.currentTarget) setPhaseSync("AT_COUNTER");
+            }}
+          >
+            <div className="bg-gray-900 border border-purple-700/60 rounded-2xl p-6 flex flex-col items-center gap-4 shadow-2xl mx-4">
+              <p className="text-white font-bold text-base">選擇抽獎方式</p>
+              <div className="flex gap-3">
+                {(
+                  [
+                    { key: "slot" as MiniGameKey, icon: "🎰", name: "拉霸機" },
+                    { key: "claw" as MiniGameKey, icon: "🪝", name: "夾娃娃" },
+                    { key: "gacha" as MiniGameKey, icon: "🥚", name: "扭蛋機" },
+                  ] as const
+                ).map((g) => (
+                  <button
+                    key={g.key}
+                    onClick={() => startGame(g.key)}
+                    className="flex flex-col items-center gap-2 px-5 py-4 rounded-xl bg-gray-800 hover:bg-purple-900/70 active:scale-95 border border-purple-700/40 hover:border-purple-400 transition-all text-white"
+                  >
+                    <span className="text-4xl">{g.icon}</span>
+                    <span className="text-sm font-semibold">{g.name}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setPhaseSync("AT_COUNTER")}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mini-game modal */}
+        {phase === "PLAYING" && activeGame && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 rounded-2xl pointer-events-auto">
+            <div className="w-[340px] max-h-[480px] overflow-hidden rounded-2xl shadow-2xl">
+              {activeGame === "slot" && (
+                <SlotMachine
+                  resultGrade={effectiveResultGrade}
+                  prizeName={resultPrizeName}
+                  onResult={handleGameResult}
+                />
+              )}
+              {activeGame === "claw" && (
+                <ClawMachine
+                  resultGrade={effectiveResultGrade}
+                  prizeName={resultPrizeName}
+                  onResult={handleGameResult}
+                />
+              )}
+              {activeGame === "gacha" && (
+                <GachaMachine
+                  resultGrade={effectiveResultGrade}
+                  prizeName={resultPrizeName}
+                  onResult={handleGameResult}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Result celebration overlay */}
+        {phase === "RESULT" && lastResult && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none rounded-2xl">
+            <div className="text-center animate-bounce">
+              <div className="text-6xl mb-2">🎊</div>
+              <div className="text-2xl font-bold text-white drop-shadow-lg">{lastResult.grade}</div>
+              <div className="text-lg text-yellow-300 drop-shadow">{lastResult.prizeName}</div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Controls */}
       <div className="w-full max-w-[640px] grid grid-cols-1 sm:grid-cols-2 gap-3">
