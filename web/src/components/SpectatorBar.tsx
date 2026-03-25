@@ -69,6 +69,7 @@ export function SpectatorBar({
   if (showCelebration && lastRevealed) {
     return (
       <div
+        data-testid="spectator-bar"
         className="w-full px-4 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top duration-300"
         style={{
           background:
@@ -121,6 +122,7 @@ export function SpectatorBar({
 
   return (
     <div
+      data-testid="spectator-bar"
       className="w-full px-4 py-3"
       style={{
         background:
@@ -135,7 +137,7 @@ export function SpectatorBar({
             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
             LIVE
           </span>
-          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          <span data-testid="spectator-nickname" className="text-sm font-medium text-gray-800 dark:text-gray-200">
             🎬 {activeSession.nickname}{" "}
             <span className="text-gray-500 dark:text-gray-400 font-normal">
               正在抽籤中...

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CampaignCard, type CampaignCardData } from "@/components/CampaignCard";
 import { CampaignCardSkeleton } from "@/components/LoadingSkeleton";
@@ -24,6 +24,14 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function CampaignsPage() {
+  return (
+    <Suspense>
+      <CampaignsContent />
+    </Suspense>
+  );
+}
+
+function CampaignsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 
@@ -22,6 +22,14 @@ interface PrizeInstanceDto {
  * 4. Submits POST /api/v1/exchange/offers.
  */
 export default function NewExchangePage() {
+  return (
+    <Suspense>
+      <NewExchangeContent />
+    </Suspense>
+  );
+}
+
+function NewExchangeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [recipientId, setRecipientId] = useState(searchParams.get("recipientId") ?? "");

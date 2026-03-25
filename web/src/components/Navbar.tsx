@@ -101,6 +101,7 @@ export function Navbar() {
               {/* User avatar dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button
+                  data-testid="user-menu"
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
@@ -183,6 +184,7 @@ export function Navbar() {
 
           {/* Mobile hamburger */}
           <button
+            data-testid="mobile-menu-toggle"
             onClick={() => setMenuOpen((v) => !v)}
             className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="開啟選單"

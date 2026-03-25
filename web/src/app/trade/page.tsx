@@ -251,7 +251,7 @@ function ListingCard({
   onBuy: () => void;
 }) {
   return (
-    <div className="group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all">
+    <div data-testid="listing-card" className="group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all">
       <div className="relative w-full h-40 bg-gray-100 dark:bg-gray-700 overflow-hidden">
         {listing.prizePhotoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

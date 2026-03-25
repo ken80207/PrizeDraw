@@ -19,7 +19,7 @@ interface PrizeCardProps {
 export function PrizeCard({ prize }: PrizeCardProps) {
   return (
     <Link href={`/prizes/${prize.id}`} className="group block">
-      <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200">
+      <div data-testid="prize-card" className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200">
         {/* Prize image */}
         <div className="relative w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
           {prize.photoUrl ? (

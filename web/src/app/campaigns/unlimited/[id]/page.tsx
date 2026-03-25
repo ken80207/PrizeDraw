@@ -13,6 +13,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/LoadingSkeleton";
 import { AnimatedReveal } from "@/animations/AnimatedReveal";
 import { useAnimationMode } from "@/hooks/useAnimationMode";
+import { ChatPanel } from "@/components/ChatPanel";
+import { ReactionOverlay } from "@/components/ReactionOverlay";
 
 const MULTI_DRAW_OPTIONS = [
   { label: "×3", qty: 3 },
@@ -153,6 +155,7 @@ export default function UnlimitedCampaignPage() {
 
               {/* Big draw button */}
               <button
+                data-testid="draw-button"
                 onClick={() => draw()}
                 disabled={isDrawing}
                 className="w-full py-5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 mb-4"
@@ -165,6 +168,7 @@ export default function UnlimitedCampaignPage() {
                 {MULTI_DRAW_OPTIONS.map((opt) => (
                   <button
                     key={opt.qty}
+                    data-testid={`multi-draw-${opt.qty}`}
                     disabled={isDrawing}
                     onClick={() => {
                       for (let i = 0; i < opt.qty; i++) draw();
@@ -186,7 +190,7 @@ export default function UnlimitedCampaignPage() {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                   本次抽獎紀錄
                 </h2>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div data-testid="draw-history" className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                   {drawHistory.map((result) => (
                     <HistoryRow key={result.prizeInstanceId} result={result} />
                   ))}
@@ -199,6 +203,16 @@ export default function UnlimitedCampaignPage() {
 
       {/* ── Result reveal modal ───────────────────────────── */}
       {lastResult && <ResultModal result={lastResult} onClose={acknowledgeResult} />}
+
+      {/* ── Chat panel for the unlimited campaign room ─────── */}
+      {id && <ChatPanel roomId={`unlimited:${id}`} />}
+
+      {/* ── Reaction Overlay — floating emojis ──────────────── */}
+      {id && (
+        <div className="fixed inset-0 pointer-events-none z-30" aria-hidden="true">
+          <ReactionOverlay emoji={null} />
+        </div>
+      )}
     </div>
   );
 }
@@ -242,7 +256,7 @@ function PrizeRow({ prize }: { prize: PrizeDefinitionDto }) {
 function HistoryRow({ result }: { result: UnlimitedDrawResultDto }) {
   const now = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+    <div data-testid="draw-history-item" className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
       <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 w-12">{now}</span>
       {result.prizePhotoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -300,10 +314,12 @@ function ResultModal({
       {/* Static prize detail card after animation */}
       {animationDone && (
         <div
+          data-testid="animation-overlay"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={onClose}
         >
           <div
+            data-testid="prize-result"
             className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -326,8 +342,8 @@ function ResultModal({
                 </div>
               )}
 
-              <GradeBadge grade={result.grade} className="mb-3" />
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+              <GradeBadge grade={result.grade} className="mb-3" data-testid="prize-grade" />
+              <h3 data-testid="prize-name" className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {result.prizeName}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">

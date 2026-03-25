@@ -110,6 +110,12 @@ export default function LeaderboardPage() {
           {PERIOD_TABS.map((tab) => (
             <button
               key={tab.value}
+              data-testid={
+                tab.value === "TODAY" ? "period-today"
+                : tab.value === "THIS_WEEK" ? "period-this-week"
+                : tab.value === "THIS_MONTH" ? "period-this-month"
+                : "period-all-time"
+              }
               onClick={() => setPeriod(tab.value)}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 period === tab.value
@@ -171,7 +177,7 @@ export default function LeaderboardPage() {
 
             {/* Self rank banner */}
             {data.selfRank && !data.entries.some((e) => e.rank === data.selfRank!.rank) && (
-              <div className="mt-4 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-4">
+              <div data-testid="self-rank" className="mt-4 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-4">
                 <div>
                   <p className="text-xs text-indigo-500 dark:text-indigo-400 mb-0.5">你的排名</p>
                   <p className="font-bold text-indigo-700 dark:text-indigo-300">

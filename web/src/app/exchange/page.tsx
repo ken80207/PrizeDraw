@@ -208,7 +208,7 @@ function ExchangeCard({
   const isPending = offer.status === "PENDING";
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+    <div data-testid="exchange-card" className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">

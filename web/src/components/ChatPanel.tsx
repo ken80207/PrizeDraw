@@ -124,6 +124,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
 
       {/* ── Toggle button ────────────────────────────────────────────────────── */}
       <button
+        data-testid="chat-toggle"
         onClick={() => setIsOpen((v) => !v)}
         className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-lg transition-all"
         aria-label={isOpen ? "關閉聊天" : "開啟聊天"}
@@ -143,6 +144,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
 
       {/* ── Slide-in panel ───────────────────────────────────────────────────── */}
       <div
+        data-testid="chat-panel"
         className={`
           fixed z-40 flex flex-col
           transition-transform duration-300 ease-in-out
@@ -233,6 +235,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
           {REACTION_EMOJIS.map((emoji) => (
             <button
               key={emoji}
+              data-testid={`reaction-${emoji}`}
               onClick={() => void handleReaction(emoji)}
               disabled={isCoolingDown}
               className="text-xl p-1.5 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-40 shrink-0"
@@ -252,6 +255,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
             <div className="flex-1 relative">
               <input
                 ref={inputRef}
+                data-testid="chat-input"
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
@@ -270,6 +274,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
               </span>
             </div>
             <button
+              data-testid="chat-send"
               onClick={() => void handleSend()}
               disabled={!inputText.trim() || isCoolingDown}
               className="shrink-0 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

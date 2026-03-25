@@ -106,7 +106,7 @@ export default function WalletPage() {
               <span className="text-xl">🎮</span>
               <span className="text-sm font-medium opacity-90">消費點數</span>
             </div>
-            <p className="text-3xl font-extrabold tabular-nums">
+            <p data-testid="draw-points-balance" className="text-3xl font-extrabold tabular-nums">
               {wallet.drawPointsBalance.toLocaleString()}
             </p>
             <p className="text-xs opacity-75 mt-1">用於抽獎 / 購買</p>
@@ -124,7 +124,7 @@ export default function WalletPage() {
               <span className="text-xl">💰</span>
               <span className="text-sm font-medium opacity-90">收益點數</span>
             </div>
-            <p className="text-3xl font-extrabold tabular-nums">
+            <p data-testid="revenue-points-balance" className="text-3xl font-extrabold tabular-nums">
               {wallet.revenuePointsBalance.toLocaleString()}
             </p>
             <p className="text-xs opacity-75 mt-1">可提領現金</p>
@@ -145,6 +145,7 @@ export default function WalletPage() {
               ([value, label]) => (
                 <button
                   key={value}
+                  data-testid={value === "draw" ? "tab-draw-transactions" : "tab-revenue-transactions"}
                   onClick={() => setActiveTab(value)}
                   className={`flex-1 py-3 text-sm font-medium transition-colors ${
                     activeTab === value

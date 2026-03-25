@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useKujiBoard } from "@/features/kuji/useKujiBoard";
 
@@ -14,6 +15,14 @@ import { useKujiBoard } from "@/features/kuji/useKujiBoard";
  * - `boxId` — ticket box ID (query param)
  */
 export default function BoardPage() {
+  return (
+    <Suspense>
+      <BoardContent />
+    </Suspense>
+  );
+}
+
+function BoardContent() {
   const params = useParams();
   const searchParams = useSearchParams();
 

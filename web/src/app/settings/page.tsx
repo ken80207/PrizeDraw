@@ -197,6 +197,7 @@ export default function SettingsPage() {
               <button
                 key={value}
                 type="button"
+                data-testid={`animation-${value.toLowerCase()}`}
                 onClick={() => handleSaveAnimationMode(value)}
                 disabled={saving}
                 className={`text-left p-4 rounded-xl border-2 transition-all ${

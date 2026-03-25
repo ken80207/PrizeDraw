@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 
@@ -26,6 +26,14 @@ interface ShippingOrderDto {
  * On submit calls POST /api/v1/shipping/orders and redirects to the tracking page.
  */
 export default function NewShippingPage() {
+  return (
+    <Suspense>
+      <NewShippingContent />
+    </Suspense>
+  );
+}
+
+function NewShippingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prizeId = searchParams.get("prizeId") ?? "";

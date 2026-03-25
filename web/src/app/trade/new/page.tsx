@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 
@@ -34,6 +34,14 @@ const BASIS_POINTS = 10_000;
  * The selected prize's photo is displayed when available.
  */
 export default function CreateListingPage() {
+  return (
+    <Suspense>
+      <CreateListingContent />
+    </Suspense>
+  );
+}
+
+function CreateListingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedPrizeId = searchParams.get("prizeId") ?? "";
@@ -134,6 +142,7 @@ export default function CreateListingPage() {
           </label>
           <input
             id="price"
+            data-testid="listing-price"
             type="number"
             min={1}
             value={priceInput}

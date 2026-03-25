@@ -1,6 +1,7 @@
 interface GradeBadgeProps {
   grade: string;
   className?: string;
+  "data-testid"?: string;
 }
 
 const GRADE_STYLES: Record<string, string> = {
@@ -16,10 +17,11 @@ const GRADE_STYLES: Record<string, string> = {
 
 const DEFAULT_GRADE_STYLE = "bg-gray-500 text-white";
 
-export function GradeBadge({ grade, className = "" }: GradeBadgeProps) {
+export function GradeBadge({ grade, className = "", "data-testid": testId }: GradeBadgeProps) {
   const style = GRADE_STYLES[grade] ?? DEFAULT_GRADE_STYLE;
   return (
     <span
+      data-testid={testId}
       className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold tracking-wide ${style} ${className}`}
     >
       {grade}

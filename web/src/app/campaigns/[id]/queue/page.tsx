@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
@@ -9,6 +9,10 @@ import { GradeBadge } from "@/components/GradeBadge";
 import { toast } from "@/components/Toast";
 import { AnimatedReveal } from "@/animations/AnimatedReveal";
 import { useAnimationMode } from "@/hooks/useAnimationMode";
+import { SpectatorBar } from "@/components/SpectatorBar";
+import { SpectatorAnimation } from "@/components/SpectatorAnimation";
+import { ChatPanel } from "@/components/ChatPanel";
+import { useDrawSync } from "@/hooks/useDrawSync";
 
 interface QueueEntryDto {
   id: string;
@@ -42,6 +46,14 @@ const DRAW_MODES = [
 ];
 
 export default function QueuePage() {
+  return (
+    <Suspense>
+      <QueueContent />
+    </Suspense>
+  );
+}
+
+function QueueContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -59,6 +71,8 @@ export default function QueuePage() {
   const [drawResult, setDrawResult] = useState<DrawResultDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { activeDrawSession, lastRevealed, clearRevealed } = useDrawSync(campaignId);
 
   // Load campaign price + player points
   useEffect(() => {
@@ -172,6 +186,21 @@ export default function QueuePage() {
           ← 返回活動頁
         </Link>
 
+        {/* When someone else is drawing and player is waiting */}
+        {!isMyTurn && activeDrawSession && (
+          <div className="mb-6">
+            <SpectatorBar
+              activeSession={activeDrawSession}
+              lastRevealed={lastRevealed}
+              onRevealDismissed={clearRevealed}
+            />
+            <SpectatorAnimation
+              animationMode={activeDrawSession.animationMode}
+              progress={activeDrawSession.progress}
+            />
+          </div>
+        )}
+
         {/* Error banner */}
         {error && (
           <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
@@ -200,6 +229,7 @@ export default function QueuePage() {
               {DRAW_MODES.map((mode, i) => (
                 <button
                   key={i}
+                  {...(mode.qty > 0 ? { "data-testid": `multi-draw-${mode.qty}` } : {})}
                   onClick={() => setSelectedMode(i)}
                   className={`py-2 px-1 rounded-xl text-xs font-medium transition-all ${
                     selectedMode === i
@@ -239,6 +269,7 @@ export default function QueuePage() {
         <div className="mt-4 space-y-3">
           {!queueEntry ? (
             <button
+              data-testid="join-queue-btn"
               onClick={handleJoinQueue}
               disabled={loading || !boxId}
               className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -247,6 +278,7 @@ export default function QueuePage() {
             </button>
           ) : !isMyTurn ? (
             <button
+              data-testid="leave-queue-btn"
               onClick={handleLeaveQueue}
               disabled={loading}
               className="w-full py-3.5 rounded-xl border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
@@ -262,6 +294,7 @@ export default function QueuePage() {
                 切換籤盒
               </button>
               <button
+                data-testid="leave-queue-btn"
                 onClick={handleLeaveQueue}
                 disabled={loading}
                 className="flex-1 py-3 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors text-sm"
@@ -281,6 +314,9 @@ export default function QueuePage() {
           onViewPrizes={() => router.push("/prizes")}
         />
       )}
+
+      {/* ── Chat panel — players can chat while waiting ───────── */}
+      {campaignId && <ChatPanel roomId={`kuji:${campaignId}`} />}
     </div>
   );
 }
@@ -366,6 +402,7 @@ function ActiveTurnCard({
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">剩餘時間</p>
           <p
+            data-testid="countdown-timer"
             className={`text-3xl font-bold tabular-nums ${
               isUrgent
                 ? "text-red-600 dark:text-red-400 animate-pulse"
@@ -428,8 +465,8 @@ function DrawResultSequence({
 
       {/* Static result card shown after animation completes */}
       {ticketRevealed && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+        <div data-testid="animation-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div data-testid="prize-result" className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-center text-white">
               <p className="font-bold text-lg">恭喜獲得！</p>
@@ -445,8 +482,8 @@ function DrawResultSequence({
                   className="w-full h-48 object-cover rounded-xl mb-4"
                 />
               )}
-              <GradeBadge grade={current.grade} className="mb-3" />
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+              <GradeBadge grade={current.grade} className="mb-3" data-testid="prize-grade" />
+              <h3 data-testid="prize-name" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {current.prizeName}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">

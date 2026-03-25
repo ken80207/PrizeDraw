@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/LoadingSkeleton";
 import { ChatPanel } from "@/components/ChatPanel";
 import { SpectatorBar } from "@/components/SpectatorBar";
+import { ReactionOverlay } from "@/components/ReactionOverlay";
 import { useDrawSync } from "@/hooks/useDrawSync";
 
 interface KujiCampaignDto {
@@ -139,6 +140,9 @@ export default function CampaignDetailPage() {
                     👀 正在觀戰
                   </span>
                 )}
+                <span className="flex items-center gap-1 text-sm text-gray-500">
+                  👀 <span data-testid="spectator-count">--</span> 人觀看
+                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                 {campaign.title}
@@ -248,6 +252,7 @@ export default function CampaignDetailPage() {
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-4">
           <Link
+            data-testid="join-queue-btn"
             href={`/campaigns/${id}/queue${selectedBox ? `?boxId=${selectedBox.id}` : ""}`}
             className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-colors"
           >
@@ -258,6 +263,13 @@ export default function CampaignDetailPage() {
 
       {/* ── Chat panel (slide-in from right / bottom sheet on mobile) ─────── */}
       {chatRoomId && <ChatPanel roomId={chatRoomId} />}
+
+      {/* ── Reaction Overlay — floating emojis ──────────────────────────── */}
+      {chatRoomId && (
+        <div className="fixed inset-0 pointer-events-none z-30" aria-hidden="true">
+          <ReactionOverlay emoji={null} />
+        </div>
+      )}
 
     </div>
   );

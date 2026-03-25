@@ -83,13 +83,14 @@ export async function getValidation(): Promise<PrizeDrawValidation> {
     // Dynamic import — resolved by Webpack/Next.js at bundle time.
     // The KMP output path is relative to the Next.js public directory or a
     // configured Webpack alias `@kmp` → `kmp-shared-js/build/dist/js/productionLibrary`.
-    const mod = await import(
-      /* webpackChunkName: "prizedraw-kmp" */
-      /* webpackMode: "lazy" */
-      "../../../../../../kmp-shared-js/build/dist/js/productionLibrary/prizedraw-kmp.js"
-    );
+    // KMP artifact is generated at build time and is not present in the source tree.
+    // We use a variable path to avoid TypeScript module resolution errors.
+    const kmpPath =
+      "../../../../../../kmp-shared-js/build/dist/js/productionLibrary/prizedraw-kmp.js" as string;
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+    const mod = (await (new Function("p", "return import(p)")(kmpPath) as Promise<unknown>)) as Record<string, unknown>;
     // The KMP JS IR compiler nests exports under the package path.
-    const kmpObj = mod?.com?.prizedraw?.shared?.PrizeDrawValidation as
+    const kmpObj = (mod as unknown as { com?: { prizedraw?: { shared?: { PrizeDrawValidation?: PrizeDrawValidation } } } })?.com?.prizedraw?.shared?.PrizeDrawValidation as
       | PrizeDrawValidation
       | undefined;
 

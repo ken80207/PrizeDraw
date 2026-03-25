@@ -87,6 +87,8 @@ function DrawPageContent() {
           <AnimatedReveal
             mode={drawResult.animationMode}
             prizePhotoUrl={drawResult.prizePhotoUrl}
+            prizeGrade={drawResult.prizeGrade}
+            prizeName={drawResult.prizeName}
             onRevealed={() => setRevealed(true)}
           />
         </div>
