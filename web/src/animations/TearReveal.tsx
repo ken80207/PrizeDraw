@@ -494,7 +494,10 @@ export function TearReveal({
   useEffect(() => {
     if (!prizePhotoUrl) return;
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // Only set crossOrigin for real URLs — data: URIs don't need CORS
+    if (!prizePhotoUrl.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
       prizeImageRef.current = img;
       setImageLoaded(true);
@@ -818,8 +821,11 @@ export function TearReveal({
   return (
     <div
       ref={containerRef}
-      className="relative select-none overflow-hidden rounded-xl touch-none"
-      style={{ cursor: revealed ? "default" : progressState > 0.05 ? "grabbing" : "grab" }}
+      className="relative select-none overflow-hidden rounded-xl touch-none w-full h-full"
+      style={{
+        cursor: revealed ? "default" : progressState > 0.05 ? "grabbing" : "grab",
+        minHeight: "200px",
+      }}
     >
       {/*
         Canvas is the sole visual layer. The ticket body (including prize photo,
