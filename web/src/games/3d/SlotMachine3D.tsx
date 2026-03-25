@@ -349,10 +349,10 @@ function SlotScene({ resultGrade, onResult, onStateChange }: SceneProps) {
   return (
     <>
       {/* Lighting */}
-      <ambientLight intensity={0.35} />
-      <spotLight position={[0, 4, 3]} intensity={1.2} angle={0.5} penumbra={0.5} castShadow />
-      <pointLight position={[-2, 2, 2]} intensity={0.4} color="#c4b5fd" />
-      <pointLight position={[2, 2, 2]} intensity={0.4} color="#fbbf24" />
+      <ambientLight intensity={1.2} />
+      <spotLight position={[0, 4, 3]} intensity={3.2} angle={0.5} penumbra={0.5} castShadow />
+      <pointLight position={[-2, 2, 2]} intensity={2.4} color="#c4b5fd" />
+      <pointLight position={[2, 2, 2]} intensity={2.4} color="#fbbf24" />
 
       {/* Machine */}
       <MachineBody />
@@ -385,15 +385,7 @@ function SlotScene({ resultGrade, onResult, onStateChange }: SceneProps) {
       {/* Lever */}
       <Lever onPull={handleLeverPull} disabled={gameState === "SPINNING"} />
 
-      {/* Controls */}
-      <OrbitControls
-        enablePan={false}
-        minDistance={2.5}
-        maxDistance={6}
-        minPolarAngle={0.2}
-        maxPolarAngle={Math.PI / 1.8}
-        target={[0, 0, 0]}
-      />
+      {/* Fixed camera — no orbit controls */}
     </>
   );
 }
@@ -410,7 +402,7 @@ export function SlotMachine3D({
 }: SlotMachine3DProps) {
   return (
     <div style={{ width: "100%", height: 480 }}>
-      <Canvas shadows camera={{ position: [0, 1.5, 3.5], fov: 50 }}>
+      <Canvas onCreated={(state) => { state.scene.background = new THREE.Color("#1a1025"); }} shadows camera={{ position: [0, 1.5, 3.5], fov: 50 }}>
         <SlotScene
           resultGrade={resultGrade}
           onResult={onResult}

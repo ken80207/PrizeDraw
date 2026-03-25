@@ -107,7 +107,9 @@ private suspend fun DefaultWebSocketServerSession.handleLegacyKujiRoom(
         sendRoomAssigned(shard.id, shard.instanceNumber, shard.playerCount, shard.maxPlayers)
         sendBoardSnapshot(campaignIdStr, drawRepository, prizeRepository)
         broadcastRoomStats(campaignId, roomScalingService, connectionManager, campaignRoomKey)
-        processIncomingFrames(campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager)
+        processIncomingFrames(
+            campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager,
+        )
     } finally {
         connectionManager.unregister(roomKey, this)
         connectionManager.unregister(campaignRoomKey, this)
@@ -118,6 +120,7 @@ private suspend fun DefaultWebSocketServerSession.handleLegacyKujiRoom(
 
 // --- Sharded room handler ---
 
+@Suppress("ReturnCount")
 private suspend fun DefaultWebSocketServerSession.handleShardedKujiRoom(
     connectionManager: ConnectionManager,
     drawRepository: IDrawRepository,
@@ -125,32 +128,8 @@ private suspend fun DefaultWebSocketServerSession.handleShardedKujiRoom(
     drawSyncService: DrawSyncService,
     roomScalingService: RoomScalingService,
 ) {
-    val campaignIdStr = call.parameters["campaignId"] ?: run {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
-        return
-    }
-    val roomInstanceIdStr = call.parameters["roomInstanceId"] ?: run {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing roomInstanceId"))
-        return
-    }
-    val campaignId = runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
-        return
-    }
-    val roomInstanceId = runCatching { UUID.fromString(roomInstanceIdStr) }.getOrElse {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid roomInstanceId"))
-        return
-    }
-    val shard = roomScalingService.findShard(roomInstanceId) ?: run {
-        close(CloseReason(CloseReason.Codes.NORMAL, "Room instance not found"))
-        return
-    }
-    if (shard.playerCount >= shard.maxPlayers) {
-        val alternative = roomScalingService.assignRoom(campaignId, UUID.randomUUID())
-        sendRoomFull(suggestedRoomInstanceId = alternative.id)
-        close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Room full"))
-        return
-    }
+    val params = resolveShardedParams(roomScalingService) ?: return
+    val (campaignIdStr, campaignId, shard) = params
     val roomKey = "room:${shard.id}"
     val campaignRoomKey = "kuji:$campaignIdStr"
 
@@ -161,13 +140,57 @@ private suspend fun DefaultWebSocketServerSession.handleShardedKujiRoom(
         sendRoomAssigned(shard.id, shard.instanceNumber, shard.playerCount + 1, shard.maxPlayers)
         sendBoardSnapshot(campaignIdStr, drawRepository, prizeRepository)
         broadcastRoomStats(campaignId, roomScalingService, connectionManager, campaignRoomKey)
-        processIncomingFrames(campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager)
+        processIncomingFrames(
+            campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager,
+        )
     } finally {
         connectionManager.unregister(roomKey, this)
         connectionManager.unregister(campaignRoomKey, this)
         roomScalingService.leaveRoom(shard.id)
         log.debug("Session disconnected from shard {} (campaign {})", shard.id, campaignIdStr)
     }
+}
+
+/**
+ * Validates and resolves path parameters for the sharded endpoint.
+ *
+ * Returns a triple of (campaignIdStr, campaignId, shard) on success, or `null`
+ * after sending the appropriate close reason if validation fails.
+ *
+ * The multiple early returns are intentional: each guard closes the WebSocket before
+ * returning, making a cascade of nested `if/else` blocks significantly harder to read.
+ */
+@Suppress("ReturnCount")
+private suspend fun DefaultWebSocketServerSession.resolveShardedParams(
+    roomScalingService: RoomScalingService,
+): Triple<String, UUID, com.prizedraw.domain.entities.RoomInstance>? {
+    val campaignIdStr = call.parameters["campaignId"] ?: run {
+        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
+        return null
+    }
+    val roomInstanceIdStr = call.parameters["roomInstanceId"] ?: run {
+        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing roomInstanceId"))
+        return null
+    }
+    val campaignId = runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
+        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
+        return null
+    }
+    val roomInstanceId = runCatching { UUID.fromString(roomInstanceIdStr) }.getOrElse {
+        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid roomInstanceId"))
+        return null
+    }
+    val shard = roomScalingService.findShard(roomInstanceId) ?: run {
+        close(CloseReason(CloseReason.Codes.NORMAL, "Room instance not found"))
+        return null
+    }
+    if (shard.playerCount >= shard.maxPlayers) {
+        val alternative = roomScalingService.assignRoom(campaignId, UUID.randomUUID())
+        sendRoomFull(suggestedRoomInstanceId = alternative.id)
+        close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Room full"))
+        return null
+    }
+    return Triple(campaignIdStr, campaignId, shard)
 }
 
 // --- Frame loop ---

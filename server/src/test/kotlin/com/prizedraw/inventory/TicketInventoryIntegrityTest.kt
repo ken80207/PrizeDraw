@@ -322,10 +322,14 @@ class TicketInventoryIntegrityTest : DescribeSpec({
         }
 
         // markDrawn: atomically transitions a ticket AVAILABLE → DRAWN; rejects double-draw
+        // NOTE: PlayerId and PrizeInstanceId are @JvmInline value classes; at JVM bytecode level
+        // they are unboxed to their underlying UUID type.  MockK's firstArg<T>()/secondArg<T>()
+        // perform a direct cast that fails for value classes.  We use args[n] with explicit
+        // UUID casts and re-wrap them into the value-class types ourselves.
         coEvery { drawRepo.markDrawn(any(), any(), any(), any()) } coAnswers {
             val ticketId = firstArg<UUID>()
-            val drawingPlayer = secondArg<PlayerId>()
-            val instanceId = thirdArg<PrizeInstanceId>()
+            val drawingPlayer = PlayerId(args[1] as UUID)
+            val instanceId = PrizeInstanceId(args[2] as UUID)
 
             // ConcurrentHashMap.putIfAbsent is the atomic gate — only one caller wins per ticketId
             val previous = drawnTicketIds.putIfAbsent(ticketId, instanceId.value)
@@ -397,8 +401,11 @@ class TicketInventoryIntegrityTest : DescribeSpec({
 
         // --- prizeRepo stubs ---
 
+        // PrizeDefinitionId is an @JvmInline value class — unboxed to UUID at JVM level.
+        // Extract the raw UUID via args[0] and re-wrap before looking up in the index.
         coEvery { prizeRepo.findDefinitionById(any()) } coAnswers {
-            val defId = firstArg<PrizeDefinitionId>()
+            val rawUuid = args[0] as UUID
+            val defId = PrizeDefinitionId(rawUuid)
             defsByGrade.values.find { it.id == defId }
         }
 

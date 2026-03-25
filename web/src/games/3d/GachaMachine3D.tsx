@@ -319,10 +319,10 @@ function GachaScene({ resultGrade, onResult, onStateChange }: {
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <spotLight position={[2, 5, 3]} intensity={1.1} angle={0.5} penumbra={0.4} castShadow />
-      <pointLight position={[-2, 1, 2]} intensity={0.4} color="#fbbf24" />
-      <pointLight position={[1, 2, -1]} intensity={0.35} color="#c4b5fd" />
+      <ambientLight intensity={1.2} />
+      <spotLight position={[2, 5, 3]} intensity={3.1} angle={0.5} penumbra={0.4} castShadow />
+      <pointLight position={[-2, 1, 2]} intensity={2.4} color="#fbbf24" />
+      <pointLight position={[1, 2, -1]} intensity={2.35} color="#c4b5fd" />
 
       {/* Floor shadow plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.42, 0]}>
@@ -376,14 +376,6 @@ function GachaScene({ resultGrade, onResult, onStateChange }: {
         </Text>
       )}
 
-      <OrbitControls
-        enablePan={false}
-        minDistance={2}
-        maxDistance={5.5}
-        minPolarAngle={0.2}
-        maxPolarAngle={Math.PI / 1.8}
-        target={[0, -0.2, 0]}
-      />
     </>
   );
 }
@@ -400,7 +392,7 @@ export function GachaMachine3D({
 }: GachaMachine3DProps) {
   return (
     <div style={{ width: "100%", height: 480 }}>
-      <Canvas shadows camera={{ position: [0, 1, 3.2], fov: 50 }}>
+      <Canvas onCreated={(state) => { state.scene.background = new THREE.Color("#1a1025"); }} shadows camera={{ position: [0, 1, 3.2], fov: 50 }}>
         <GachaScene
           resultGrade={resultGrade}
           onResult={onResult}

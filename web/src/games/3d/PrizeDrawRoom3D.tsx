@@ -627,7 +627,7 @@ function RoomScene({
   return (
     <>
       {/* Lighting */}
-      <ambientLight intensity={0.45} />
+      <ambientLight intensity={1.2} />
       <directionalLight
         position={[4, 8, 4]}
         intensity={0.7}
@@ -639,7 +639,7 @@ function RoomScene({
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      <Environment preset="apartment" />
+      
 
       {/* Room structure */}
       <Floor onClick={handleFloorClick} />
@@ -681,14 +681,7 @@ function RoomScene({
         />
       ))}
 
-      {/* Camera controls */}
-      <OrbitControls
-        minPolarAngle={0.3}
-        maxPolarAngle={Math.PI / 2.2}
-        minDistance={5}
-        maxDistance={16}
-        target={[0, 0.5, 0]}
-      />
+      {/* Fixed camera */}
     </>
   );
 }
@@ -706,7 +699,7 @@ export function PrizeDrawRoom3D({
 }: PrizeDrawRoom3DProps) {
   return (
     <div style={{ width: "100%", height: 560 }}>
-      <Canvas
+      <Canvas onCreated={(state) => { state.scene.background = new THREE.Color("#f5f0e8"); }}
         shadows
         camera={{ position: [8, 8, 8], fov: 45 }}
         gl={{ antialias: true }}

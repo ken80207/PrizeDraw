@@ -405,10 +405,10 @@ function ClawScene({ resultGrade, onResult, onStateChange }: {
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <spotLight position={[0, 5, 3]} intensity={1.0} angle={0.5} penumbra={0.4} castShadow />
-      <pointLight position={[0, 1.8, 0]} intensity={0.6} color="#bfdbfe" />
-      <pointLight position={[-2, 0, 0]} intensity={0.3} color="#c4b5fd" />
+      <ambientLight intensity={1.2} />
+      <spotLight position={[0, 5, 3]} intensity={3.0} angle={0.5} penumbra={0.4} castShadow />
+      <pointLight position={[0, 1.8, 0]} intensity={2.6} color="#bfdbfe" />
+      <pointLight position={[-2, 0, 0]} intensity={2.3} color="#c4b5fd" />
 
       <GlassCase />
       <Rail />
@@ -436,14 +436,6 @@ function ClawScene({ resultGrade, onResult, onStateChange }: {
         </mesh>
       )}
 
-      <OrbitControls
-        enablePan={false}
-        minDistance={3}
-        maxDistance={7}
-        minPolarAngle={0.2}
-        maxPolarAngle={Math.PI / 1.9}
-        target={[0, 0, 0]}
-      />
     </>
   );
 }
@@ -460,7 +452,7 @@ export function ClawMachine3D({
 }: ClawMachine3DProps) {
   return (
     <div style={{ width: "100%", height: 480 }}>
-      <Canvas shadows camera={{ position: [3, 2.5, 4], fov: 45 }}>
+      <Canvas onCreated={(state) => { state.scene.background = new THREE.Color("#1a1025"); }} shadows camera={{ position: [3, 2.5, 4], fov: 45 }}>
         <ClawScene
           resultGrade={resultGrade}
           onResult={onResult}
