@@ -51,8 +51,8 @@ const CHUTE_Y = BODY_TOP_Y + BODY_H * 0.25;
 // Handle (on right side of body)
 const HANDLE_CX = BODY_X + BODY_W + 28;
 const HANDLE_CY = BODY_TOP_Y + BODY_H * 0.38;
-const HANDLE_R = 24;
-const HANDLE_ARM_LEN = 28;
+const HANDLE_R = 26;
+const HANDLE_ARM_LEN = 30;
 
 // Coin slot (top of body)
 const COIN_SLOT_X = MACHINE_CX - 14;
@@ -62,6 +62,14 @@ const COIN_SLOT_Y = BODY_TOP_Y + 14;
 const CAPSULE_LAND_X = MACHINE_CX;
 const CAPSULE_LAND_Y = 460;
 
+// Screw positions (corners of body)
+const BODY_SCREWS = [
+  { x: BODY_X + 10,          y: BODY_TOP_Y + 10 },
+  { x: BODY_X + BODY_W - 10, y: BODY_TOP_Y + 10 },
+  { x: BODY_X + 10,          y: BODY_BOTTOM_Y - 10 },
+  { x: BODY_X + BODY_W - 10, y: BODY_BOTTOM_Y - 10 },
+];
+
 // Grade colors for capsules (with 3D shading data)
 const GRADE_CAPSULE: Record<string, { topLight: string; topDark: string; bottomLight: string; bottomDark: string; glow: string }> = {
   "A賞": { topLight: "#fde68a", topDark: "#d97706", bottomLight: "#92400e", bottomDark: "#451a03", glow: "#f59e0b" },
@@ -70,12 +78,22 @@ const GRADE_CAPSULE: Record<string, { topLight: string; topDark: string; bottomL
   "D賞": { topLight: "#ddd6fe", topDark: "#7c3aed", bottomLight: "#4c1d95", bottomDark: "#2e1065", glow: "#a855f7" },
 };
 
-const MINI_CAPSULE_POSITIONS = [
-  { x: -58, y: -45, grade: "B賞" }, { x: -18, y: -58, grade: "C賞" }, { x: 28, y: -48, grade: "A賞" },
-  { x: 58, y: -32, grade: "D賞" }, { x: -48, y: -8, grade: "C賞" }, { x: 2, y: -12, grade: "B賞" },
-  { x: 42, y: 4, grade: "A賞" }, { x: -68, y: 22, grade: "D賞" }, { x: -28, y: 28, grade: "C賞" },
-  { x: 22, y: 32, grade: "B賞" }, { x: 62, y: 28, grade: "A賞" }, { x: -52, y: 58, grade: "D賞" },
-  { x: 4, y: 62, grade: "C賞" }, { x: 48, y: 52, grade: "B賞" },
+// Mini capsule positions with depth (z: -1=back, 0=mid, 1=front)
+const MINI_CAPSULE_POSITIONS: Array<{ x: number; y: number; grade: string; z: number }> = [
+  { x: -58, y: -45, grade: "B賞", z: -0.8 },
+  { x: -18, y: -58, grade: "C賞", z: -0.5 },
+  { x: 28,  y: -48, grade: "A賞", z:  0.3 },
+  { x: 58,  y: -32, grade: "D賞", z:  0.7 },
+  { x: -48, y:  -8, grade: "C賞", z: -0.6 },
+  { x:   2, y: -12, grade: "B賞", z:  0.1 },
+  { x:  42, y:   4, grade: "A賞", z:  0.9 },
+  { x: -68, y:  22, grade: "D賞", z: -0.9 },
+  { x: -28, y:  28, grade: "C賞", z: -0.2 },
+  { x:  22, y:  32, grade: "B賞", z:  0.5 },
+  { x:  62, y:  28, grade: "A賞", z:  0.8 },
+  { x: -52, y:  58, grade: "D賞", z: -0.7 },
+  { x:   4, y:  62, grade: "C賞", z:  0.4 },
+  { x:  48, y:  52, grade: "B賞", z:  0.6 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +107,7 @@ function drawCapsule3D(
   grade: string,
   alpha = 1,
   openFraction = 0,
-  rotation = 0, // tilt angle in radians
+  rotation = 0,
 ) {
   const col = GRADE_CAPSULE[grade] ?? GRADE_CAPSULE["D賞"]!;
 
@@ -99,14 +117,92 @@ function drawCapsule3D(
   ctx.rotate(rotation);
 
   if (openFraction < 0.01) {
-    // ── Closed capsule with 3D shading ──
+    // ── Closed capsule ──
 
-    // Bottom half
-    const botGrad = ctx.createLinearGradient(-r, 0, r, 0);
-    botGrad.addColorStop(0, col.bottomLight);
-    botGrad.addColorStop(0.35, col.bottomLight);
-    botGrad.addColorStop(0.7, col.bottomDark);
-    botGrad.addColorStop(1, col.bottomDark);
+    // Drop shadow
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 6;
+
+    // Bottom half — two-tone with side shading
+    const botGrad = ctx.createLinearGradient(-r, 0, r, r * 0.9);
+    botGrad.addColorStop(0,   col.bottomLight);
+    botGrad.addColorStop(0.4, col.bottomLight);
+    botGrad.addColorStop(0.75, col.bottomDark);
+    botGrad.addColorStop(1,   col.bottomDark);
+    ctx.fillStyle = botGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top half — contrasting lighter color
+    const topGrad = ctx.createLinearGradient(-r, -r * 0.9, r, 0);
+    topGrad.addColorStop(0,   col.topLight);
+    topGrad.addColorStop(0.45, col.topLight);
+    topGrad.addColorStop(0.85, col.topDark);
+    topGrad.addColorStop(1,   col.topDark);
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Seam line (prominent physical divide)
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-r, 0);
+    ctx.lineTo(r, 0);
+    ctx.stroke();
+    // Seam highlight
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-r, -1);
+    ctx.lineTo(r, -1);
+    ctx.stroke();
+
+    // Side rim darkening (adds spherical feel)
+    const rimGrad = ctx.createRadialGradient(0, 0, r * 0.55, 0, 0, r);
+    rimGrad.addColorStop(0,   "rgba(0,0,0,0)");
+    rimGrad.addColorStop(0.7, "rgba(0,0,0,0)");
+    rimGrad.addColorStop(1,   "rgba(0,0,0,0.35)");
+    ctx.fillStyle = rimGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Specular highlight (shifts up for higher positions — simulated by alpha driven externally)
+    const hlGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.38, 0, -r * 0.1, -r * 0.2, r * 0.52);
+    hlGrad.addColorStop(0,   "rgba(255,255,255,0.65)");
+    hlGrad.addColorStop(0.45,"rgba(255,255,255,0.22)");
+    hlGrad.addColorStop(1,   "rgba(255,255,255,0)");
+    ctx.fillStyle = hlGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Small secondary glint
+    ctx.fillStyle = "rgba(255,255,255,0.42)";
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.26, -r * 0.44, r * 0.2, r * 0.12, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else {
+    // ── Opening animation: spring separation ──
+    // Spring easing: top half overshoots slightly then settles
+    const spring = openFraction < 0.5
+      ? openFraction * 2
+      : 1 + Math.sin((openFraction - 0.5) * Math.PI * 3) * (1 - openFraction) * 0.3;
+    const topOffY = -spring * r * 2.6;
+
+    // Bottom half stays
+    const botGrad = ctx.createLinearGradient(-r, 0, r, r * 0.9);
+    botGrad.addColorStop(0,   col.bottomLight);
+    botGrad.addColorStop(0.75, col.bottomDark);
     ctx.fillStyle = botGrad;
     ctx.shadowColor = "rgba(0,0,0,0.4)";
     ctx.shadowBlur = 8;
@@ -115,89 +211,50 @@ function drawCapsule3D(
     ctx.arc(0, 0, r, 0, Math.PI);
     ctx.closePath();
     ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-    // Top half
-    const topGrad = ctx.createLinearGradient(-r, -r, r, 0);
-    topGrad.addColorStop(0, col.topLight);
-    topGrad.addColorStop(0.4, col.topLight);
-    topGrad.addColorStop(0.8, col.topDark);
-    topGrad.addColorStop(1, col.topDark);
-    ctx.fillStyle = topGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, Math.PI, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    // Equator band (seam)
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-r, 0);
-    ctx.lineTo(r, 0);
-    ctx.stroke();
-
-    // 3D sphere highlight (white dot, top-left)
-    const hlGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 0, -r * 0.1, -r * 0.2, r * 0.45);
-    hlGrad.addColorStop(0, "rgba(255,255,255,0.55)");
-    hlGrad.addColorStop(0.5, "rgba(255,255,255,0.15)");
-    hlGrad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = hlGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Second smaller highlight
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.28, -r * 0.42, r * 0.22, r * 0.14, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-
-  } else {
-    // ── Opening animation ──
-    const topOffY = -openFraction * r * 2.8;
-
-    // Bottom half (stays)
-    const botGrad = ctx.createLinearGradient(-r, 0, r, 0);
-    botGrad.addColorStop(0, col.bottomLight);
-    botGrad.addColorStop(0.7, col.bottomDark);
-    ctx.fillStyle = botGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI);
-    ctx.closePath();
-    ctx.fill();
-
-    // Inner light (revealed)
-    if (openFraction > 0.15) {
-      const innerAlpha = Math.min(1, (openFraction - 0.15) / 0.35);
-      const innerGlow = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.8);
-      innerGlow.addColorStop(0, `${col.glow}cc`);
-      innerGlow.addColorStop(1, "rgba(0,0,0,0)");
+    // Inner glow revealed (pulsing)
+    if (openFraction > 0.12) {
+      const innerAlpha = Math.min(1, (openFraction - 0.12) / 0.3);
+      const pulseScale = 1 + Math.sin(openFraction * Math.PI * 6) * 0.08 * (1 - openFraction);
+      const innerGlow = ctx.createRadialGradient(0, 0, r * 0.05, 0, 0, r * 0.9 * pulseScale);
+      innerGlow.addColorStop(0,   `${col.glow}ee`);
+      innerGlow.addColorStop(0.5, `${col.glow}88`);
+      innerGlow.addColorStop(1,   "rgba(0,0,0,0)");
       ctx.save();
       ctx.globalAlpha = alpha * innerAlpha;
       ctx.fillStyle = innerGlow;
       ctx.beginPath();
-      ctx.ellipse(0, 0, r * 0.9, r * 0.45, 0, 0, Math.PI);
+      ctx.ellipse(0, 0, r * 0.95, r * 0.5, 0, 0, Math.PI);
       ctx.fill();
       ctx.restore();
     }
 
-    // Top half (moves up)
+    // Top half lifts up with spring
     ctx.save();
     ctx.translate(0, topOffY);
-    const topGrad = ctx.createLinearGradient(-r, -r, r, 0);
-    topGrad.addColorStop(0, col.topLight);
-    topGrad.addColorStop(0.8, col.topDark);
+    const topGrad = ctx.createLinearGradient(-r, -r * 0.9, r, 0);
+    topGrad.addColorStop(0,   col.topLight);
+    topGrad.addColorStop(0.85, col.topDark);
     ctx.fillStyle = topGrad;
+    ctx.shadowColor = col.glow;
+    ctx.shadowBlur = 8 * openFraction;
     ctx.beginPath();
     ctx.arc(0, 0, r, Math.PI, 0);
     ctx.closePath();
     ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Seam on lifted top
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+    ctx.stroke();
 
     // Highlight on top half
-    const topHlGrad = ctx.createRadialGradient(-r * 0.25, -r * 0.3, 0, 0, 0, r * 0.7);
-    topHlGrad.addColorStop(0, "rgba(255,255,255,0.5)");
+    const topHlGrad = ctx.createRadialGradient(-r * 0.25, -r * 0.32, 0, 0, 0, r * 0.72);
+    topHlGrad.addColorStop(0, "rgba(255,255,255,0.55)");
     topHlGrad.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = topHlGrad;
     ctx.beginPath();
@@ -205,18 +262,19 @@ function drawCapsule3D(
     ctx.fill();
     ctx.restore();
 
-    // Prize text revealed
-    if (openFraction > 0.4) {
-      const prizeAlpha = (openFraction - 0.4) / 0.6;
+    // Prize grade letter rises from inside
+    if (openFraction > 0.38) {
+      const prizeAlpha = Math.min(1, (openFraction - 0.38) / 0.45);
+      const prizeRise = (openFraction - 0.38) * r * 1.4;
       ctx.save();
       ctx.globalAlpha = alpha * prizeAlpha;
       ctx.shadowColor = col.glow;
-      ctx.shadowBlur = 16 * openFraction;
+      ctx.shadowBlur = 18 * openFraction;
       ctx.fillStyle = col.topLight;
-      ctx.font = `bold ${r * 0.75}px system-ui, sans-serif`;
+      ctx.font = `bold ${r * 0.78}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(grade.charAt(0), 0, r * 0.28);
+      ctx.fillText(grade.charAt(0), 0, r * 0.3 - prizeRise * 0.4);
       ctx.restore();
     }
   }
@@ -224,19 +282,32 @@ function drawCapsule3D(
   ctx.restore();
 }
 
-function drawMiniCapsule3D(ctx: CanvasRenderingContext2D, cx: number, cy: number, grade: string, wobble: number) {
+function drawMiniCapsule3D(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  grade: string,
+  wobble: number,
+  depthZ: number,   // -1..1, affects size/brightness
+  tumbleAngle: number,
+) {
   const col = GRADE_CAPSULE[grade] ?? GRADE_CAPSULE["D賞"]!;
-  const r = 10;
+  // Depth scaling: back capsules smaller/darker, front ones larger/brighter
+  const depthScale = 0.72 + (depthZ + 1) * 0.14; // 0.72..1.0
+  const r = 10 * depthScale;
+  const depthAlpha = 0.55 + (depthZ + 1) * 0.22; // dimmer at back
+
   const wx = Math.sin(wobble) * 1.8;
   const wy = Math.cos(wobble * 0.8) * 1.2;
 
   ctx.save();
+  ctx.globalAlpha = depthAlpha;
   ctx.translate(cx + wx, cy + wy);
+  ctx.rotate(tumbleAngle);
 
   // Bottom half
-  const botGrad = ctx.createLinearGradient(-r, 0, r, 0);
+  const botGrad = ctx.createLinearGradient(-r, 0, r, r * 0.9);
   botGrad.addColorStop(0, col.bottomLight);
-  botGrad.addColorStop(1, col.bottomDark);
+  botGrad.addColorStop(0.7, col.bottomDark);
   ctx.fillStyle = botGrad;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI);
@@ -244,7 +315,7 @@ function drawMiniCapsule3D(ctx: CanvasRenderingContext2D, cx: number, cy: number
   ctx.fill();
 
   // Top half
-  const topGrad = ctx.createLinearGradient(-r, -r, r, 0);
+  const topGrad = ctx.createLinearGradient(-r, -r * 0.9, r, 0);
   topGrad.addColorStop(0, col.topLight);
   topGrad.addColorStop(1, col.topDark);
   ctx.fillStyle = topGrad;
@@ -254,15 +325,20 @@ function drawMiniCapsule3D(ctx: CanvasRenderingContext2D, cx: number, cy: number
   ctx.fill();
 
   // Seam
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(0,0,0,0.55)";
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(-r, 0);
-  ctx.lineTo(r, 0);
+  ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-r, -0.7); ctx.lineTo(r, -0.7);
   ctx.stroke();
 
-  // Highlight
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  // Specular highlight (brighter for front capsules)
+  const hlAlpha = 0.25 + (depthZ + 1) * 0.15;
+  ctx.fillStyle = `rgba(255,255,255,${hlAlpha})`;
   ctx.beginPath();
   ctx.ellipse(-r * 0.25, -r * 0.38, r * 0.25, r * 0.16, -0.4, 0, Math.PI * 2);
   ctx.fill();
@@ -274,71 +350,126 @@ function drawMiniCapsule3D(ctx: CanvasRenderingContext2D, cx: number, cy: number
 // Machine body drawing
 // ─────────────────────────────────────────────────────────────────────────────
 
+function drawScrew(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  // Screw head
+  const screwGrad = ctx.createRadialGradient(x - 1.5, y - 1.5, 0.5, x, y, 5);
+  screwGrad.addColorStop(0,  "#e2e8f0");
+  screwGrad.addColorStop(0.4,"#94a3b8");
+  screwGrad.addColorStop(1,  "#334155");
+  ctx.fillStyle = screwGrad;
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Cross slot
+  ctx.strokeStyle = "rgba(0,0,0,0.6)";
+  ctx.lineWidth = 1.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - 2.5, y); ctx.lineTo(x + 2.5, y);
+  ctx.moveTo(x, y - 2.5); ctx.lineTo(x, y + 2.5);
+  ctx.stroke();
+  // Highlight on slot
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(x - 2.2, y - 0.4); ctx.lineTo(x + 2.2, y - 0.4);
+  ctx.stroke();
+}
+
 function drawMachineBody3D(ctx: CanvasRenderingContext2D, t: number) {
   const sideDepth = 10;
 
-  // ── Legs / base platform ──
+  // ── Legs / base platform — wider at bottom for stability ──
   const baseY = BODY_BOTTOM_Y;
-  const baseW = BODY_W + 30;
+  const baseW = BODY_W + 40;  // wider than body
   const baseX = MACHINE_CX - baseW / 2;
+  const base2W = baseW + 16;  // even wider second tier
+  const base2X = MACHINE_CX - base2W / 2;
 
-  // Base shadow
+  // Deep ground shadow
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.6)";
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetY = 6;
-  const baseGrad = ctx.createLinearGradient(baseX, baseY, baseX + baseW, baseY + 20);
-  baseGrad.addColorStop(0, "#3d1f0a");
-  baseGrad.addColorStop(1, "#1f0f04");
-  ctx.fillStyle = baseGrad;
+  const groundShadow = ctx.createRadialGradient(MACHINE_CX, baseY + 50, 10, MACHINE_CX, baseY + 50, 90);
+  groundShadow.addColorStop(0, "rgba(0,0,0,0.55)");
+  groundShadow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = groundShadow;
   ctx.beginPath();
-  ctx.roundRect(baseX, baseY - 8, baseW, 30, [0, 0, 8, 8]);
+  ctx.ellipse(MACHINE_CX, baseY + 44, 95, 22, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
+  // Second tier base (wider, darker)
+  const base2Grad = ctx.createLinearGradient(base2X, baseY + 18, base2X + base2W, baseY + 38);
+  base2Grad.addColorStop(0, "#1f0f04");
+  base2Grad.addColorStop(1, "#0d0702");
+  ctx.fillStyle = base2Grad;
+  ctx.strokeStyle = "#7c3409";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(base2X, baseY + 18, base2W, 18, [0, 0, 6, 6]);
+  ctx.fill();
+  ctx.stroke();
+
+  // First tier base
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 5;
+  const baseGrad = ctx.createLinearGradient(baseX, baseY, baseX + baseW, baseY + 22);
+  baseGrad.addColorStop(0, "#3d1f0a");
+  baseGrad.addColorStop(0.5, "#4a2510");
+  baseGrad.addColorStop(1, "#1f0f04");
+  ctx.fillStyle = baseGrad;
+  ctx.beginPath();
+  ctx.roundRect(baseX, baseY - 6, baseW, 26, [0, 0, 8, 8]);
+  ctx.fill();
+  ctx.restore();
   ctx.strokeStyle = "#ea580c";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(baseX, baseY - 8, baseW, 30, [0, 0, 8, 8]);
+  ctx.roundRect(baseX, baseY - 6, baseW, 26, [0, 0, 8, 8]);
   ctx.stroke();
 
   // Legs
   const legW = 18, legH = 28;
-  const legPositions = [baseX + 16, baseX + baseW - 34];
+  const legPositions = [baseX + 18, baseX + baseW - 36];
   for (const lx of legPositions) {
-    // Right face
+    // Right face depth
     ctx.fillStyle = "#1f0f04";
     ctx.beginPath();
-    ctx.moveTo(lx + legW, baseY + 20);
-    ctx.lineTo(lx + legW + sideDepth * 0.7, baseY + 20 - sideDepth * 0.35);
-    ctx.lineTo(lx + legW + sideDepth * 0.7, baseY + 20 + legH - sideDepth * 0.35);
-    ctx.lineTo(lx + legW, baseY + 20 + legH);
+    ctx.moveTo(lx + legW,               baseY + 18);
+    ctx.lineTo(lx + legW + sideDepth * 0.7, baseY + 18 - sideDepth * 0.35);
+    ctx.lineTo(lx + legW + sideDepth * 0.7, baseY + 18 + legH - sideDepth * 0.35);
+    ctx.lineTo(lx + legW,               baseY + 18 + legH);
     ctx.closePath();
     ctx.fill();
 
-    const legGrad = ctx.createLinearGradient(lx, baseY + 20, lx + legW, baseY + 20 + legH);
+    const legGrad = ctx.createLinearGradient(lx, baseY + 18, lx + legW, baseY + 18 + legH);
     legGrad.addColorStop(0, "#7c2d12");
     legGrad.addColorStop(1, "#431407");
     ctx.fillStyle = legGrad;
     ctx.strokeStyle = "#ea580c";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(lx, baseY + 20, legW, legH, [0, 0, 4, 4]);
+    ctx.roundRect(lx, baseY + 18, legW, legH, [0, 0, 4, 4]);
     ctx.fill();
     ctx.stroke();
   }
 
-  // ── Body main cylinder / box — visible side ──
+  // ── Body main front face ──
   // Right face (depth)
   const rightFGrad = ctx.createLinearGradient(BODY_X + BODY_W, BODY_TOP_Y, BODY_X + BODY_W + sideDepth, BODY_TOP_Y + BODY_H);
   rightFGrad.addColorStop(0, "#431407");
   rightFGrad.addColorStop(1, "#1f0f04");
   ctx.fillStyle = rightFGrad;
   ctx.beginPath();
-  ctx.moveTo(BODY_X + BODY_W, BODY_TOP_Y + 10);
-  ctx.lineTo(BODY_X + BODY_W + sideDepth, BODY_TOP_Y + 10 - sideDepth * 0.5);
-  ctx.lineTo(BODY_X + BODY_W + sideDepth, BODY_BOTTOM_Y - sideDepth * 0.5);
-  ctx.lineTo(BODY_X + BODY_W, BODY_BOTTOM_Y);
+  ctx.moveTo(BODY_X + BODY_W,              BODY_TOP_Y + 10);
+  ctx.lineTo(BODY_X + BODY_W + sideDepth,  BODY_TOP_Y + 10 - sideDepth * 0.5);
+  ctx.lineTo(BODY_X + BODY_W + sideDepth,  BODY_BOTTOM_Y - sideDepth * 0.5);
+  ctx.lineTo(BODY_X + BODY_W,              BODY_BOTTOM_Y);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = "#ea580c33";
@@ -347,10 +478,10 @@ function drawMachineBody3D(ctx: CanvasRenderingContext2D, t: number) {
 
   // Front face
   const bodyGrad = ctx.createLinearGradient(BODY_X, BODY_TOP_Y, BODY_X + BODY_W, BODY_BOTTOM_Y);
-  bodyGrad.addColorStop(0, "#9a3412");
+  bodyGrad.addColorStop(0,   "#9a3412");
   bodyGrad.addColorStop(0.3, "#c2410c");
   bodyGrad.addColorStop(0.7, "#b91c1c");
-  bodyGrad.addColorStop(1, "#7f1d1d");
+  bodyGrad.addColorStop(1,   "#7f1d1d");
   ctx.fillStyle = bodyGrad;
   ctx.shadowColor = "#ea580c";
   ctx.shadowBlur = 12;
@@ -395,14 +526,22 @@ function drawMachineBody3D(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fill();
   ctx.stroke();
 
+  // ── Corner screws ──
+  for (const screw of BODY_SCREWS) {
+    drawScrew(ctx, screw.x, screw.y);
+  }
+
   // Blinking lights on body
   drawBodyLights(ctx, t);
 
-  // ── Decorative label panel ──
-  drawBodyLabel(ctx, t);
+  // ── Manufacturer sticker ──
+  drawManufacturerSticker(ctx, t);
 
-  // ── Price/coin display ──
+  // ── Coin slot with metallic housing ──
   drawCoinSlot(ctx, t);
+
+  // ── Last prize display window ──
+  drawLastPrizeWindow(ctx);
 
   // ── Chute with depth ──
   drawChute3D(ctx);
@@ -410,7 +549,6 @@ function drawMachineBody3D(ctx: CanvasRenderingContext2D, t: number) {
 
 function drawBodyLights(ctx: CanvasRenderingContext2D, t: number) {
   const lightColors = ["#f59e0b", "#fb923c", "#fbbf24", "#f97316"];
-  // Ring of lights around body top
   for (let i = 0; i < 8; i++) {
     const lx = BODY_X + 16 + i * (BODY_W - 32) / 7;
     const ly = BODY_TOP_Y + 8;
@@ -426,11 +564,12 @@ function drawBodyLights(ctx: CanvasRenderingContext2D, t: number) {
   }
 }
 
-function drawBodyLabel(ctx: CanvasRenderingContext2D, t: number) {
+function drawManufacturerSticker(ctx: CanvasRenderingContext2D, t: number) {
+  // Label panel at top of body
   const lbX = BODY_X + 8;
-  const lbY = BODY_TOP_Y + 20;
+  const lbY = BODY_TOP_Y + 18;
   const lbW = BODY_W - 16;
-  const lbH = 32;
+  const lbH = 30;
 
   const lbGrad = ctx.createLinearGradient(lbX, lbY, lbX + lbW, lbY + lbH);
   lbGrad.addColorStop(0, "#431407");
@@ -443,47 +582,146 @@ function drawBodyLabel(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fill();
   ctx.stroke();
 
+  // Sticker inner shine
+  const stickerShine = ctx.createLinearGradient(lbX, lbY, lbX, lbY + lbH);
+  stickerShine.addColorStop(0, "rgba(255,255,255,0.06)");
+  stickerShine.addColorStop(0.5, "rgba(255,255,255,0)");
+  ctx.fillStyle = stickerShine;
+  ctx.beginPath();
+  ctx.roundRect(lbX, lbY, lbW, lbH, 4);
+  ctx.fill();
+
   const pulse = 0.75 + Math.sin(t * 3) * 0.25;
   ctx.save();
   ctx.globalAlpha = pulse;
 
   const textGrad = ctx.createLinearGradient(lbX, lbY, lbX + lbW, lbY);
-  textGrad.addColorStop(0, "#fbbf24");
+  textGrad.addColorStop(0,   "#fbbf24");
   textGrad.addColorStop(0.5, "#fde68a");
-  textGrad.addColorStop(1, "#fbbf24");
+  textGrad.addColorStop(1,   "#fbbf24");
   ctx.fillStyle = textGrad;
   ctx.shadowColor = "#f59e0b";
   ctx.shadowBlur = 8;
-  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.font = "bold 10px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("GACHA  扭蛋機", MACHINE_CX, lbY + lbH / 2);
+  ctx.fillText("GACHA  扭蛋機", MACHINE_CX, lbY + lbH * 0.45);
   ctx.restore();
+
+  // Small "PrizeDraw Corp." sub-label
+  ctx.fillStyle = "rgba(251,146,60,0.55)";
+  ctx.font = "6px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("PrizeDraw Corp.  Model GX-100", MACHINE_CX, lbY + lbH * 0.78);
 }
 
 function drawCoinSlot(ctx: CanvasRenderingContext2D, _t: number) {
-  const slotW = 36, slotH = 18;
-  const slotX = COIN_SLOT_X;
-  const slotY = COIN_SLOT_Y + 62;
+  const slotW = 46, slotH = 22;
+  const slotX = COIN_SLOT_X - 5;
+  const slotY = COIN_SLOT_Y + 60;
 
-  ctx.fillStyle = "#431407";
-  ctx.strokeStyle = "#f97316";
-  ctx.lineWidth = 1;
+  // Metallic housing outer
+  const housingGrad = ctx.createLinearGradient(slotX, slotY, slotX + slotW, slotY + slotH);
+  housingGrad.addColorStop(0,   "#64748b");
+  housingGrad.addColorStop(0.3, "#94a3b8");
+  housingGrad.addColorStop(0.6, "#475569");
+  housingGrad.addColorStop(1,   "#1e293b");
+  ctx.fillStyle = housingGrad;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(slotX, slotY, slotW, slotH, 3);
+  ctx.roundRect(slotX, slotY, slotW, slotH, 4);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#020810";
+  // Housing bevel highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.roundRect(slotX + 6, slotY + 6, slotW - 12, 6, 2);
+  ctx.roundRect(slotX + 1, slotY + 1, slotW - 2, slotH * 0.5, 3);
+  ctx.stroke();
+
+  // Coin opening slit
+  ctx.fillStyle = "#020810";
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.roundRect(slotX + 8, slotY + 7, slotW - 16, 6, 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Slit glint
+  ctx.strokeStyle = "rgba(148,163,184,0.4)";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(slotX + 9, slotY + 7.5);
+  ctx.lineTo(slotX + slotW - 9, slotY + 7.5);
+  ctx.stroke();
+
+  // "INSERT COIN" label
+  ctx.fillStyle = "#fbbf24";
+  ctx.font = "bold 6px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("INSERT COIN  投幣", slotX + slotW / 2, slotY + 1.5);
+
+  // Price tag
+  ctx.fillStyle = "rgba(251,146,60,0.8)";
+  ctx.font = "bold 7px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("¥100", slotX + slotW / 2, slotY + slotH - 1);
+}
+
+function drawLastPrizeWindow(ctx: CanvasRenderingContext2D) {
+  // Small display window on body lower section
+  const winX = BODY_X + 10;
+  const winY = BODY_TOP_Y + BODY_H * 0.56;
+  const winW = BODY_W - 20;
+  const winH = 28;
+
+  // Window frame
+  const frameGrad = ctx.createLinearGradient(winX, winY, winX + winW, winY + winH);
+  frameGrad.addColorStop(0,   "#1e293b");
+  frameGrad.addColorStop(0.5, "#334155");
+  frameGrad.addColorStop(1,   "#0f172a");
+  ctx.fillStyle = frameGrad;
+  ctx.strokeStyle = "#475569";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(winX, winY, winW, winH, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  // Screen tint (dark LCD look)
+  const screenGrad = ctx.createLinearGradient(winX + 3, winY + 3, winX + 3, winY + winH - 3);
+  screenGrad.addColorStop(0,   "rgba(16,185,129,0.08)");
+  screenGrad.addColorStop(1,   "rgba(16,185,129,0.03)");
+  ctx.fillStyle = screenGrad;
+  ctx.beginPath();
+  ctx.roundRect(winX + 3, winY + 3, winW - 6, winH - 6, 2);
   ctx.fill();
 
-  ctx.fillStyle = "#f97316aa";
-  ctx.font = "7px system-ui, sans-serif";
+  // Label
+  ctx.fillStyle = "rgba(52,211,153,0.5)";
+  ctx.font = "5px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText("LAST PRIZE", winX + 5, winY + 4);
+
+  // Prize value area
+  ctx.fillStyle = "rgba(52,211,153,0.8)";
+  ctx.font = "bold 9px monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("投幣口", slotX + slotW / 2, slotY + 3);
+  ctx.fillText("-- PLAY NOW --", winX + winW / 2, winY + winH * 0.66);
+
+  // Screen glare
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.beginPath();
+  ctx.roundRect(winX + 3, winY + 3, winW - 6, (winH - 6) * 0.4, [2, 2, 0, 0]);
+  ctx.fill();
 }
 
 function drawChute3D(ctx: CanvasRenderingContext2D) {
@@ -492,13 +730,13 @@ function drawChute3D(ctx: CanvasRenderingContext2D) {
   const cy = CHUTE_Y;
   const sideD = 8;
 
-  // Right face
+  // Right face depth
   ctx.fillStyle = "#431407";
   ctx.beginPath();
-  ctx.moveTo(cx + cW, cy + 4);
-  ctx.lineTo(cx + cW + sideD, cy + 4 - sideD * 0.4);
-  ctx.lineTo(cx + cW + sideD, cy + cH - sideD * 0.4);
-  ctx.lineTo(cx + cW, cy + cH);
+  ctx.moveTo(cx + cW,          cy + 4);
+  ctx.lineTo(cx + cW + sideD,  cy + 4 - sideD * 0.4);
+  ctx.lineTo(cx + cW + sideD,  cy + cH - sideD * 0.4);
+  ctx.lineTo(cx + cW,          cy + cH);
   ctx.closePath();
   ctx.fill();
 
@@ -514,13 +752,33 @@ function drawChute3D(ctx: CanvasRenderingContext2D) {
   ctx.fill();
   ctx.stroke();
 
+  // Channel/rail guides inside chute (visible track the capsule rolls through)
+  ctx.strokeStyle = "rgba(251,146,60,0.35)";
+  ctx.lineWidth = 1;
+  const railInset = 10;
+  ctx.beginPath();
+  ctx.moveTo(cx + railInset, cy + 6);
+  ctx.lineTo(cx + railInset, cy + cH - 18);
+  ctx.moveTo(cx + cW - railInset, cy + 6);
+  ctx.lineTo(cx + cW - railInset, cy + cH - 18);
+  ctx.stroke();
+
   // Opening (dark hole)
   ctx.fillStyle = "#050205";
   ctx.beginPath();
-  ctx.roundRect(cx + 6, cy + 6, cW - 12, cH - 20, 3);
+  ctx.roundRect(cx + 6, cy + 6, cW - 12, cH - 22, 3);
   ctx.fill();
 
-  // Flap
+  // Chute interior glow hint
+  const chuteGlow = ctx.createLinearGradient(cx + 6, cy + 6, cx + 6, cy + cH - 22);
+  chuteGlow.addColorStop(0, "rgba(251,146,60,0.08)");
+  chuteGlow.addColorStop(1, "rgba(251,146,60,0)");
+  ctx.fillStyle = chuteGlow;
+  ctx.beginPath();
+  ctx.roundRect(cx + 6, cy + 6, cW - 12, cH - 22, 3);
+  ctx.fill();
+
+  // Flap at bottom
   const flapGrad = ctx.createLinearGradient(cx, cy + cH - 16, cx, cy + cH);
   flapGrad.addColorStop(0, "#9a3412");
   flapGrad.addColorStop(1, "#7c2d12");
@@ -536,15 +794,20 @@ function drawChute3D(ctx: CanvasRenderingContext2D) {
   ctx.fillText("出口", cx + cW / 2, cy + cH - 10);
 }
 
-function drawHemisphereDome(ctx: CanvasRenderingContext2D, t: number) {
+function drawHemisphereDome(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  handleAngle: number,
+  isTurning: boolean,
+) {
   // ── Dome base ring ──
   const ringGrad = ctx.createLinearGradient(
     DOME_CX - DOME_R, DOME_CY + DOME_R * 0.85,
     DOME_CX + DOME_R, DOME_CY + DOME_R * 0.85
   );
-  ringGrad.addColorStop(0, "#431407");
+  ringGrad.addColorStop(0,   "#431407");
   ringGrad.addColorStop(0.5, "#9a3412");
-  ringGrad.addColorStop(1, "#431407");
+  ringGrad.addColorStop(1,   "#431407");
   ctx.fillStyle = ringGrad;
   ctx.strokeStyle = "#ea580c";
   ctx.lineWidth = 2;
@@ -553,7 +816,7 @@ function drawHemisphereDome(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fill();
   ctx.stroke();
 
-  // ── Outer dome glow (atmospheric scattering) ──
+  // ── Outer dome glow ──
   const outerGlow = ctx.createRadialGradient(DOME_CX, DOME_CY, DOME_R * 0.85, DOME_CX, DOME_CY, DOME_R * 1.1);
   outerGlow.addColorStop(0, "rgba(56,189,248,0)");
   outerGlow.addColorStop(1, "rgba(56,189,248,0.10)");
@@ -562,33 +825,130 @@ function drawHemisphereDome(ctx: CanvasRenderingContext2D, t: number) {
   ctx.arc(DOME_CX, DOME_CY, DOME_R * 1.1, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Main dome glass ──
-  // Back of dome (slightly darker — depth illusion)
-  const domeBackGrad = ctx.createRadialGradient(DOME_CX + 30, DOME_CY + 30, DOME_R * 0.3, DOME_CX, DOME_CY, DOME_R);
-  domeBackGrad.addColorStop(0, "rgba(186,230,253,0.08)");
-  domeBackGrad.addColorStop(0.6, "rgba(14,165,233,0.04)");
-  domeBackGrad.addColorStop(1, "rgba(7,89,133,0.12)");
-  ctx.fillStyle = domeBackGrad;
+  // ── Sphere depth layers (multi-layer radial for true hemisphere feel) ──
+  // Layer 1: dark rim
+  const rimDepth = ctx.createRadialGradient(DOME_CX, DOME_CY, DOME_R * 0.62, DOME_CX, DOME_CY, DOME_R);
+  rimDepth.addColorStop(0,   "rgba(7,89,133,0)");
+  rimDepth.addColorStop(0.65,"rgba(7,89,133,0.03)");
+  rimDepth.addColorStop(1,   "rgba(2,30,60,0.22)");
+  ctx.fillStyle = rimDepth;
   ctx.beginPath();
   ctx.arc(DOME_CX, DOME_CY, DOME_R, 0, Math.PI * 2);
   ctx.fill();
 
-  // Mini capsules (clip inside dome)
+  // Layer 2: bright centre-top (light entering from top of sphere)
+  const centreLight = ctx.createRadialGradient(
+    DOME_CX - DOME_R * 0.1, DOME_CY - DOME_R * 0.35, 0,
+    DOME_CX, DOME_CY, DOME_R * 0.85
+  );
+  centreLight.addColorStop(0,   "rgba(186,230,253,0.14)");
+  centreLight.addColorStop(0.4, "rgba(186,230,253,0.05)");
+  centreLight.addColorStop(1,   "rgba(186,230,253,0)");
+  ctx.fillStyle = centreLight;
+  ctx.beginPath();
+  ctx.arc(DOME_CX, DOME_CY, DOME_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Layer 3: bottom interior ambient (slightly warmer from machine body)
+  const bottomAmbient = ctx.createRadialGradient(DOME_CX, DOME_CY + DOME_R * 0.5, 0, DOME_CX, DOME_CY + DOME_R * 0.5, DOME_R * 0.7);
+  bottomAmbient.addColorStop(0,   "rgba(234,88,12,0.05)");
+  bottomAmbient.addColorStop(1,   "rgba(234,88,12,0)");
+  ctx.fillStyle = bottomAmbient;
+  ctx.beginPath();
+  ctx.arc(DOME_CX, DOME_CY, DOME_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Caustic light pattern (wavy bright spots — refraction through glass) ──
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(DOME_CX, DOME_CY, DOME_R - 4, 0, Math.PI * 2);
+  ctx.clip();
+  const causticCount = 5;
+  for (let ci = 0; ci < causticCount; ci++) {
+    const ca = (t * 0.4 + ci * (Math.PI * 2 / causticCount));
+    const cr = DOME_R * (0.25 + 0.3 * Math.abs(Math.sin(t * 0.3 + ci)));
+    const ccx = DOME_CX + Math.cos(ca) * cr * 0.6;
+    const ccy = DOME_CY - DOME_R * 0.1 + Math.sin(ca * 1.3) * cr * 0.35;
+    const cSize = 12 + 8 * Math.abs(Math.sin(t * 0.7 + ci * 1.1));
+    const causticG = ctx.createRadialGradient(ccx, ccy, 0, ccx, ccy, cSize);
+    causticG.addColorStop(0,   "rgba(255,255,255,0.07)");
+    causticG.addColorStop(0.5, "rgba(186,230,253,0.03)");
+    causticG.addColorStop(1,   "rgba(255,255,255,0)");
+    ctx.fillStyle = causticG;
+    ctx.beginPath();
+    ctx.ellipse(ccx, ccy, cSize, cSize * 0.55, ca * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ── Mini capsules (depth-sorted: back first) ──
   ctx.save();
   ctx.beginPath();
   ctx.arc(DOME_CX, DOME_CY, DOME_R - 5, 0, Math.PI * 2);
   ctx.clip();
-  for (const mc of MINI_CAPSULE_POSITIONS) {
-    drawMiniCapsule3D(ctx, DOME_CX + mc.x, DOME_CY + mc.y, mc.grade, t + mc.x * 0.08);
+
+  // Sort by z so back capsules draw first, front ones on top
+  const sortedCapsules = [...MINI_CAPSULE_POSITIONS].sort((a, b) => a.z - b.z);
+
+  // Handle rotation shifts capsule positions (tumbling physics)
+  const tumbleBase = isTurning ? handleAngle * 0.012 : t * 0.18;
+  for (const mc of sortedCapsules) {
+    // Tumble: each capsule shifts slightly when handle rotates
+    const tumbleOffset = Math.sin(tumbleBase + mc.x * 0.06) * (isTurning ? 5 : 1.5);
+    const tumbleAngle = tumbleBase * 0.8 + mc.y * 0.04;
+    const shiftX = isTurning ? Math.cos(tumbleBase + mc.y * 0.05) * 4 : 0;
+    const shiftY = isTurning ? Math.sin(tumbleBase + mc.x * 0.07) * 3 : 0;
+    drawMiniCapsule3D(
+      ctx,
+      DOME_CX + mc.x + shiftX + tumbleOffset * Math.sign(mc.x || 1),
+      DOME_CY + mc.y + shiftY,
+      mc.grade,
+      t + mc.x * 0.08,
+      mc.z,
+      tumbleAngle,
+    );
   }
   ctx.restore();
 
-  // ── Glass rim ──
+  // ── Chrome rim where dome meets body ──
+  ctx.save();
+  // Thick chrome ring
+  const chromeRimGrad = ctx.createLinearGradient(
+    DOME_CX - DOME_R, DOME_CY + DOME_R * 0.82,
+    DOME_CX + DOME_R, DOME_CY + DOME_R * 0.82
+  );
+  chromeRimGrad.addColorStop(0,    "#1e293b");
+  chromeRimGrad.addColorStop(0.12, "#94a3b8");
+  chromeRimGrad.addColorStop(0.28, "#e2e8f0");
+  chromeRimGrad.addColorStop(0.5,  "#f8fafc");
+  chromeRimGrad.addColorStop(0.72, "#cbd5e1");
+  chromeRimGrad.addColorStop(0.88, "#475569");
+  chromeRimGrad.addColorStop(1,    "#1e293b");
+  ctx.strokeStyle = chromeRimGrad;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.ellipse(DOME_CX, DOME_CY, DOME_R * 1.0, DOME_R * 0.84, 0, Math.PI * 0.04, Math.PI * 0.96);
+  ctx.stroke();
+  // Chrome rim highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(DOME_CX, DOME_CY - 2, DOME_R * 1.0, DOME_R * 0.84, 0, Math.PI * 0.05, Math.PI * 0.5);
+  ctx.stroke();
+  // Chrome rim shadow
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(DOME_CX, DOME_CY + 2, DOME_R * 1.0, DOME_R * 0.84, 0, Math.PI * 0.5, Math.PI * 0.95);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Glass outer rim glow ──
   ctx.save();
   ctx.shadowColor = "rgba(186,230,253,0.5)";
   ctx.shadowBlur = 8;
-  ctx.strokeStyle = "rgba(186,230,253,0.55)";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "rgba(186,230,253,0.5)";
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(DOME_CX, DOME_CY, DOME_R, 0, Math.PI * 2);
   ctx.stroke();
@@ -597,24 +957,24 @@ function drawHemisphereDome(ctx: CanvasRenderingContext2D, t: number) {
   // ── Primary glass highlight (top-left reflection) ──
   const hlGrad = ctx.createRadialGradient(
     DOME_CX - DOME_R * 0.38, DOME_CY - DOME_R * 0.42, 0,
-    DOME_CX - DOME_R * 0.2, DOME_CY - DOME_R * 0.25, DOME_R * 0.5
+    DOME_CX - DOME_R * 0.2,  DOME_CY - DOME_R * 0.25, DOME_R * 0.5
   );
-  hlGrad.addColorStop(0, "rgba(255,255,255,0.22)");
-  hlGrad.addColorStop(0.5, "rgba(255,255,255,0.08)");
-  hlGrad.addColorStop(1, "rgba(255,255,255,0)");
+  hlGrad.addColorStop(0,   "rgba(255,255,255,0.24)");
+  hlGrad.addColorStop(0.5, "rgba(255,255,255,0.09)");
+  hlGrad.addColorStop(1,   "rgba(255,255,255,0)");
   ctx.fillStyle = hlGrad;
   ctx.beginPath();
   ctx.arc(DOME_CX, DOME_CY, DOME_R, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Secondary streak highlight ──
+  // ── Secondary streak highlights ──
   ctx.save();
-  ctx.globalAlpha = 0.12;
+  ctx.globalAlpha = 0.13;
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 9;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(DOME_CX - DOME_R * 0.5, DOME_CY - DOME_R * 0.6);
+  ctx.moveTo(DOME_CX - DOME_R * 0.5,  DOME_CY - DOME_R * 0.6);
   ctx.lineTo(DOME_CX - DOME_R * 0.15, DOME_CY + DOME_R * 0.4);
   ctx.stroke();
   ctx.globalAlpha = 0.07;
@@ -624,63 +984,111 @@ function drawHemisphereDome(ctx: CanvasRenderingContext2D, t: number) {
   ctx.lineTo(DOME_CX + DOME_R * 0.1, DOME_CY + DOME_R * 0.1);
   ctx.stroke();
   ctx.restore();
-
-  // ── Equator band (glass meets frame) ──
-  const equatorGrad = ctx.createLinearGradient(DOME_CX - DOME_R, DOME_CY + DOME_R * 0.82, DOME_CX + DOME_R, DOME_CY + DOME_R * 0.82);
-  equatorGrad.addColorStop(0, "#ea580c");
-  equatorGrad.addColorStop(0.5, "#fb923c");
-  equatorGrad.addColorStop(1, "#ea580c");
-  ctx.strokeStyle = equatorGrad;
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.ellipse(DOME_CX, DOME_CY, DOME_R * 1.01, DOME_R * 0.85, 0, Math.PI * 0.06, Math.PI * 0.94);
-  ctx.stroke();
 }
 
-function drawHandle3D(ctx: CanvasRenderingContext2D, handleAngle: number, t: number, isInteractable: boolean) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Handle drawing
+// ─────────────────────────────────────────────────────────────────────────────
+
+function drawHandle3D(
+  ctx: CanvasRenderingContext2D,
+  handleAngle: number,
+  t: number,
+  isInteractable: boolean,
+  totalRotation: number,
+  justCompleted: boolean,
+) {
   const hcx = HANDLE_CX;
   const hcy = HANDLE_CY;
 
   // Mount plate on body
-  const mountGrad = ctx.createLinearGradient(hcx - 16, hcy - 8, hcx + 4, hcy + 8);
-  mountGrad.addColorStop(0, "#7c2d12");
-  mountGrad.addColorStop(1, "#431407");
+  const mountGrad = ctx.createLinearGradient(hcx - 18, hcy - 10, hcx + 6, hcy + 10);
+  mountGrad.addColorStop(0,   "#64748b");
+  mountGrad.addColorStop(0.3, "#94a3b8");
+  mountGrad.addColorStop(0.7, "#475569");
+  mountGrad.addColorStop(1,   "#1e293b");
   ctx.fillStyle = mountGrad;
-  ctx.strokeStyle = "#ea580c";
+  ctx.strokeStyle = "#94a3b8";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(hcx - 16, hcy - 10, 18, 20, 3);
+  ctx.roundRect(hcx - 18, hcy - 12, 20, 24, 4);
   ctx.fill();
   ctx.stroke();
+  // Mount highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.roundRect(hcx - 17, hcy - 11, 18, 10, 3);
+  ctx.stroke();
 
-  // Central hub (raised 3D knob base)
-  const hubGrad = ctx.createRadialGradient(hcx - 3, hcy - 3, 2, hcx, hcy, 12);
-  hubGrad.addColorStop(0, "#fb923c");
-  hubGrad.addColorStop(0.5, "#ea580c");
-  hubGrad.addColorStop(1, "#7c2d12");
+  // ── Gear teeth visible near pivot ──
+  const gearR = 13;
+  const teethCount = 10;
+  ctx.save();
+  ctx.translate(hcx, hcy);
+  ctx.rotate((handleAngle * Math.PI) / 180);
+  for (let gi = 0; gi < teethCount; gi++) {
+    const ga = (gi / teethCount) * Math.PI * 2;
+    const tx1 = Math.cos(ga) * gearR;
+    const ty1 = Math.sin(ga) * gearR;
+    const tx2 = Math.cos(ga) * (gearR + 4);
+    const ty2 = Math.sin(ga) * (gearR + 4);
+    const toothW = 0.18;
+    const tx3 = Math.cos(ga + toothW) * (gearR + 4);
+    const ty3 = Math.sin(ga + toothW) * (gearR + 4);
+    const tx4 = Math.cos(ga + toothW) * gearR;
+    const ty4 = Math.sin(ga + toothW) * gearR;
+
+    const gearTeethGrad = ctx.createLinearGradient(tx1, ty1, tx2, ty2);
+    gearTeethGrad.addColorStop(0, "#64748b");
+    gearTeethGrad.addColorStop(1, "#334155");
+    ctx.fillStyle = gearTeethGrad;
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(tx1, ty1);
+    ctx.lineTo(tx2, ty2);
+    ctx.lineTo(tx3, ty3);
+    ctx.lineTo(tx4, ty4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Central hub (chrome 3D)
+  const hubGrad = ctx.createRadialGradient(hcx - 4, hcy - 4, 1, hcx, hcy, 13);
+  hubGrad.addColorStop(0,   "#e2e8f0");
+  hubGrad.addColorStop(0.35,"#94a3b8");
+  hubGrad.addColorStop(0.7, "#475569");
+  hubGrad.addColorStop(1,   "#1e293b");
   ctx.fillStyle = hubGrad;
-  ctx.strokeStyle = "#fdba74";
+  ctx.strokeStyle = "#cbd5e1";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(hcx, hcy, 12, 0, Math.PI * 2);
+  ctx.arc(hcx, hcy, 13, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Hub center mark
-  ctx.fillStyle = "#fde68a";
+  // Hub centre dot
+  ctx.fillStyle = "#f1f5f9";
   ctx.beginPath();
   ctx.arc(hcx, hcy, 4, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = "#334155";
+  ctx.beginPath();
+  ctx.arc(hcx, hcy, 2, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Arm — knob rotates around hub
+  // ── Arm rotation with notch pauses ──
   const armRad = (handleAngle * Math.PI) / 180;
   const knobX = hcx + Math.cos(armRad) * HANDLE_ARM_LEN;
   const knobY = hcy + Math.sin(armRad) * HANDLE_ARM_LEN;
 
   // Arm shadow
   ctx.save();
-  ctx.strokeStyle = "rgba(0,0,0,0.4)";
-  ctx.lineWidth = 9;
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  ctx.lineWidth = 11;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(hcx + 2, hcy + 2);
@@ -688,61 +1096,138 @@ function drawHandle3D(ctx: CanvasRenderingContext2D, handleAngle: number, t: num
   ctx.stroke();
   ctx.restore();
 
-  // Arm body
-  const armGrad = ctx.createLinearGradient(hcx, hcy, knobX, knobY);
-  armGrad.addColorStop(0, "#ea580c");
-  armGrad.addColorStop(0.5, "#f97316");
-  armGrad.addColorStop(1, "#c2410c");
+  // Arm body — chrome metallic
+  const armGrad = ctx.createLinearGradient(hcx, hcy - 4, hcx, hcy + 4);
+  armGrad.addColorStop(0,   "#e2e8f0");
+  armGrad.addColorStop(0.35,"#94a3b8");
+  armGrad.addColorStop(0.65,"#64748b");
+  armGrad.addColorStop(1,   "#334155");
   ctx.strokeStyle = armGrad;
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 9;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(hcx, hcy);
   ctx.lineTo(knobX, knobY);
   ctx.stroke();
 
-  // Arm highlight
-  ctx.strokeStyle = "rgba(253,186,116,0.4)";
-  ctx.lineWidth = 2;
+  // Arm highlight streak
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(hcx, hcy);
   ctx.lineTo(knobX, knobY);
   ctx.stroke();
 
-  // Knob (3D sphere effect)
+  // Arm edge shadow
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(hcx, hcy + 4);
+  ctx.lineTo(knobX, knobY + 4);
+  ctx.stroke();
+
+  // ── Knob: large 3D marble-sphere with swirl ──
+  const completedGlow = justCompleted ? (0.6 + Math.sin(t * 12) * 0.4) : 0;
+
+  // Knob glow when interactable or just completed
+  if (isInteractable) {
+    ctx.shadowColor = justCompleted ? "#fde68a" : "#f59e0b";
+    ctx.shadowBlur = justCompleted
+      ? 24 + Math.sin(t * 10) * 10
+      : 14 + Math.sin(t * 3) * 5;
+  }
+
+  // Knob base gradient (marble look)
   const knobGrad = ctx.createRadialGradient(
-    knobX - HANDLE_R * 0.35, knobY - HANDLE_R * 0.35, HANDLE_R * 0.1,
+    knobX - HANDLE_R * 0.38, knobY - HANDLE_R * 0.38, HANDLE_R * 0.08,
     knobX, knobY, HANDLE_R
   );
-  knobGrad.addColorStop(0, "#fde68a");
-  knobGrad.addColorStop(0.4, "#f59e0b");
-  knobGrad.addColorStop(1, "#78350f");
+  knobGrad.addColorStop(0,   "#fef9c3");
+  knobGrad.addColorStop(0.25,"#fde68a");
+  knobGrad.addColorStop(0.55,"#f59e0b");
+  knobGrad.addColorStop(0.8, "#b45309");
+  knobGrad.addColorStop(1,   "#78350f");
   ctx.fillStyle = knobGrad;
-  ctx.strokeStyle = "#fbbf24";
-  ctx.lineWidth = 1.5;
-  if (isInteractable) {
-    ctx.shadowColor = "#f59e0b";
-    ctx.shadowBlur = 14 + Math.sin(t * 3) * 5;
-  }
+  ctx.strokeStyle = justCompleted ? "#fde68a" : "#fbbf24";
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
   ctx.arc(knobX, knobY, HANDLE_R, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Knob highlight
-  ctx.fillStyle = "rgba(255,255,255,0.38)";
+  // Swirl lines (marble pattern)
+  ctx.save();
   ctx.beginPath();
-  ctx.ellipse(knobX - HANDLE_R * 0.3, knobY - HANDLE_R * 0.3, HANDLE_R * 0.38, HANDLE_R * 0.24, -0.5, 0, Math.PI * 2);
+  ctx.arc(knobX, knobY, HANDLE_R - 1, 0, Math.PI * 2);
+  ctx.clip();
+  const swirlOffset = handleAngle * 0.008;
+  for (let si = 0; si < 3; si++) {
+    const sa = swirlOffset + si * (Math.PI * 2 / 3);
+    ctx.strokeStyle = `rgba(254,243,199,${0.18 - si * 0.04})`;
+    ctx.lineWidth = 2.5 - si * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(
+      knobX + Math.cos(sa) * HANDLE_R * 0.1,
+      knobY + Math.sin(sa) * HANDLE_R * 0.1,
+    );
+    ctx.bezierCurveTo(
+      knobX + Math.cos(sa + 1.2) * HANDLE_R * 0.6,
+      knobY + Math.sin(sa + 0.8) * HANDLE_R * 0.6,
+      knobX + Math.cos(sa + 2.1) * HANDLE_R * 0.5,
+      knobY + Math.sin(sa + 1.9) * HANDLE_R * 0.5,
+      knobX + Math.cos(sa + 2.8) * HANDLE_R * 0.85,
+      knobY + Math.sin(sa + 2.6) * HANDLE_R * 0.85,
+    );
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Rim darkening
+  const knobRimGrad = ctx.createRadialGradient(knobX, knobY, HANDLE_R * 0.5, knobX, knobY, HANDLE_R);
+  knobRimGrad.addColorStop(0, "rgba(0,0,0,0)");
+  knobRimGrad.addColorStop(1, "rgba(0,0,0,0.28)");
+  ctx.fillStyle = knobRimGrad;
+  ctx.beginPath();
+  ctx.arc(knobX, knobY, HANDLE_R, 0, Math.PI * 2);
   ctx.fill();
 
-  // Rotation progress arc
-  if (isInteractable) {
-    const progressRad = Math.PI * 2 * 0; // will be filled by caller using totalRotation
-    ctx.strokeStyle = `rgba(251,191,36,0.4)`;
+  // Knob specular highlight
+  ctx.fillStyle = "rgba(255,255,255,0.42)";
+  ctx.beginPath();
+  ctx.ellipse(
+    knobX - HANDLE_R * 0.3, knobY - HANDLE_R * 0.3,
+    HANDLE_R * 0.4, HANDLE_R * 0.24, -0.5, 0, Math.PI * 2
+  );
+  ctx.fill();
+
+  // Secondary tiny glint
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.beginPath();
+  ctx.ellipse(knobX - HANDLE_R * 0.18, knobY - HANDLE_R * 0.42, HANDLE_R * 0.1, HANDLE_R * 0.06, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Completion snap glow ring ──
+  if (justCompleted && completedGlow > 0) {
+    ctx.save();
+    ctx.globalAlpha = completedGlow * 0.7;
+    ctx.strokeStyle = "#fde68a";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "#fde68a";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(hcx, hcy, HANDLE_R + 16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Rotation progress arc ──
+  if (isInteractable && totalRotation > 0) {
+    const progress = Math.min(1, totalRotation / 360);
+    ctx.strokeStyle = `rgba(251,191,36,${0.4 + progress * 0.5})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(hcx, hcy, HANDLE_R + 10, -Math.PI / 2, -Math.PI / 2 + progressRad);
+    ctx.arc(hcx, hcy, HANDLE_R + 10, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
     ctx.stroke();
   }
 
@@ -751,55 +1236,153 @@ function drawHandle3D(ctx: CanvasRenderingContext2D, handleAngle: number, t: num
   ctx.font = "bold 9px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("旋轉", hcx, hcy + HANDLE_R + 14);
+  ctx.fillText("旋轉", hcx, hcy + HANDLE_R + 15);
 }
 
-function drawCoinAnimation(
-  ctx: CanvasRenderingContext2D,
-  progress: number, // 0 → 1
-) {
-  // Coin falls from top into coin slot
+// ─────────────────────────────────────────────────────────────────────────────
+// Coin insert animation
+// ─────────────────────────────────────────────────────────────────────────────
+
+function drawCoinAnimation(ctx: CanvasRenderingContext2D, progress: number) {
   const startX = COIN_SLOT_X + 18;
   const startY = DOME_CY - DOME_R - 40;
   const endX = COIN_SLOT_X + 18;
-  const endY = COIN_SLOT_Y + 80;
+  const endY = COIN_SLOT_Y + 74;
 
+  // Foreshortening: coin flips as it falls — width varies sinusoidally
+  const flip = progress * Math.PI * 6;
   const cx = startX + (endX - startX) * progress;
-  const cy = startY + (endY - startY) * progress;
-  const spin = progress * Math.PI * 8; // coin spins as it falls
-  const coinW = 22 * Math.abs(Math.cos(spin));
+  const cy = startY + (endY - startY) * (progress * progress * 0.3 + progress * 0.7); // slight arc
+  const coinW = 22 * Math.abs(Math.cos(flip));
   const coinH = 22;
+  const tilt = Math.sin(flip) * 0.4; // slight tilt during flip
 
   ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tilt);
 
   // Coin glow
   ctx.shadowColor = "#f59e0b";
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 14;
 
   // Coin body
-  const coinGrad = ctx.createLinearGradient(cx - coinW, cy - coinH / 2, cx + coinW, cy + coinH / 2);
-  coinGrad.addColorStop(0, "#fde68a");
-  coinGrad.addColorStop(0.5, "#f59e0b");
-  coinGrad.addColorStop(1, "#92400e");
+  const coinGrad = ctx.createLinearGradient(-coinW, -coinH / 2, coinW, coinH / 2);
+  coinGrad.addColorStop(0,   "#fde68a");
+  coinGrad.addColorStop(0.35,"#fbbf24");
+  coinGrad.addColorStop(0.6, "#f59e0b");
+  coinGrad.addColorStop(1,   "#92400e");
   ctx.fillStyle = coinGrad;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, Math.max(1, coinW / 2), coinH / 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, Math.max(1, coinW / 2), coinH / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Coin rim
+  // Coin edge rim
   ctx.strokeStyle = "#fbbf24";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, Math.max(1, coinW / 2), coinH / 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, Math.max(1, coinW / 2), coinH / 2, 0, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  // Coin symbol
-  if (Math.abs(Math.cos(spin)) > 0.3) {
-    ctx.fillStyle = "#92400e";
-    ctx.font = "bold 11px system-ui, sans-serif";
+  // Coin surface detail (visible only when facing front)
+  if (Math.abs(Math.cos(flip)) > 0.35) {
+    const facing = Math.cos(flip) > 0; // heads vs tails
+    ctx.fillStyle = facing ? "#92400e" : "#78350f";
+    ctx.font = `bold ${Math.max(6, 11 * Math.abs(Math.cos(flip)))}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("$", cx, cy);
+    ctx.fillText(facing ? "$" : "¥", 0, 0);
+  }
+
+  // Specular glint on edge
+  if (coinW > 4) {
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.beginPath();
+    ctx.ellipse(-coinW * 0.25, -coinH * 0.28, coinW * 0.18, coinH * 0.12, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Capsule rolling through chute
+// ─────────────────────────────────────────────────────────────────────────────
+
+function drawCapsuleInChute(
+  ctx: CanvasRenderingContext2D,
+  chuteProgress: number, // 0=top, 1=exit
+  grade: string,
+) {
+  if (chuteProgress < 0 || chuteProgress > 1.15) return;
+  const col = GRADE_CAPSULE[grade] ?? GRADE_CAPSULE["D賞"]!;
+
+  // Path: capsule rolls down the chute channel
+  const cx = CHUTE_X + CHUTE_W / 2;
+  const topY = CHUTE_Y + 8;
+  const exitY = CHUTE_Y + CHUTE_H - 16;
+  const cy = topY + (exitY - topY) * Math.min(1, chuteProgress);
+
+  // Roll angle as it descends
+  const rollAngle = chuteProgress * Math.PI * 3;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, chuteProgress < 0.1 ? chuteProgress * 10 : 1);
+
+  // Shadow
+  ctx.shadowColor = "rgba(0,0,0,0.4)";
+  ctx.shadowBlur = 4;
+
+  // Capsule in chute
+  const r = 11;
+  ctx.translate(cx, cy);
+  ctx.rotate(rollAngle);
+
+  // Bottom half
+  const botG = ctx.createLinearGradient(-r, 0, r, r * 0.9);
+  botG.addColorStop(0, col.bottomLight);
+  botG.addColorStop(1, col.bottomDark);
+  ctx.fillStyle = botG;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI);
+  ctx.closePath();
+  ctx.fill();
+
+  // Top half
+  const topG = ctx.createLinearGradient(-r, -r * 0.9, r, 0);
+  topG.addColorStop(0, col.topLight);
+  topG.addColorStop(1, col.topDark);
+  ctx.fillStyle = topG;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Seam
+  ctx.strokeStyle = "rgba(0,0,0,0.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+  ctx.stroke();
+
+  // Specular
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.25, -r * 0.38, r * 0.22, r * 0.14, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Glow hint at exit
+  if (chuteProgress > 0.85) {
+    const exitAlpha = (chuteProgress - 0.85) / 0.15;
+    ctx.globalAlpha = exitAlpha * 0.5;
+    ctx.shadowColor = col.glow;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = col.glow + "44";
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   ctx.restore();
@@ -821,8 +1404,17 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
   const dragStartAngleRef = useRef(0);
   const prevHandleAngleRef = useRef(0);
 
+  // Notch/click state: track last 90° mark crossed
+  const lastNotchRef = useRef(0);
+  // Completion snap timer
+  const justCompletedRef = useRef(false);
+  const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Coin insert animation
-  const coinProgressRef = useRef(-1); // -1 = not animating
+  const coinProgressRef = useRef(-1);
+
+  // Chute roll animation
+  const chuteFractionRef = useRef(-1); // -1 = not animating
 
   const capsuleRef = useRef({
     x: CAPSULE_LAND_X,
@@ -854,7 +1446,6 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
   }, []);
 
   const triggerDispense = useCallback(() => {
-    // Start coin insert animation first
     setGameStateSync("COIN_INSERT");
     coinProgressRef.current = 0;
 
@@ -875,19 +1466,32 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
           totalRotationRef.current = 0;
           if (elapsed >= spinDuration) {
             clearInterval(spinInterval);
-            // Release capsule
-            capsuleRef.current = {
-              x: MACHINE_CX,
-              y: CHUTE_Y + CHUTE_H - 15,
-              vy: 0,
-              bounces: 0,
-              openFraction: 0,
-              visible: true,
-              rotation: 0,
-              rotVelocity: (Math.random() - 0.5) * 0.2,
-              phase: "falling",
-            };
-            setGameStateSync("BOUNCING");
+
+            // Start chute roll animation
+            chuteFractionRef.current = 0;
+            const chuteInterval = setInterval(() => {
+              chuteFractionRef.current = Math.min(1.1, chuteFractionRef.current + 0.032);
+              if (chuteFractionRef.current >= 1.0) {
+                clearInterval(chuteInterval);
+                chuteFractionRef.current = -1;
+
+                // Brief hang then release capsule
+                setTimeout(() => {
+                  capsuleRef.current = {
+                    x: MACHINE_CX,
+                    y: CHUTE_Y + CHUTE_H - 4,
+                    vy: 1.2, // slight initial velocity from chute exit
+                    bounces: 0,
+                    openFraction: 0,
+                    visible: true,
+                    rotation: 0.15,
+                    rotVelocity: (Math.random() - 0.5) * 0.22 + 0.08,
+                    phase: "falling",
+                  };
+                  setGameStateSync("BOUNCING");
+                }, 180);
+              }
+            }, 16);
           }
         }, 16);
       }
@@ -904,7 +1508,7 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
     const px = (e.clientX - rect.left) * scaleX;
     const py = (e.clientY - rect.top) * scaleY;
     const dist = Math.hypot(px - HANDLE_CX, py - HANDLE_CY);
-    if (dist < HANDLE_R + 18) {
+    if (dist < HANDLE_R + 20) {
       isDraggingHandleRef.current = true;
       dragStartAngleRef.current = angle - handleAngleRef.current;
       prevHandleAngleRef.current = handleAngleRef.current;
@@ -918,12 +1522,25 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
     const angle = getAngleFromPointer(e.clientX, e.clientY, rect);
     const newAngle = angle - dragStartAngleRef.current;
     const delta = newAngle - prevHandleAngleRef.current;
-    if (delta > 0) totalRotationRef.current += delta;
+    if (delta > 0) {
+      totalRotationRef.current += delta;
+
+      // Notch feel: brief pause at 90°/180°/270° marks
+      const notch = Math.floor(totalRotationRef.current / 90);
+      if (notch > lastNotchRef.current && totalRotationRef.current < 360) {
+        lastNotchRef.current = notch;
+        // Visual notch feedback (handled in draw via gear snap)
+        handleVelocityRef.current = Math.min(handleVelocityRef.current, delta * 0.3);
+      }
+    }
     prevHandleAngleRef.current = newAngle;
     handleAngleRef.current = newAngle;
     handleVelocityRef.current = delta;
     if (totalRotationRef.current >= 360 && stateRef.current === "IDLE") {
       isDraggingHandleRef.current = false;
+      justCompletedRef.current = true;
+      if (completedTimerRef.current) clearTimeout(completedTimerRef.current);
+      completedTimerRef.current = setTimeout(() => { justCompletedRef.current = false; }, 1200);
       triggerDispense();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -978,8 +1595,11 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
     handleAngleRef.current = 0;
     handleVelocityRef.current = 0;
     totalRotationRef.current = 0;
+    lastNotchRef.current = 0;
     isDraggingHandleRef.current = false;
     coinProgressRef.current = -1;
+    chuteFractionRef.current = -1;
+    justCompletedRef.current = false;
     capsuleRef.current = {
       x: CAPSULE_LAND_X, y: CHUTE_Y + CHUTE_H - 15,
       vy: 0, bounces: 0, openFraction: 0, visible: false,
@@ -1014,24 +1634,29 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
     // Capsule physics
     const cap = capsuleRef.current;
     if (cap.phase === "falling") {
-      cap.vy += 0.65;
+      cap.vy += 0.68;
       cap.y += cap.vy;
       cap.rotation += cap.rotVelocity;
+      cap.rotVelocity *= 0.995;
       if (cap.y >= CAPSULE_LAND_Y) {
         cap.y = CAPSULE_LAND_Y;
-        cap.vy = -cap.vy * 0.5;
-        cap.rotVelocity *= -0.4;
+        cap.vy = -cap.vy * 0.48;
+        cap.rotVelocity *= -0.35;
         cap.bounces++;
-        if (cap.bounces >= 4 || Math.abs(cap.vy) < 1.5) {
-          cap.phase = "settled";
-          cap.vy = 0;
-          cap.rotVelocity = 0;
-          cap.y = CAPSULE_LAND_Y;
-          cap.rotation = 0;
-          setGameStateSync("READY_TO_OPEN");
+        if (cap.bounces >= 3 || Math.abs(cap.vy) < 1.8) {
+          // Two clear bounces then wobble to settle
+          if (cap.bounces >= 2 && Math.abs(cap.vy) < 4) {
+            cap.phase = "settled";
+            cap.vy = 0;
+            cap.rotVelocity = 0;
+            cap.y = CAPSULE_LAND_Y;
+            cap.rotation = 0;
+            setGameStateSync("READY_TO_OPEN");
+          }
         }
       }
     } else if (cap.phase === "settled") {
+      // Wobble settle: decreasing oscillation
       cap.y = CAPSULE_LAND_Y + Math.sin(t * 2.5) * 2;
       cap.rotation = Math.sin(t * 1.5) * 0.05;
     } else if (cap.phase === "opening") {
@@ -1059,6 +1684,8 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
       }
     }
 
+    const isTurning = state === "DISPENSING" || state === "TURNING";
+
     // ── Draw ──────────────────────────────────────────────────────────────
     const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     bgGrad.addColorStop(0, "#100a00");
@@ -1066,29 +1693,18 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Draw order: body → dome → capsule → handle → coin anim → UI
+    // Draw order: body → dome → chute capsule → main capsule → handle → coin anim → UI
 
-    // Machine body (3D)
     drawMachineBody3D(ctx, t);
+    drawHemisphereDome(ctx, t, handleAngleRef.current, isTurning);
+    drawHandle3D(ctx, handleAngleRef.current, t, state === "IDLE", totalRotationRef.current, justCompletedRef.current);
 
-    // Hemisphere dome with capsules inside
-    drawHemisphereDome(ctx, t);
-
-    // Handle (3D knob)
-    const isInteractable = state === "IDLE";
-    drawHandle3D(ctx, handleAngleRef.current, t, isInteractable);
-
-    // Rotation arc
-    if (state === "IDLE" && totalRotationRef.current > 0) {
-      const progress = Math.min(1, totalRotationRef.current / 360);
-      ctx.strokeStyle = `rgba(251,191,36,${0.4 + progress * 0.5})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(HANDLE_CX, HANDLE_CY, HANDLE_R + 10, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
-      ctx.stroke();
+    // Capsule rolling through chute
+    if (chuteFractionRef.current >= 0) {
+      drawCapsuleInChute(ctx, chuteFractionRef.current, resultGrade);
     }
 
-    // Capsule (main)
+    // Main capsule
     if (cap.visible) {
       ctx.save();
       if (state === "READY_TO_OPEN") {
@@ -1109,29 +1725,30 @@ export function GachaMachine({ resultGrade, prizeName, onResult, onStateChange }
         ctx.font = "bold 13px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        ctx.fillText("點擊扭蛋打開！", cap.x, cap.y - 38);
+        ctx.fillText("點擊扭蛋打開！", cap.x, cap.y - 40);
         ctx.restore();
       }
 
-      // Result text
-      if (state === "RESULT" && cap.openFraction > 0.65) {
-        const resultAlpha = (cap.openFraction - 0.65) / 0.35;
+      // Result text rises with prize glow
+      if (state === "RESULT" && cap.openFraction > 0.62) {
+        const resultAlpha = Math.min(1, (cap.openFraction - 0.62) / 0.38);
+        const resultRise = (cap.openFraction - 0.62) * 28;
         const col = GRADE_CAPSULE[resultGrade] ?? GRADE_CAPSULE["D賞"]!;
         ctx.save();
         ctx.globalAlpha = resultAlpha;
         ctx.shadowColor = col.glow;
-        ctx.shadowBlur = 22;
-        const resGrad = ctx.createLinearGradient(0, cap.y - 65, CANVAS_W, cap.y - 65);
-        resGrad.addColorStop(0, col.topDark);
+        ctx.shadowBlur = 24;
+        const resGrad = ctx.createLinearGradient(0, cap.y - 68 - resultRise, CANVAS_W, cap.y - 68 - resultRise);
+        resGrad.addColorStop(0,   col.topDark);
         resGrad.addColorStop(0.5, col.topLight);
-        resGrad.addColorStop(1, col.topDark);
+        resGrad.addColorStop(1,   col.topDark);
         ctx.fillStyle = resGrad;
         ctx.font = "bold 18px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
         ctx.fillText(
           `✨ ${resultGrade}${prizeName ? ` — ${prizeName}` : ""} ✨`,
-          CANVAS_W / 2, cap.y - 50,
+          CANVAS_W / 2, cap.y - 52 - resultRise,
         );
         ctx.restore();
       }
