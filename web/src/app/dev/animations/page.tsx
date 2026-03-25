@@ -97,6 +97,16 @@ const PrizeRoomNeon = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 房間" height={500} /> },
 );
 
+const ClawMachineNeon = dynamic(
+  () => import("@/games/neon/ClawMachine_Neon").then((m) => ({ default: m.ClawMachine_Neon })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 夾娃娃機" /> },
+);
+
+const GachaMachineNeon = dynamic(
+  () => import("@/games/neon/GachaMachine_Neon").then((m) => ({ default: m.GachaMachine_Neon })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 扭蛋機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -899,18 +909,23 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {activeMiniGame !== "slot" && (
-                            <div
-                              className="w-full flex flex-col items-center justify-center gap-3"
-                              style={{ height: 420, background: "#0a0a1a" }}
-                            >
-                              <span style={{ color: "#ff00ff", textShadow: "0 0 12px #ff00ff", fontFamily: "Courier New, monospace", fontSize: 14, fontWeight: "bold" }}>
-                                開發中
-                              </span>
-                              <span style={{ color: "#00ffff", textShadow: "0 0 8px #00ffff", fontFamily: "Courier New, monospace", fontSize: 10 }}>
-                                COMING SOON
-                              </span>
-                            </div>
+                          {activeMiniGame === "claw" && (
+                            <ClawMachineNeon
+                              key={`neon-claw-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "gacha" && (
+                            <GachaMachineNeon
+                              key={`neon-gacha-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as GachaGameState)}
+                            />
                           )}
                         </>
                       ) : (
