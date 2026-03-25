@@ -28,6 +28,13 @@ interface Character {
   isPlayer: boolean;
   bubble: { text: string; color: string; expiry: number; type: "chat" | "prize" } | null;
   bobPhase: number;
+  // Idle animation state
+  idleAction: "none" | "phone" | "stretch" | "look";
+  idleActionExpiry: number;
+  headTurnOffset: number; // -1 | 0 | 1 px shift
+  nextHeadTurnAt: number;
+  // Visual sound indicators
+  exclamationExpiry: number;
 }
 
 type TileType = "FLOOR" | "WALL" | "COUNTER" | "CARPET" | "EMPTY";
@@ -193,6 +200,35 @@ function spawnSparkles(x: number, y: number, count: number): Sparkle[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Float-up symbol particle system (♪ notes, ✨ sparkles, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface FloatSymbol {
+  x: number; y: number;
+  symbol: string;
+  color: string;
+  alpha: number;
+  vy: number;
+  vx: number;
+  life: number; // 0..1 countdown
+  size: number;
+}
+
+function spawnFloatSymbols(x: number, y: number, symbol: string, color: string, count: number): FloatSymbol[] {
+  return Array.from({ length: count }, (_, i) => ({
+    x: x + (Math.random() - 0.5) * 20,
+    y,
+    symbol,
+    color,
+    alpha: 1,
+    vy: -(0.6 + Math.random() * 0.8),
+    vx: (Math.random() - 0.5) * 0.6,
+    life: 1,
+    size: 10 + Math.random() * 4,
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Room Drawing — Back wall, shelves, counter
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -240,6 +276,72 @@ function drawRoom(ctx: CanvasRenderingContext2D, t: number) {
   ctx.closePath();
   ctx.fill();
 
+  // ── Wall panel lines (subtle horizontal banding) ──
+  // Left wall panels (vertical bands along isoY=0 direction)
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = "#9f7ec0";
+  ctx.lineWidth = 0.7;
+  const panelStep = 18;
+  for (let py = wallTopLeft.y - wallH + panelStep; py < wallTopLeft.y; py += panelStep) {
+    // Left wall (goes from wallTopLeft to wallBottomLeft horizontally)
+    const lerpT = (py - (wallTopLeft.y - wallH)) / wallH;
+    const lx0 = wallTopLeft.x + (wallBottomLeft.x - wallTopLeft.x) * lerpT;
+    ctx.beginPath();
+    ctx.moveTo(lx0, py);
+    ctx.lineTo(wallBottomLeft.x, py + (wallBottomLeft.y - wallTopLeft.y) * lerpT);
+    ctx.stroke();
+  }
+  // Right wall panels
+  for (let py = wallTopLeft.y - wallH + panelStep; py < wallTopLeft.y; py += panelStep) {
+    const lerpT = (py - (wallTopLeft.y - wallH)) / wallH;
+    const rx0 = wallTopLeft.x + (wallTopRight.x - wallTopLeft.x) * lerpT;
+    ctx.beginPath();
+    ctx.moveTo(rx0, py);
+    ctx.lineTo(wallTopRight.x, wallTopRight.y - wallH + (py - (wallTopLeft.y - wallH)));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Baseboard — dark strip where wall meets floor ──
+  const baseH = 7;
+  // Left wall baseboard
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = "#110820";
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - baseH);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y - baseH);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y);
+  ctx.closePath();
+  ctx.fill();
+  // Right wall baseboard
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - baseH);
+  ctx.lineTo(wallTopRight.x, wallTopRight.y - baseH);
+  ctx.lineTo(wallTopRight.x, wallTopRight.y);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // ── Ambient occlusion — soft shadow where wall meets floor ──
+  // Left wall AO
+  ctx.save();
+  const aoGradL = ctx.createLinearGradient(0, wallTopLeft.y - 12, 0, wallTopLeft.y + 5);
+  aoGradL.addColorStop(0, "rgba(0,0,0,0)");
+  aoGradL.addColorStop(1, "rgba(0,0,0,0.25)");
+  ctx.fillStyle = aoGradL;
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - 12);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y - 12);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y + 5);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y + 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
   // Wall edge line (top of walls)
   ctx.strokeStyle = "#5b3f8a";
   ctx.lineWidth = 1.5;
@@ -276,11 +378,18 @@ function drawRoom(ctx: CanvasRenderingContext2D, t: number) {
   // ── Poster on right back wall ──
   drawPoster(ctx, t);
 
+  // ── Hanging banner ──
+  drawHangingBanner(ctx, t);
+
+  // ── Ceiling pendant lights (drawn early so floor glow is under tiles) ──
+  drawCeilingLights(ctx, t);
+
   // ── Floor tiles ──
   drawFloor(ctx, t);
 
-  // ── Entrance mat ──
+  // ── Entrance mat + neon sign ──
   drawEntranceMat(ctx);
+  drawNeonSign(ctx, t);
 }
 
 function drawPrizeDisplay(
@@ -323,16 +432,34 @@ function drawPrizeDisplay(
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Prize box inside
+  // Prize box bobbing animation
+  const bobOffset = Math.sin(t * 1.8 + x * 0.05) * 2;
   ctx.save();
   ctx.shadowColor = glow;
   ctx.shadowBlur = 10;
-  const boxGrad = ctx.createLinearGradient(x - w / 3, y + 10, x + w / 3, y + h - 10);
-  boxGrad.addColorStop(0, color);
-  boxGrad.addColorStop(1, `${color}44`);
-  ctx.fillStyle = boxGrad;
+  const boxGrad2 = ctx.createLinearGradient(x - w / 3, y + 10 + bobOffset, x + w / 3, y + h - 10 + bobOffset);
+  boxGrad2.addColorStop(0, color);
+  boxGrad2.addColorStop(1, `${color}44`);
+  ctx.fillStyle = boxGrad2;
   ctx.beginPath();
-  ctx.roundRect(x - 12, y + 12, 24, 24, 3);
+  ctx.roundRect(x - 12, y + 12 + bobOffset, 24, 24, 3);
+  ctx.fill();
+  ctx.restore();
+
+  // Glass reflection — diagonal highlight stripe
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  const reflGrad = ctx.createLinearGradient(x - w / 2 + 4, y + 4, x - w / 2 + 18, y + 20);
+  reflGrad.addColorStop(0, "rgba(255,255,255,0.9)");
+  reflGrad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = reflGrad;
+  ctx.beginPath();
+  // Thin diagonal stripe
+  ctx.moveTo(x - w / 2 + 5, y + 5);
+  ctx.lineTo(x - w / 2 + 16, y + 5);
+  ctx.lineTo(x - w / 2 + 8, y + 22);
+  ctx.lineTo(x - w / 2 + 2, y + 22);
+  ctx.closePath();
   ctx.fill();
   ctx.restore();
 
@@ -342,6 +469,16 @@ function drawPrizeDisplay(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(label, x, y + h - 8);
+
+  // Price tag below cabinet
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = "#fef3c7";
+  ctx.font = "6px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("100 點/抽", x, y + h + 3);
+  ctx.restore();
 
   // Border
   ctx.strokeStyle = color;
@@ -402,6 +539,309 @@ function drawPoster(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillText("絶賛開催中!", px + pw / 2, py + ph - 3);
 }
 
+// ── Hanging Banner / Flag ──────────────────────────────────────────────────
+
+function drawHangingBanner(ctx: CanvasRenderingContext2D, t: number) {
+  // Banner hangs from the top of the back-right wall, slightly right of center
+  const anchorSc = isoToScreen({ isoX: 7, isoY: 0 });
+  const ax = anchorSc.x + 10;
+  const ay = anchorSc.y - 105; // at top of wall
+
+  const bannerW = 22;
+  const bannerH = 56;
+  const swayAmp = 2.5;
+
+  // Generate wavy flag vertices using sin
+  // Banner is a quadrilateral: top-left, top-right, bottom-right (waved), bottom-left (waved)
+  const segments = 8;
+  const points: Array<{ x: number; y: number }> = [];
+
+  // Left edge (attachment pole side — less sway)
+  for (let i = 0; i <= segments; i++) {
+    const frac = i / segments;
+    const sway = Math.sin(t * 2.2 + frac * Math.PI * 1.5) * swayAmp * frac * 0.3;
+    points.push({ x: ax + sway, y: ay + frac * bannerH });
+  }
+
+  // Right edge (free end — more sway)
+  for (let i = segments; i >= 0; i--) {
+    const frac = i / segments;
+    const sway = Math.sin(t * 2.2 + frac * Math.PI * 1.5 + 0.4) * swayAmp * (1 - frac * 0.3);
+    points.push({ x: ax + bannerW + sway, y: ay + frac * bannerH });
+  }
+
+  // Background fill (gradient red/gold)
+  const bannerGrad = ctx.createLinearGradient(ax, ay, ax + bannerW, ay + bannerH);
+  bannerGrad.addColorStop(0, "#dc2626");
+  bannerGrad.addColorStop(0.5, "#b91c1c");
+  bannerGrad.addColorStop(1, "#7f1d1d");
+  ctx.save();
+  ctx.shadowColor = "#ef4444";
+  ctx.shadowBlur = 8;
+
+  ctx.beginPath();
+  ctx.moveTo(points[0]!.x, points[0]!.y);
+  for (const pt of points.slice(1)) ctx.lineTo(pt.x, pt.y);
+  ctx.closePath();
+  ctx.fillStyle = bannerGrad;
+  ctx.fill();
+
+  // Gold border
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+
+  // Pennant point at bottom (triangle tip)
+  const leftBottomX = ax + Math.sin(t * 2.2 + Math.PI * 1.5) * swayAmp * 0.3;
+  const rightBottomX = ax + bannerW + Math.sin(t * 2.2 + Math.PI * 1.5 + 0.4) * swayAmp;
+  const tipX = (leftBottomX + rightBottomX) / 2 + Math.sin(t * 2.2) * 1.5;
+  const tipY = ay + bannerH + 14;
+
+  ctx.save();
+  ctx.shadowColor = "#ef4444";
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = "#b91c1c";
+  ctx.beginPath();
+  ctx.moveTo(leftBottomX, ay + bannerH);
+  ctx.lineTo(rightBottomX, ay + bannerH);
+  ctx.lineTo(tipX, tipY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  // Horizontal gold stripe
+  const stripeY = ay + 12;
+  const stripeAnchorSway = Math.sin(t * 2.2 + 0.3) * swayAmp * 0.15;
+  const stripeEndSway = Math.sin(t * 2.2 + Math.PI + 0.3) * swayAmp;
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  ctx.moveTo(ax + stripeAnchorSway, stripeY);
+  ctx.lineTo(ax + bannerW + stripeEndSway, stripeY);
+  ctx.lineTo(ax + bannerW + stripeEndSway, stripeY + 3);
+  ctx.lineTo(ax + stripeAnchorSway, stripeY + 3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Text "一番賞" — rotated slightly with the banner sway
+  const midSway = Math.sin(t * 2.2 + 0.7) * swayAmp * 0.5;
+  const textX = ax + bannerW / 2 + midSway;
+  const textAngle = Math.sin(t * 2.2) * 0.03;
+  ctx.save();
+  ctx.translate(textX, ay + bannerH / 2 + 8);
+  ctx.rotate(textAngle);
+  ctx.fillStyle = "#fef3c7";
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // Write vertically stacked
+  ctx.fillText("一", 0, -10);
+  ctx.fillText("番", 0, 0);
+  ctx.fillText("賞", 0, 10);
+  ctx.restore();
+
+  // Hanging string
+  ctx.save();
+  ctx.strokeStyle = "#92400e";
+  ctx.lineWidth = 1;
+  const topSway = Math.sin(t * 2.2) * swayAmp * 0.1;
+  ctx.beginPath();
+  ctx.moveTo(ax + bannerW / 2 + topSway, ay - 8);
+  ctx.lineTo(ax + bannerW / 2 + topSway, ay + 1);
+  ctx.stroke();
+  // Small ring at top
+  ctx.strokeStyle = "#d97706";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(ax + bannerW / 2 + topSway, ay - 9, 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Ceiling Light Fixtures ─────────────────────────────────────────────────
+
+function drawCeilingLights(ctx: CanvasRenderingContext2D, t: number) {
+  // Three pendant lights hanging from the ceiling
+  const wallTopRight = isoToScreen({ isoX: MAP_W, isoY: 0 });
+  const wallTopLeft = isoToScreen({ isoX: 0, isoY: MAP_H });
+  const wallCorner = isoToScreen({ isoX: 0, isoY: 0 });
+
+  const fixturePositions = [
+    // Spread across the room ceiling area
+    { x: wallCorner.x - 60,  y: wallCorner.y - 70, phase: 0 },
+    { x: (wallCorner.x + wallTopRight.x) / 2, y: (wallCorner.y + wallTopRight.y) / 2 - 65, phase: 1.3 },
+    { x: (wallCorner.x + wallTopLeft.x) / 2,  y: (wallCorner.y + wallTopLeft.y) / 2 - 65,  phase: 2.6 },
+  ];
+
+  for (const fix of fixturePositions) {
+    const pulse = 0.82 + Math.sin(t * 1.6 + fix.phase) * 0.18;
+    const wireLen = 22 + Math.sin(t * 0.4 + fix.phase) * 1;
+
+    // Ceiling wire
+    ctx.save();
+    ctx.strokeStyle = "#374151";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(fix.x, fix.y);
+    ctx.lineTo(fix.x, fix.y + wireLen);
+    ctx.stroke();
+
+    // Pendant shade (trapezoid)
+    const shadeTopW = 10;
+    const shadeBotW = 18;
+    const shadeH = 10;
+    const shadeY = fix.y + wireLen;
+    const shadeGrad = ctx.createLinearGradient(fix.x, shadeY, fix.x, shadeY + shadeH);
+    shadeGrad.addColorStop(0, "#1f2937");
+    shadeGrad.addColorStop(1, "#111827");
+    ctx.fillStyle = shadeGrad;
+    ctx.beginPath();
+    ctx.moveTo(fix.x - shadeTopW / 2, shadeY);
+    ctx.lineTo(fix.x + shadeTopW / 2, shadeY);
+    ctx.lineTo(fix.x + shadeBotW / 2, shadeY + shadeH);
+    ctx.lineTo(fix.x - shadeBotW / 2, shadeY + shadeH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#4b5563";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Bulb glow at bottom of shade
+    const bulbY = shadeY + shadeH;
+    const bulbR = 4;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.shadowColor = "#fef3c7";
+    ctx.shadowBlur = 14;
+    const bulbGrad = ctx.createRadialGradient(fix.x, bulbY, 0, fix.x, bulbY, bulbR * 2);
+    bulbGrad.addColorStop(0, "#fffde7");
+    bulbGrad.addColorStop(0.4, "#fef08a");
+    bulbGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = bulbGrad;
+    ctx.beginPath();
+    ctx.arc(fix.x, bulbY, bulbR * 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fffde7";
+    ctx.beginPath();
+    ctx.arc(fix.x, bulbY, bulbR * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Floor glow cone — soft warm ellipse on the floor below
+    // Project the light down to its floor position
+    const floorGlowY = fix.y + 180; // approximate floor y for this part of the room
+    const coneGrad = ctx.createRadialGradient(fix.x, floorGlowY, 10, fix.x, floorGlowY, 65);
+    coneGrad.addColorStop(0, `rgba(255, 230, 120, ${0.10 * pulse})`);
+    coneGrad.addColorStop(0.5, `rgba(255, 200, 80, ${0.05 * pulse})`);
+    coneGrad.addColorStop(1, "rgba(255,180,40,0)");
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.ellipse(fix.x, floorGlowY, 65, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Light cone shape (triangle from shade to floor)
+    ctx.save();
+    ctx.globalAlpha = 0.025 * pulse;
+    const coneTopHalf = shadeBotW / 2 + 2;
+    const coneBotHalf = 55;
+    const coneFillGrad = ctx.createLinearGradient(fix.x, bulbY, fix.x, floorGlowY);
+    coneFillGrad.addColorStop(0, "rgba(255,240,160,0.6)");
+    coneFillGrad.addColorStop(1, "rgba(255,200,80,0)");
+    ctx.fillStyle = coneFillGrad;
+    ctx.beginPath();
+    ctx.moveTo(fix.x - coneTopHalf, bulbY);
+    ctx.lineTo(fix.x + coneTopHalf, bulbY);
+    ctx.lineTo(fix.x + coneBotHalf, floorGlowY);
+    ctx.lineTo(fix.x - coneBotHalf, floorGlowY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+}
+
+// ── Neon OPEN Sign ─────────────────────────────────────────────────────────
+
+function drawNeonSign(ctx: CanvasRenderingContext2D, t: number) {
+  // Positioned above the entrance gap (cols 5-6, bottom of map)
+  const mat1 = isoToScreen({ isoX: 5, isoY: 13 });
+  const mat2 = isoToScreen({ isoX: 6, isoY: 13 });
+  const cx = (mat1.x + mat2.x) / 2;
+  const cy = (mat1.y + mat2.y) / 2 - 68;
+
+  // Flicker: occasional brief dimming
+  const flickerSeed = Math.floor(t * 8) % 17;
+  const flicker = flickerSeed === 3 || flickerSeed === 11 ? 0.25 : 1.0;
+  const pulse = (0.85 + Math.sin(t * 3.2) * 0.15) * flicker;
+
+  const signW = 56;
+  const signH = 22;
+
+  ctx.save();
+
+  // Sign backing box
+  ctx.fillStyle = "rgba(5,5,15,0.88)";
+  ctx.strokeStyle = "rgba(150,80,200,0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cx - signW / 2 - 4, cy - signH / 2 - 4, signW + 8, signH + 8, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  // Neon glow effect
+  ctx.globalAlpha = pulse;
+  ctx.shadowColor = "#00ff88";
+  ctx.shadowBlur = 16 + Math.sin(t * 2.4) * 4;
+
+  // "OPEN" text in neon green
+  ctx.fillStyle = "#00ff88";
+  ctx.font = "bold 14px system-ui, monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("OPEN", cx - 4, cy + 1);
+
+  // Second glow pass for intensity
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = "#ffffff";
+  ctx.globalAlpha = pulse * 0.4;
+  ctx.fillText("OPEN", cx - 4, cy + 1);
+
+  ctx.restore();
+
+  // Japanese text below
+  ctx.save();
+  ctx.globalAlpha = pulse * 0.8;
+  ctx.shadowColor = "#ff6ec7";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = "#ff6ec7";
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("営業中", cx + 16, cy + 1);
+  ctx.restore();
+
+  // Vertical divider between OPEN and 営業中
+  ctx.save();
+  ctx.globalAlpha = pulse * 0.5;
+  ctx.strokeStyle = "#4b5563";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx + 7, cy - 7);
+  ctx.lineTo(cx + 7, cy + 8);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawFloor(ctx: CanvasRenderingContext2D, t: number) {
   // Draw floor tiles with wood plank effect in isometric order
   for (let row = 0; row < MAP_H; row++) {
@@ -418,78 +858,28 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, isoX: number, isoY: number
   const hw = TILE_W / 2;
   const hh = TILE_H / 2;
 
-  // Alternate plank colors for wood effect
   const isCarpet = code === 4;
   const isCounter = code === 3;
+  if (isCounter) return;
 
-  let topColor: string;
-  let edgeLeft: string;
-  let edgeRight: string;
-  let strokeC: string;
-
-  if (isCounter) {
-    // Counter tiles — we draw them as 3D blocks later separately
-    return;
-  } else if (isCarpet) {
+  if (isCarpet) {
     // Red carpet / display platform
     const variation = ((isoX + isoY) % 2 === 0) ? 0 : 10;
-    topColor = `rgba(${60 + variation}, ${15}, ${80 + variation}, 0.9)`;
-    edgeLeft = "#1a0a2e";
-    edgeRight = "#230f3d";
-    strokeC = "#5b1080";
-  } else {
-    // Wood plank
-    const plankRow = (isoX + isoY) % 4;
-    const baseR = 70 + plankRow * 10;
-    const baseG = 38 + plankRow * 5;
-    const baseB = 10 + plankRow * 3;
-    topColor = `rgb(${baseR}, ${baseG}, ${baseB})`;
-    edgeLeft = `rgb(${baseR - 20}, ${baseG - 10}, ${baseB - 5})`;
-    edgeRight = `rgb(${baseR - 30}, ${baseG - 15}, ${baseB - 8})`;
-    strokeC = `rgb(${baseR - 10}, ${baseG - 5}, ${baseB})`;
-  }
+    const topColor = `rgba(${60 + variation}, ${15}, ${80 + variation}, 0.9)`;
 
-  // Diamond top face
-  ctx.beginPath();
-  ctx.moveTo(s.x, s.y - hh);
-  ctx.lineTo(s.x + hw, s.y);
-  ctx.lineTo(s.x, s.y + hh);
-  ctx.lineTo(s.x - hw, s.y);
-  ctx.closePath();
-  ctx.fillStyle = topColor;
-  ctx.fill();
-  ctx.strokeStyle = strokeC;
-  ctx.lineWidth = 0.6;
-  ctx.stroke();
-
-  // Subtle grain lines on wood
-  if (!isCarpet) {
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(s.x - hw * 0.4, s.y - hh * 0.3);
-    ctx.lineTo(s.x + hw * 0.6, s.y + hh * 0.1);
+    ctx.moveTo(s.x, s.y - hh);
+    ctx.lineTo(s.x + hw, s.y);
+    ctx.lineTo(s.x, s.y + hh);
+    ctx.lineTo(s.x - hw, s.y);
+    ctx.closePath();
+    ctx.fillStyle = topColor;
+    ctx.fill();
+    ctx.strokeStyle = "#5b1080";
+    ctx.lineWidth = 0.6;
     ctx.stroke();
-    ctx.restore();
-  }
 
-  // Very subtle floor reflection
-  ctx.save();
-  ctx.globalAlpha = 0.04;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.moveTo(s.x, s.y - hh);
-  ctx.lineTo(s.x + hw * 0.6, s.y - hh * 0.3);
-  ctx.lineTo(s.x + hw * 0.2, s.y + hh * 0.1);
-  ctx.lineTo(s.x - hw * 0.2, s.y - hh * 0.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // Side edges for carpet
-  if (isCarpet) {
+    // Carpet side edges
     const edgeH = 6;
     ctx.beginPath();
     ctx.moveTo(s.x - hw, s.y);
@@ -497,7 +887,7 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, isoX: number, isoY: number
     ctx.lineTo(s.x, s.y + hh + edgeH);
     ctx.lineTo(s.x - hw, s.y + edgeH);
     ctx.closePath();
-    ctx.fillStyle = edgeLeft;
+    ctx.fillStyle = "#1a0a2e";
     ctx.fill();
 
     ctx.beginPath();
@@ -506,9 +896,135 @@ function drawFloorTile(ctx: CanvasRenderingContext2D, isoX: number, isoY: number
     ctx.lineTo(s.x + hw, s.y + edgeH);
     ctx.lineTo(s.x, s.y + hh + edgeH);
     ctx.closePath();
-    ctx.fillStyle = edgeRight;
+    ctx.fillStyle = "#230f3d";
     ctx.fill();
+    return;
   }
+
+  // ── Wood planks — 4 planks running diagonally across the tile ──
+  // Each plank is a thin parallelogram band within the diamond.
+  // We clip to the tile diamond then draw each plank band.
+  const PLANK_COUNT = 4;
+  // Deterministic per-tile seed for color variation
+  const tileSeed = ((isoX * 7 + isoY * 13) | 0) % 16;
+
+  ctx.save();
+  // Clip to diamond
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y - hh);
+  ctx.lineTo(s.x + hw, s.y);
+  ctx.lineTo(s.x, s.y + hh);
+  ctx.lineTo(s.x - hw, s.y);
+  ctx.closePath();
+  ctx.clip();
+
+  // Base gradient fill first (warm wood under-layer)
+  const baseR = 68 + (tileSeed % 8) * 6;
+  const baseG = 36 + (tileSeed % 6) * 4;
+  const baseB = 8 + (tileSeed % 4) * 2;
+  const tileGrad = ctx.createLinearGradient(s.x - hw, s.y - hh, s.x + hw, s.y + hh);
+  tileGrad.addColorStop(0, `rgb(${baseR + 10},${baseG + 6},${baseB + 2})`);
+  tileGrad.addColorStop(1, `rgb(${baseR - 8},${baseG - 4},${baseB})`);
+  ctx.fillStyle = tileGrad;
+  ctx.fillRect(s.x - hw - 1, s.y - hh - 1, TILE_W + 2, TILE_H + 2);
+
+  // Individual plank bands — each runs from upper-right to lower-left (diagonal)
+  for (let p = 0; p < PLANK_COUNT; p++) {
+    // Plank offset along the tile's diagonal axis (isoX + isoY direction)
+    const t0 = p / PLANK_COUNT;
+    const t1 = (p + 0.92) / PLANK_COUNT; // slight gap between planks
+
+    // The isometric tile's diagonal goes from top-right to bottom-left.
+    // We parameterise along the perpendicular axis (isoX - isoY direction).
+    // In screen space: perpendicular axis is dx = hw, dy = hh (right-and-down).
+    // Plank band spans from t0*2-1 to t1*2-1 along this axis.
+    const perpX = hw; // full width of perpendicular vector
+    const perpY = hh;
+
+    // Four corners of the plank band (parallelogram)
+    const p0x = s.x + perpX * (t0 * 2 - 1);
+    const p0y = s.y + perpY * (t0 * 2 - 1);
+    const p1x = s.x + perpX * (t1 * 2 - 1);
+    const p1y = s.y + perpY * (t1 * 2 - 1);
+
+    // Extend each edge along the plank direction (opposite perpendicular)
+    const extX = hw * 1.5;
+    const extY = -hh * 1.5;
+
+    // Plank color varies slightly per plank and per tile
+    const variation = ((tileSeed + p * 3) % 12) - 6;
+    const pr = Math.min(255, Math.max(0, baseR + variation));
+    const pg = Math.min(255, Math.max(0, baseG + variation / 2));
+    const pb = Math.min(255, Math.max(0, baseB));
+
+    const plankGrad = ctx.createLinearGradient(p0x, p0y, p1x, p1y);
+    plankGrad.addColorStop(0, `rgb(${pr + 8},${pg + 4},${pb + 1})`);
+    plankGrad.addColorStop(0.5, `rgb(${pr},${pg},${pb})`);
+    plankGrad.addColorStop(1, `rgb(${pr - 6},${pg - 3},${pb})`);
+
+    ctx.fillStyle = plankGrad;
+    ctx.beginPath();
+    ctx.moveTo(p0x - extX, p0y - extY);
+    ctx.lineTo(p0x + extX, p0y + extY);
+    ctx.lineTo(p1x + extX, p1y + extY);
+    ctx.lineTo(p1x - extX, p1y - extY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wood grain lines — very thin, low opacity streaks along the plank
+    ctx.save();
+    ctx.globalAlpha = 0.06 + (p % 2) * 0.03;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.4;
+    const midT = (t0 + t1) / 2;
+    const gmx = s.x + perpX * (midT * 2 - 1);
+    const gmy = s.y + perpY * (midT * 2 - 1);
+    // Two faint grain lines per plank
+    for (let g = 0; g < 2; g++) {
+      const gOffset = (g - 0.5) * 0.15;
+      const gx = gmx + perpX * gOffset;
+      const gy = gmy + perpY * gOffset;
+      ctx.beginPath();
+      ctx.moveTo(gx - extX, gy - extY);
+      ctx.lineTo(gx + extX, gy + extY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Dark seam between planks
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = "#1a0800";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(p0x - extX, p0y - extY);
+    ctx.lineTo(p0x + extX, p0y + extY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Warm light highlight — upper-left corner catch-light
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  const hlGrad = ctx.createRadialGradient(s.x - hw * 0.3, s.y - hh * 0.6, 0, s.x, s.y, hw * 1.2);
+  hlGrad.addColorStop(0, "#ffe8c0");
+  hlGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = hlGrad;
+  ctx.fillRect(s.x - hw - 1, s.y - hh - 1, TILE_W + 2, TILE_H + 2);
+  ctx.restore();
+
+  ctx.restore(); // end clip
+
+  // Tile edge stroke
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y - hh);
+  ctx.lineTo(s.x + hw, s.y);
+  ctx.lineTo(s.x, s.y + hh);
+  ctx.lineTo(s.x - hw, s.y);
+  ctx.closePath();
+  ctx.strokeStyle = `rgb(${baseR - 15},${baseG - 8},${baseB - 2})`;
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
 }
 
 function drawCounterBlock(ctx: CanvasRenderingContext2D, t: number) {
@@ -699,8 +1215,8 @@ function drawQueueRope(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function drawAmbientLighting(ctx: CanvasRenderingContext2D, t: number) {
-  // Warm golden overhead light in center
+function drawAmbientLighting(ctx: CanvasRenderingContext2D, _t: number) {
+  // Warm golden overhead ambient fill — blends ceiling light warmth across the scene
   const lightX = CANVAS_W / 2;
   const lightY = CANVAS_H * 0.25;
 
@@ -710,32 +1226,6 @@ function drawAmbientLighting(ctx: CanvasRenderingContext2D, t: number) {
   ambientGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = ambientGrad;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-  // Ceiling light fixtures
-  const fixtures = [
-    { x: CANVAS_W * 0.33, y: 30 },
-    { x: CANVAS_W * 0.67, y: 30 },
-  ];
-  for (const fix of fixtures) {
-    const pulse = 0.8 + Math.sin(t * 1.5 + fix.x * 0.01) * 0.2;
-    ctx.save();
-    ctx.globalAlpha = pulse * 0.7;
-    ctx.shadowColor = "#fffde7";
-    ctx.shadowBlur = 15;
-    const fixGrad = ctx.createRadialGradient(fix.x, fix.y, 2, fix.x, fix.y, 60);
-    fixGrad.addColorStop(0, "rgba(255, 253, 200, 0.2)");
-    fixGrad.addColorStop(1, "rgba(255, 200, 80, 0)");
-    ctx.fillStyle = fixGrad;
-    ctx.beginPath();
-    ctx.ellipse(fix.x, fix.y, 60, 40, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Light bulb
-    ctx.fillStyle = "#fffde7";
-    ctx.beginPath();
-    ctx.arc(fix.x, fix.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
 }
 
 function drawAmbientParticles(ctx: CanvasRenderingContext2D, t: number) {
@@ -773,10 +1263,12 @@ function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number
   const isCelebrating = char.state === "CELEBRATING";
   const isDrawing = char.state === "DRAWING";
 
-  // Bob animation
+  // Bob animation + idle breathing
   const bobY = isWalking ? Math.sin(t * 10 + char.bobPhase) * 2.5 : 0;
   const celebBob = isCelebrating ? Math.abs(Math.sin(t * 8 + char.bobPhase)) * 4 : 0;
-  const offsetY = -bobY - celebBob;
+  // Subtle breathing when idle: ±1px body height oscillation
+  const breatheY = (!isWalking && !isCelebrating) ? Math.sin(t * 1.8 + char.bobPhase) * 1.0 : 0;
+  const offsetY = -bobY - celebBob - breatheY;
 
   const cx = s.x;
   const cy = s.y + offsetY;
@@ -840,26 +1332,51 @@ function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number
   ctx.fill();
   ctx.stroke();
 
-  // Arms
+  // Arms — idle action influences arm positions
   const armSwing = isWalking ? Math.sin(t * 10 + char.bobPhase + Math.PI) * 4 : 0;
   const drawRaise = isDrawing ? -8 : 0;
+  // Phone action: right arm raised, held near face
+  const phoneRaise = char.idleAction === "phone" ? -10 : 0;
+  // Stretch action: both arms raised outward
+  const stretchRaise = char.idleAction === "stretch" ? -6 : 0;
+  const stretchSpread = char.idleAction === "stretch" ? 3 : 0;
+
   // Left arm
   ctx.fillStyle = char.shirtColor;
   ctx.beginPath();
-  ctx.roundRect(cx - 13 + armSwing, cy + 3 + drawRaise, 5, 12, 2);
+  ctx.roundRect(cx - 13 + armSwing - stretchSpread, cy + 3 + drawRaise + stretchRaise, 5, 12, 2);
   ctx.fill();
   // Right arm
   ctx.beginPath();
-  ctx.roundRect(cx + 8 - armSwing, cy + 3 - drawRaise, 5, 12, 2);
+  ctx.roundRect(cx + 8 - armSwing + stretchSpread, cy + 3 - drawRaise + stretchRaise + phoneRaise, 5, 12, 2);
   ctx.fill();
+
+  // Phone prop: small rectangle near face
+  if (char.idleAction === "phone") {
+    ctx.fillStyle = "#1e293b";
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.roundRect(cx + 9, cy - 7 + phoneRaise, 5, 8, 1);
+    ctx.fill();
+    ctx.stroke();
+    // Phone screen glow
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.roundRect(cx + 10, cy - 6 + phoneRaise, 3, 5, 0.5);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // Hands
   ctx.fillStyle = char.skinColor;
   ctx.beginPath();
-  ctx.arc(cx - 10 + armSwing, cy + 15 + drawRaise, 3.5, 0, Math.PI * 2);
+  ctx.arc(cx - 10 + armSwing - stretchSpread, cy + 15 + drawRaise + stretchRaise, 3.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 10 - armSwing, cy + 15 - drawRaise, 3.5, 0, Math.PI * 2);
+  ctx.arc(cx + 10 - armSwing + stretchSpread, cy + 15 - drawRaise + stretchRaise + phoneRaise, 3.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Neck
@@ -868,25 +1385,27 @@ function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number
   ctx.roundRect(cx - 3, cy - 4, 6, 6, 1);
   ctx.fill();
 
-  // Head
-  const headGrad = ctx.createRadialGradient(cx - 2, cy - 12, 1, cx, cy - 10, 9);
+  // Head — head turn shifts it slightly left/right
+  const hx = cx + char.headTurnOffset;
+  const headGrad = ctx.createRadialGradient(hx - 2, cy - 12, 1, hx, cy - 10, 9);
   headGrad.addColorStop(0, lightenColor(char.skinColor, 20));
   headGrad.addColorStop(1, char.skinColor);
   ctx.fillStyle = headGrad;
   ctx.strokeStyle = darkenColor(char.skinColor, 15);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(cx, cy - 10, 9, 0, Math.PI * 2);
+  ctx.arc(hx, cy - 10, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Eyes
+  // Eyes (shifted with head turn)
+  const eyeOffsetX = char.headTurnOffset * 0.5;
   ctx.fillStyle = "#1e293b";
   ctx.beginPath();
-  ctx.arc(cx - 3, cy - 11, 1.5, 0, Math.PI * 2);
+  ctx.arc(hx - 3 + eyeOffsetX, cy - 11, 1.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 3, cy - 11, 1.5, 0, Math.PI * 2);
+  ctx.arc(hx + 3 + eyeOffsetX, cy - 11, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Smile (wider when celebrating)
@@ -894,17 +1413,36 @@ function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (isCelebrating) {
-    ctx.arc(cx, cy - 9, 4, 0.2, Math.PI - 0.2);
+    ctx.arc(hx, cy - 9, 4, 0.2, Math.PI - 0.2);
   } else {
-    ctx.arc(cx, cy - 8, 3, 0.3, Math.PI - 0.3);
+    ctx.arc(hx, cy - 8, 3, 0.3, Math.PI - 0.3);
   }
   ctx.stroke();
 
   // Hair (simple top)
   ctx.fillStyle = darkenColor(char.shirtColor, 40);
   ctx.beginPath();
-  ctx.ellipse(cx, cy - 17, 7, 4, 0, Math.PI, 0);
+  ctx.ellipse(hx, cy - 17, 7, 4, 0, Math.PI, 0);
   ctx.fill();
+
+  // Thought bubble "..." for queuing characters
+  if (char.state === "QUEUING") {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "rgba(30,30,60,0.85)";
+    ctx.strokeStyle = "#7c3aed";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(hx - 10, cy - 30, 20, 12, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#c4b5fd";
+    ctx.font = "bold 8px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("...", hx, cy - 24);
+    ctx.restore();
+  }
 
   // Player crown indicator
   if (char.isPlayer) {
@@ -975,6 +1513,22 @@ function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number
   // Bubble
   if (char.bubble && Date.now() < char.bubble.expiry) {
     drawBubble(ctx, char.bubble.text, char.bubble.color, cx, cy - 26, char.bubble.type);
+  }
+
+  // "!" exclamation pop indicator (reaction to draw events)
+  if (char.exclamationExpiry > 0 && Date.now() < char.exclamationExpiry) {
+    const exProgress = 1 - (char.exclamationExpiry - Date.now()) / 1200;
+    const exY = cy - 28 - exProgress * 12;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - exProgress * 1.4);
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = "#fef08a";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("!", cx, exY);
+    ctx.restore();
   }
 }
 
@@ -1095,6 +1649,11 @@ function makeNpc(id: number): Character {
     isPlayer: false,
     bubble: null,
     bobPhase: Math.random() * Math.PI * 2,
+    idleAction: "none",
+    idleActionExpiry: 0,
+    headTurnOffset: 0,
+    nextHeadTurnAt: Date.now() + 2000 + Math.random() * 4000,
+    exclamationExpiry: 0,
   };
 }
 
@@ -1145,6 +1704,11 @@ export function IsometricRoom({
     isPlayer: true,
     bubble: null,
     bobPhase: 0,
+    idleAction: "none",
+    idleActionExpiry: 0,
+    headTurnOffset: 0,
+    nextHeadTurnAt: Date.now() + 3000,
+    exclamationExpiry: 0,
   });
 
   const npcsRef = useRef<Character[]>(
@@ -1161,7 +1725,9 @@ export function IsometricRoom({
   const lastNpcMoveRef = useRef(0);
   const lastDrawRef = useRef(0);
   const sparklesRef = useRef<Sparkle[]>([]);
+  const floatSymbolsRef = useRef<FloatSymbol[]>([]);
   const flashRef = useRef(0);
+  const lastAmbientSparkleRef = useRef(0);
 
   const [chatInput, setChatInput] = useState("");
   const [statusInfo, setStatusInfo] = useState({
@@ -1245,6 +1811,13 @@ export function IsometricRoom({
           ];
         }
 
+        // Floating music note from counter
+        const counterNote = isoToScreen({ isoX: 6.5, isoY: 4 });
+        floatSymbolsRef.current = [
+          ...floatSymbolsRef.current,
+          ...spawnFloatSymbols(counterNote.x, counterNote.y - 10, "♪", "#fbbf24", 3),
+        ];
+
         // Other NPCs react
         for (const other of npcsRef.current) {
           if (other.id !== npc.id && Math.random() > 0.4) {
@@ -1255,6 +1828,7 @@ export function IsometricRoom({
                 expiry: Date.now() + 2500,
                 type: "chat",
               };
+              other.exclamationExpiry = Date.now() + 1200;
             }, Math.random() * 1500);
           }
         }
@@ -1283,9 +1857,19 @@ export function IsometricRoom({
       flashRef.current = 1;
       const ps = isoToScreen(player.pos);
       sparklesRef.current = [...sparklesRef.current, ...spawnSparkles(ps.x, ps.y - 10, 60)];
+      // Burst of ♪ notes
+      floatSymbolsRef.current = [
+        ...floatSymbolsRef.current,
+        ...spawnFloatSymbols(ps.x, ps.y - 20, "♪", "#fbbf24", 5),
+        ...spawnFloatSymbols(ps.x, ps.y - 20, "♪", "#f472b6", 3),
+      ];
     } else {
       const ps = isoToScreen(player.pos);
       sparklesRef.current = [...sparklesRef.current, ...spawnSparkles(ps.x, ps.y - 10, 20)];
+      floatSymbolsRef.current = [
+        ...floatSymbolsRef.current,
+        ...spawnFloatSymbols(ps.x, ps.y - 20, "♪", "#a78bfa", 2),
+      ];
     }
 
     // NPC chat bubbles reacting
@@ -1299,6 +1883,7 @@ export function IsometricRoom({
             expiry: Date.now() + 2500,
             type: "chat",
           };
+          npc.exclamationExpiry = Date.now() + 1200;
         }, delay);
       }
     }
@@ -1417,6 +2002,42 @@ export function IsometricRoom({
       }
     }
 
+    // NPC idle actions: breathing is handled in drawCharacter via t.
+    // Here we handle head turns and random idle actions.
+    const allNpcs = npcsRef.current;
+    for (const npc of allNpcs) {
+      if (npc.state !== "IDLE") {
+        // Clear idle action when walking/drawing
+        npc.idleAction = "none";
+        continue;
+      }
+
+      // Head turn timer
+      if (now >= npc.nextHeadTurnAt) {
+        const turnDir = Math.random();
+        npc.headTurnOffset = turnDir < 0.33 ? -1.5 : turnDir < 0.66 ? 1.5 : 0;
+        npc.nextHeadTurnAt = now + 1500 + Math.random() * 3500;
+      }
+
+      // Idle action timer
+      if (now >= npc.idleActionExpiry) {
+        const roll = Math.random();
+        if (roll < 0.15) {
+          npc.idleAction = "phone";
+          npc.idleActionExpiry = now + 2000 + Math.random() * 3000;
+        } else if (roll < 0.22) {
+          npc.idleAction = "stretch";
+          npc.idleActionExpiry = now + 800 + Math.random() * 1200;
+        } else if (roll < 0.30) {
+          npc.idleAction = "look";
+          npc.idleActionExpiry = now + 600 + Math.random() * 1000;
+        } else {
+          npc.idleAction = "none";
+          npc.idleActionExpiry = now + 2000 + Math.random() * 4000;
+        }
+      }
+    }
+
     // Auto draw simulation
     if (now - lastDrawRef.current > 9000 + Math.random() * 4000 && !activeDrawerRef.current) {
       lastDrawRef.current = now;
@@ -1434,6 +2055,36 @@ export function IsometricRoom({
         life: sp.life - 0.02,
         rotation: sp.rotation + sp.rotSpeed,
       }));
+
+    // Update float symbols (♪ notes, etc.)
+    floatSymbolsRef.current = floatSymbolsRef.current
+      .filter((fs) => fs.life > 0)
+      .map((fs) => ({
+        ...fs,
+        x: fs.x + fs.vx,
+        y: fs.y + fs.vy,
+        life: fs.life - 0.012,
+        alpha: fs.life,
+      }));
+
+    // Ambient sparkles near prize displays (every ~3s)
+    if (now - lastAmbientSparkleRef.current > 3000 + Math.random() * 2000) {
+      lastAmbientSparkleRef.current = now;
+      const displayData2 = [
+        { iso: { isoX: 2, isoY: 1 } },
+        { iso: { isoX: 6, isoY: 1 } },
+        { iso: { isoX: 10, isoY: 1 } },
+      ];
+      const randDisp = displayData2[Math.floor(Math.random() * displayData2.length)];
+      if (randDisp) {
+        const wallH2 = 120;
+        const sc2 = isoToScreen(randDisp.iso);
+        floatSymbolsRef.current = [
+          ...floatSymbolsRef.current,
+          ...spawnFloatSymbols(sc2.x, sc2.y - wallH2 + 20, "✨", "#fde68a", 2),
+        ];
+      }
+    }
 
     // Flash decay
     if (flashRef.current > 0) flashRef.current = Math.max(0, flashRef.current - 0.02);
@@ -1470,6 +2121,20 @@ export function IsometricRoom({
       ctx.translate(sp.x, sp.y);
       ctx.rotate(sp.rotation);
       drawStar(ctx, 0, 0, sp.size, 4);
+      ctx.restore();
+    }
+
+    // Float symbols: ♪ notes, ✨ sparkle indicators
+    for (const fs of floatSymbolsRef.current) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fs.alpha);
+      ctx.shadowColor = fs.color;
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = fs.color;
+      ctx.font = `${fs.size}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(fs.symbol, fs.x, fs.y);
       ctx.restore();
     }
 
