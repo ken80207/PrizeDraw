@@ -57,6 +57,16 @@ const SlotMachineCSS3D = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 拉霸機" /> },
 );
 
+const ClawMachineCSS3D = dynamic(
+  () => import("@/games/css3d/ClawMachine_CSS3D").then((m) => ({ default: m.ClawMachineCSS3D })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 夾娃娃機" /> },
+);
+
+const GachaMachineCSS3D = dynamic(
+  () => import("@/games/css3d/GachaMachine_CSS3D").then((m) => ({ default: m.GachaMachineCSS3D })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 扭蛋機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -798,22 +808,22 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                           {activeMiniGame === "claw" && (
-                            <div
+                            <ClawMachineCSS3D
                               key={`css3d-claw-${miniGameKey}`}
-                              className="flex items-center justify-center bg-gray-900 text-gray-500 text-sm"
-                              style={{ height: 480 }}
-                            >
-                              CSS 3D 夾娃娃 — 開發中
-                            </div>
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
+                            />
                           )}
                           {activeMiniGame === "gacha" && (
-                            <div
+                            <GachaMachineCSS3D
                               key={`css3d-gacha-${miniGameKey}`}
-                              className="flex items-center justify-center bg-gray-900 text-gray-500 text-sm"
-                              style={{ height: 480 }}
-                            >
-                              CSS 3D 扭蛋機 — 開發中
-                            </div>
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as GachaGameState)}
+                            />
                           )}
                         </>
                       ) : (
