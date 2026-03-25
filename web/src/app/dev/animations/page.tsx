@@ -77,6 +77,16 @@ const PrizeRoomPixel = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 房間" height={500} /> },
 );
 
+const ClawMachinePixel = dynamic(
+  () => import("@/games/pixel/ClawMachine_Pixel").then((m) => ({ default: m.ClawMachinePixel })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 夾娃娃機" /> },
+);
+
+const GachaMachinePixel = dynamic(
+  () => import("@/games/pixel/GachaMachine_Pixel").then((m) => ({ default: m.GachaMachinePixel })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 扭蛋機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -849,22 +859,22 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                           {activeMiniGame === "claw" && (
-                            <div className="w-full flex items-center justify-center bg-gray-950 text-gray-500" style={{ height: 320 }}>
-                              <div className="text-center space-y-2">
-                                <div className="text-4xl">🚧</div>
-                                <p className="text-sm font-mono">開發中</p>
-                                <p className="text-xs text-gray-600">Pixel 夾娃娃機 Coming Soon</p>
-                              </div>
-                            </div>
+                            <ClawMachinePixel
+                              key={`pixel-claw-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
+                            />
                           )}
                           {activeMiniGame === "gacha" && (
-                            <div className="w-full flex items-center justify-center bg-gray-950 text-gray-500" style={{ height: 320 }}>
-                              <div className="text-center space-y-2">
-                                <div className="text-4xl">🚧</div>
-                                <p className="text-sm font-mono">開發中</p>
-                                <p className="text-xs text-gray-600">Pixel 扭蛋機 Coming Soon</p>
-                              </div>
-                            </div>
+                            <GachaMachinePixel
+                              key={`pixel-gacha-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as GachaGameState)}
+                            />
                           )}
                         </>
                       ) : (
