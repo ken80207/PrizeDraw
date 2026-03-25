@@ -366,8 +366,8 @@ function drawRoom(ctx: CanvasRenderingContext2D, t: number) {
   // Three grade display cases positioned along the right back wall
   const displayData = [
     { iso: { isoX: 2, isoY: 1 }, grade: "A賞", color: "#f59e0b", glow: "#fbbf24", label: "A賞" },
-    { iso: { isoX: 6, isoY: 1 }, grade: "B賞", color: "#38bdf8", glow: "#0ea5e9", label: "B賞" },
-    { iso: { isoX: 10, isoY: 1 }, grade: "C賞", color: "#34d399", glow: "#10b981", label: "C賞" },
+    { iso: { isoX: 6, isoY: 1 }, grade: "B賞", color: "#3b82f6", glow: "#3b82f6", label: "B賞" },
+    { iso: { isoX: 10, isoY: 1 }, grade: "C賞", color: "#10b981", glow: "#10b981", label: "C賞" },
   ];
 
   for (const disp of displayData) {
@@ -1838,7 +1838,7 @@ export function IsometricRoom({
       setTimeout(() => {
         const grade = GRADES[Math.floor(Math.random() * GRADES.length)] ?? "D賞";
         const gradeColors: Record<string, string> = {
-          "A賞": "#fbbf24", "B賞": "#38bdf8", "C賞": "#34d399", "D賞": "#a78bfa",
+          "A賞": "#f59e0b", "B賞": "#3b82f6", "C賞": "#10b981", "D賞": "#a855f7",
         };
         npc.state = "CELEBRATING";
         npc.bubble = {

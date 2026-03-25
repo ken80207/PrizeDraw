@@ -73,7 +73,7 @@ const BODY_SCREWS = [
 // Grade colors for capsules (with 3D shading data)
 const GRADE_CAPSULE: Record<string, { topLight: string; topDark: string; bottomLight: string; bottomDark: string; glow: string }> = {
   "A賞": { topLight: "#fde68a", topDark: "#d97706", bottomLight: "#92400e", bottomDark: "#451a03", glow: "#f59e0b" },
-  "B賞": { topLight: "#bae6fd", topDark: "#0369a1", bottomLight: "#1e40af", bottomDark: "#1e3a5f", glow: "#0ea5e9" },
+  "B賞": { topLight: "#bae6fd", topDark: "#0369a1", bottomLight: "#1e40af", bottomDark: "#1e3a5f", glow: "#3b82f6" },
   "C賞": { topLight: "#a7f3d0", topDark: "#059669", bottomLight: "#065f46", bottomDark: "#022c22", glow: "#10b981" },
   "D賞": { topLight: "#ddd6fe", topDark: "#7c3aed", bottomLight: "#4c1d95", bottomDark: "#2e1065", glow: "#a855f7" },
 };

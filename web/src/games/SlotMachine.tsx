@@ -23,9 +23,9 @@ const GRADES = ["A賞", "B賞", "C賞", "D賞"];
 
 const GRADE_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
   "A賞": { bg: "#78350f", border: "#f59e0b", text: "#fde68a", glow: "#f59e0b" },
-  "B賞": { bg: "#1e3a5f", border: "#38bdf8", text: "#bae6fd", glow: "#38bdf8" },
-  "C賞": { bg: "#064e3b", border: "#34d399", text: "#a7f3d0", glow: "#34d399" },
-  "D賞": { bg: "#3b0764", border: "#a78bfa", text: "#ddd6fe", glow: "#a78bfa" },
+  "B賞": { bg: "#1e3a5f", border: "#3b82f6", text: "#bae6fd", glow: "#3b82f6" },
+  "C賞": { bg: "#064e3b", border: "#10b981", text: "#a7f3d0", glow: "#10b981" },
+  "D賞": { bg: "#3b0764", border: "#a855f7", text: "#ddd6fe", glow: "#a855f7" },
 };
 
 const REEL_SYMBOLS = ["A賞", "C賞", "B賞", "D賞", "A賞", "B賞", "C賞", "D賞"];

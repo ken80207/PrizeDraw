@@ -67,9 +67,9 @@ const GRADE_PLUSH: Record<string, {
   cheek: string; patch: string;
 }> = {
   "A賞": { body: "#dc2626", shadow: "#991b1b", highlight: "#fca5a5", ear: "#f87171", text: "#fff", glow: "#f87171", cheek: "#fda4af", patch: "#fbbf24" },
-  "B賞": { body: "#2563eb", shadow: "#1d4ed8", highlight: "#93c5fd", ear: "#60a5fa", text: "#fff", glow: "#60a5fa", cheek: "#fbcfe8", patch: "#a78bfa" },
-  "C賞": { body: "#16a34a", shadow: "#15803d", highlight: "#86efac", ear: "#4ade80", text: "#fff", glow: "#4ade80", cheek: "#fda4af", patch: "#fcd34d" },
-  "D賞": { body: "#7c3aed", shadow: "#6d28d9", highlight: "#c4b5fd", ear: "#a78bfa", text: "#fff", glow: "#a78bfa", cheek: "#fbcfe8", patch: "#f9a8d4" },
+  "B賞": { body: "#2563eb", shadow: "#1d4ed8", highlight: "#93c5fd", ear: "#60a5fa", text: "#fff", glow: "#3b82f6", cheek: "#fbcfe8", patch: "#a78bfa" },
+  "C賞": { body: "#16a34a", shadow: "#15803d", highlight: "#86efac", ear: "#4ade80", text: "#fff", glow: "#10b981", cheek: "#fda4af", patch: "#fcd34d" },
+  "D賞": { body: "#7c3aed", shadow: "#6d28d9", highlight: "#c4b5fd", ear: "#a78bfa", text: "#fff", glow: "#a855f7", cheek: "#fbcfe8", patch: "#f9a8d4" },
 };
 
 const PLUSH_R = 20;
