@@ -1665,6 +1665,45 @@ const NPC_REACTIONS = ["哇！", "好厲害！", "恭喜！", "A賞！！", "羨
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Grade helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function gradeColor(grade: string): string {
+  const map: Record<string, string> = {
+    "A賞": "#f59e0b",
+    "B賞": "#3b82f6",
+    "C賞": "#10b981",
+    "D賞": "#a855f7",
+  };
+  return map[grade] ?? "#6366f1";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stable confetti data (generated once per result to avoid per-render Math.random)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ConfettiPiece {
+  left: string;
+  delay: string;
+  color: string;
+  rotate: string;
+}
+
+function makeConfetti(count: number): ConfettiPiece[] {
+  const palette = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#a855f7", "#ec4899"];
+  const pieces: ConfettiPiece[] = [];
+  for (let i = 0; i < count; i++) {
+    pieces.push({
+      left: `${(i * 3.7 + 5) % 100}%`,
+      delay: `${((i * 0.073) % 1.5).toFixed(2)}s`,
+      color: palette[i % palette.length] ?? "#f59e0b",
+      rotate: `${(i * 37) % 360}deg`,
+    });
+  }
+  return pieces;
+}
+
 export function IsometricRoom({
   npcCount = 4,
   onStateChange,
@@ -1685,10 +1724,25 @@ export function IsometricRoom({
   // Counter button position in canvas-local pixels (updated each frame)
   const [counterBtnPos, setCounterBtnPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Keep phaseRef in sync so the RAF loop can read it without stale closure
+  // ── Transition states for smooth animated phase changes ──
+  // "visible" = fully shown; "entering" = animating in; "leaving" = animating out
+  const [selectorVisible, setSelectorVisible] = useState(false);
+  const [gameVisible, setGameVisible] = useState(false);
+  const [resultVisible, setResultVisible] = useState(false);
+  // Stable confetti data for the current result (avoids per-render Math.random)
+  const confettiRef = useRef<ConfettiPiece[]>(makeConfetti(30));
+
+  // Keep phaseRef in sync so the RAF loop can read it without stale closure.
+  // Also drives the CSS transition visibility flags so overlays animate in/out.
   const setPhaseSync = useCallback((p: RoomPhase) => {
     phaseRef.current = p;
     setPhase(p);
+    // Selector fades in/out
+    setSelectorVisible(p === "SELECTING_GAME");
+    // Game modal fades in/out
+    setGameVisible(p === "PLAYING");
+    // Result overlay fades in/out
+    setResultVisible(p === "RESULT");
   }, []);
 
   const playerRef = useRef<Character>({
@@ -1841,6 +1895,8 @@ export function IsometricRoom({
   const handleGameResult = useCallback((grade: string) => {
     const prize = resultPrizeName ?? `${grade} 獎品`;
     setLastResult({ grade, prizeName: prize });
+    // Regenerate stable confetti for this result
+    confettiRef.current = makeConfetti(30);
     setPhaseSync("RESULT");
 
     // Player state → celebrating
@@ -2206,176 +2262,333 @@ export function IsometricRoom({
   const effectiveResultGrade = resultGrade ?? "D賞";
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Canvas container — must be relative so HTML overlays position correctly */}
-      <div
-        className="relative rounded-2xl"
-        style={{ width: "100%", maxWidth: `${CANVAS_W}px` }}
-      >
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_W}
-          height={CANVAS_H}
-          className="rounded-2xl border border-purple-800/60 shadow-2xl block cursor-pointer w-full h-auto"
-          style={{ background: "#0a0f1a" }}
-          onClick={phase === "EXPLORING" || phase === "AT_COUNTER" ? handleCanvasClick : undefined}
-        />
+    <>
+      {/* ── Custom keyframe animations ── */}
+      <style>{`
+        @keyframes iso-scaleIn {
+          from { opacity: 0; transform: scale(0.5); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes iso-slideUp {
+          from { opacity: 0; transform: translateY(40px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes iso-fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes iso-confettiFall {
+          0%   { opacity: 1; transform: translateY(-20vh) rotate(0deg); }
+          100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+        }
+        @keyframes iso-pulseRing {
+          0%   { transform: scale(1);   opacity: 0.35; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        @keyframes iso-overlayIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes iso-overlayOut {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
+        .iso-selector-enter { animation: iso-overlayIn 300ms ease-out forwards; }
+        .iso-selector-leave { animation: iso-overlayOut 250ms ease-in forwards; }
+        .iso-game-enter    { animation: iso-overlayIn 300ms ease-out forwards; }
+        .iso-game-leave    { animation: iso-overlayOut 250ms ease-in forwards; }
+        .iso-result-enter  { animation: iso-overlayIn 400ms ease-out forwards; }
+        .iso-result-leave  { animation: iso-overlayOut 400ms ease-in forwards; }
+        .iso-card-0 { animation: iso-slideUp 350ms ease-out 0ms   both; }
+        .iso-card-1 { animation: iso-slideUp 350ms ease-out 100ms both; }
+        .iso-card-2 { animation: iso-slideUp 350ms ease-out 200ms both; }
+      `}</style>
 
-        {/* Draw button — shows when near counter */}
-        {phase === "AT_COUNTER" && counterBtnStyle && (
-          <button
-            className="absolute z-10 animate-bounce px-4 py-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold text-sm shadow-lg shadow-orange-500/40 border-2 border-yellow-300 whitespace-nowrap pointer-events-auto"
-            style={counterBtnStyle}
-            onClick={() => setPhaseSync("SELECTING_GAME")}
-          >
-            🎰 抽獎!
-          </button>
-        )}
-
-        {/* Game selector overlay */}
-        {phase === "SELECTING_GAME" && (
-          <div
-            className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-2xl"
-            onClick={(e) => {
-              // Clicking the dim backdrop cancels selection
-              if (e.target === e.currentTarget) setPhaseSync("AT_COUNTER");
-            }}
-          >
-            <div className="bg-gray-900 border border-purple-700/60 rounded-2xl p-6 flex flex-col items-center gap-4 shadow-2xl mx-4">
-              <p className="text-white font-bold text-base">選擇抽獎方式</p>
-              <div className="flex gap-3">
-                {(
-                  [
-                    { key: "slot" as MiniGameKey, icon: "🎰", name: "拉霸機" },
-                    { key: "claw" as MiniGameKey, icon: "🪝", name: "夾娃娃" },
-                    { key: "gacha" as MiniGameKey, icon: "🥚", name: "扭蛋機" },
-                  ] as const
-                ).map((g) => (
-                  <button
-                    key={g.key}
-                    onClick={() => startGame(g.key)}
-                    className="flex flex-col items-center gap-2 px-5 py-4 rounded-xl bg-gray-800 hover:bg-purple-900/70 active:scale-95 border border-purple-700/40 hover:border-purple-400 transition-all text-white"
-                  >
-                    <span className="text-4xl">{g.icon}</span>
-                    <span className="text-sm font-semibold">{g.name}</span>
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setPhaseSync("AT_COUNTER")}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mini-game modal */}
-        {phase === "PLAYING" && activeGame && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 rounded-2xl pointer-events-auto">
-            <div className="w-[340px] max-h-[480px] overflow-hidden rounded-2xl shadow-2xl">
-              {activeGame === "slot" && (
-                <SlotMachine
-                  resultGrade={effectiveResultGrade}
-                  prizeName={resultPrizeName}
-                  onResult={handleGameResult}
-                />
-              )}
-              {activeGame === "claw" && (
-                <ClawMachine
-                  resultGrade={effectiveResultGrade}
-                  prizeName={resultPrizeName}
-                  onResult={handleGameResult}
-                />
-              )}
-              {activeGame === "gacha" && (
-                <GachaMachine
-                  resultGrade={effectiveResultGrade}
-                  prizeName={resultPrizeName}
-                  onResult={handleGameResult}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Result celebration overlay */}
-        {phase === "RESULT" && lastResult && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none rounded-2xl">
-            <div className="text-center animate-bounce">
-              <div className="text-6xl mb-2">🎊</div>
-              <div className="text-2xl font-bold text-white drop-shadow-lg">{lastResult.grade}</div>
-              <div className="text-lg text-yellow-300 drop-shadow">{lastResult.prizeName}</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Controls */}
-      <div className="w-full max-w-[640px] grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendChat()}
-            placeholder="輸入訊息..."
-            maxLength={20}
-            className="flex-1 bg-gray-900/80 border border-purple-800/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
-          />
-          <button
-            onClick={sendChat}
-            disabled={!chatInput.trim()}
-            className="px-3 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
-          >
-            發送
-          </button>
-        </div>
-
-        <button
-          onClick={simulateDraw}
-          disabled={!!activeDrawerRef.current}
-          className="px-4 py-2 rounded-lg bg-pink-700 hover:bg-pink-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
+      <div className="flex flex-col items-center gap-4">
+        {/* Canvas container — must be relative so HTML overlays position correctly */}
+        <div
+          className="relative rounded-2xl"
+          style={{ width: "100%", maxWidth: `${CANVAS_W}px` }}
         >
-          觸發 NPC 抽獎
-        </button>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_W}
+            height={CANVAS_H}
+            className="rounded-2xl border border-purple-800/60 shadow-2xl block cursor-pointer w-full h-auto"
+            style={{ background: "#0a0f1a" }}
+            onClick={phase === "EXPLORING" || phase === "AT_COUNTER" ? handleCanvasClick : undefined}
+          />
 
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <span className="text-xs text-gray-500 flex items-center">添加獎品氣泡:</span>
-          {["A賞", "B賞", "C賞", "D賞"].map((g) => (
-            <button
-              key={g}
-              onClick={() => addPrizeBubble(g)}
-              className="px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 active:scale-95 text-white text-xs font-semibold transition-all border border-gray-700"
+          {/* ── Draw button — shows when near counter, glows and pulses ── */}
+          {phase === "AT_COUNTER" && counterBtnStyle && (
+            <div className="absolute z-10" style={counterBtnStyle}>
+              <button
+                onClick={() => setPhaseSync("SELECTING_GAME")}
+                className="relative px-6 py-3 rounded-2xl font-black text-lg text-white
+                  bg-gradient-to-r from-amber-500 to-orange-500
+                  transition-shadow duration-200
+                  animate-bounce
+                  whitespace-nowrap"
+                style={{
+                  boxShadow: "0 0 20px rgba(245,158,11,0.55), 0 4px 12px rgba(0,0,0,0.35)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 0 32px rgba(245,158,11,0.75), 0 4px 16px rgba(0,0,0,0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 0 20px rgba(245,158,11,0.55), 0 4px 12px rgba(0,0,0,0.35)";
+                }}
+              >
+                🎰 抽獎！
+                {/* Pulsing ring */}
+                <span
+                  className="absolute inset-0 rounded-2xl border-2 border-amber-400 pointer-events-none"
+                  style={{ animation: "iso-pulseRing 1.4s ease-out infinite" }}
+                />
+              </button>
+              {/* Arrow pointing down */}
+              <div className="text-amber-400 text-center mt-1 animate-bounce text-xl select-none">▼</div>
+            </div>
+          )}
+
+          {/* ── Game selector overlay ── */}
+          {(phase === "SELECTING_GAME" || (!selectorVisible && phase === "AT_COUNTER" && false)) && (
+            <div
+              className={`absolute inset-0 z-10 flex items-center justify-center rounded-2xl ${selectorVisible ? "iso-selector-enter" : "iso-selector-leave"}`}
+              style={{ backgroundColor: "rgba(0,0,0,0.58)" }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setPhaseSync("AT_COUNTER");
+              }}
             >
-              {g}
-            </button>
-          ))}
-        </div>
-      </div>
+              <div
+                className="flex flex-col items-center gap-5 mx-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Title */}
+                <p
+                  className="text-white font-black text-xl tracking-wide"
+                  style={{ textShadow: "0 0 20px rgba(245,158,11,0.7), 0 0 40px rgba(245,158,11,0.3)" }}
+                >
+                  ✨ 選擇抽獎方式
+                </p>
 
-      {/* Info panel */}
-      <div className="w-full max-w-[640px] grid grid-cols-3 gap-2">
-        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
-          <p className="text-xs text-gray-600 mb-0.5">你的位置</p>
-          <p className="text-xs font-mono font-semibold text-gray-300">
-            ({statusInfo.yourPos.isoX}, {statusInfo.yourPos.isoY})
-          </p>
+                {/* Premium card grid */}
+                <div className="grid grid-cols-3 gap-4 max-w-md">
+                  {(
+                    [
+                      { key: "slot" as MiniGameKey, icon: "🎰", name: "拉霸機", hint: "拉桿試手氣！" },
+                      { key: "claw" as MiniGameKey, icon: "🪝", name: "夾娃娃", hint: "精準操控！" },
+                      { key: "gacha" as MiniGameKey, icon: "🥚", name: "扭蛋機", hint: "轉出驚喜！" },
+                    ] as const
+                  ).map((g, idx) => (
+                    <button
+                      key={g.key}
+                      onClick={() => startGame(g.key)}
+                      className={`iso-card-${idx} group relative overflow-hidden rounded-2xl border-2 border-white/20 p-4 text-left transition-transform duration-200 hover:scale-105 active:scale-95`}
+                      style={{
+                        background: "linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+                      }}
+                      onMouseEnter={(e) => {
+                        const btn = e.currentTarget;
+                        btn.style.borderColor = "rgba(245,158,11,0.6)";
+                        btn.style.boxShadow = "0 0 30px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        const btn = e.currentTarget;
+                        btn.style.borderColor = "rgba(255,255,255,0.2)";
+                        btn.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.1)";
+                      }}
+                    >
+                      {/* Icon */}
+                      <div className="text-5xl mb-3 group-hover:animate-bounce">{g.icon}</div>
+                      {/* Name */}
+                      <div className="text-white font-bold text-sm leading-tight">{g.name}</div>
+                      {/* Hint */}
+                      <div className="text-white/50 text-xs mt-1">{g.hint}</div>
+                      {/* Hover glow overlay */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                        style={{ background: "linear-gradient(to top, rgba(245,158,11,0.10), transparent)" }}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Cancel */}
+                <button
+                  onClick={() => setPhaseSync("AT_COUNTER")}
+                  className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/80 transition-colors duration-150 px-4 py-1.5 rounded-full border border-white/10 hover:border-white/25"
+                >
+                  <span className="text-base leading-none">✕</span> 取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Mini-game modal ── */}
+          {(phase === "PLAYING") && activeGame && (
+            <div
+              className={`absolute inset-0 flex items-center justify-center z-20 rounded-2xl pointer-events-auto ${gameVisible ? "iso-game-enter" : "iso-game-leave"}`}
+              style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", backgroundColor: "rgba(0,0,0,0.40)" }}
+            >
+              {/* Back button */}
+              <button
+                onClick={() => setPhaseSync("SELECTING_GAME")}
+                className="absolute top-3 left-3 z-30 flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors px-3 py-1.5 rounded-full border border-white/15 hover:border-white/35 bg-black/30 hover:bg-black/50"
+              >
+                ← 返回
+              </button>
+
+              <div className="w-[340px] max-h-[480px] overflow-hidden rounded-2xl shadow-2xl">
+                {activeGame === "slot" && (
+                  <SlotMachine
+                    resultGrade={effectiveResultGrade}
+                    prizeName={resultPrizeName}
+                    onResult={handleGameResult}
+                  />
+                )}
+                {activeGame === "claw" && (
+                  <ClawMachine
+                    resultGrade={effectiveResultGrade}
+                    prizeName={resultPrizeName}
+                    onResult={handleGameResult}
+                  />
+                )}
+                {activeGame === "gacha" && (
+                  <GachaMachine
+                    resultGrade={effectiveResultGrade}
+                    prizeName={resultPrizeName}
+                    onResult={handleGameResult}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Result celebration overlay ── */}
+          {phase === "RESULT" && lastResult && (
+            <div
+              className={`absolute inset-0 z-30 flex items-center justify-center rounded-2xl pointer-events-none ${resultVisible ? "iso-result-enter" : "iso-result-leave"}`}
+            >
+              {/* Radial golden burst */}
+              <div
+                className="absolute inset-0 animate-pulse rounded-2xl"
+                style={{
+                  background: lastResult.grade === "A賞"
+                    ? "radial-gradient(circle, rgba(245,158,11,0.40) 0%, transparent 70%)"
+                    : "radial-gradient(circle, rgba(168,85,247,0.22) 0%, transparent 70%)",
+                }}
+              />
+
+              {/* Prize card — springs in */}
+              <div
+                className="relative bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 text-center"
+                style={{ animation: "iso-scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
+              >
+                <div className="text-6xl mb-4">🎊</div>
+                {/* Grade badge */}
+                <div
+                  className="inline-block px-4 py-1.5 rounded-full text-white font-black text-xl mb-3"
+                  style={{ background: gradeColor(lastResult.grade) }}
+                >
+                  {lastResult.grade}
+                </div>
+                <div className="text-gray-800 font-bold text-lg">{lastResult.prizeName}</div>
+                <div className="text-gray-400 text-sm mt-2">已存入賞品庫</div>
+              </div>
+
+              {/* Confetti — only for A賞 */}
+              {lastResult.grade === "A賞" && (
+                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                  {confettiRef.current.map((piece, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-2 h-3 rounded-sm"
+                      style={{
+                        left: piece.left,
+                        top: 0,
+                        background: piece.color,
+                        transform: `rotate(${piece.rotate})`,
+                        animation: `iso-confettiFall 2s ease-in ${piece.delay} forwards`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
-          <p className="text-xs text-gray-600 mb-0.5">在場 NPC</p>
-          <p className="text-xs font-mono font-semibold text-gray-300">
-            {npcsRef.current.length} 人
-          </p>
+
+        {/* Controls */}
+        <div className="w-full max-w-[640px] grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendChat()}
+              placeholder="輸入訊息..."
+              maxLength={20}
+              className="flex-1 bg-gray-900/80 border border-purple-800/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
+            />
+            <button
+              onClick={sendChat}
+              disabled={!chatInput.trim()}
+              className="px-3 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
+            >
+              發送
+            </button>
+          </div>
+
+          <button
+            onClick={simulateDraw}
+            disabled={!!activeDrawerRef.current}
+            className="px-4 py-2 rounded-lg bg-pink-700 hover:bg-pink-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
+          >
+            觸發 NPC 抽獎
+          </button>
+
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <span className="text-xs text-gray-500 flex items-center">添加獎品氣泡:</span>
+            {["A賞", "B賞", "C賞", "D賞"].map((g) => (
+              <button
+                key={g}
+                onClick={() => addPrizeBubble(g)}
+                className="px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 active:scale-95 text-white text-xs font-semibold transition-all border border-gray-700"
+              >
+                {g}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
-          <p className="text-xs text-gray-600 mb-0.5">目前抽獎者</p>
-          <p className="text-xs font-mono font-semibold text-pink-400">
-            {statusInfo.activeDrawer ?? "—"}
-          </p>
+
+        {/* Info panel */}
+        <div className="w-full max-w-[640px] grid grid-cols-3 gap-2">
+          <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
+            <p className="text-xs text-gray-600 mb-0.5">你的位置</p>
+            <p className="text-xs font-mono font-semibold text-gray-300">
+              ({statusInfo.yourPos.isoX}, {statusInfo.yourPos.isoY})
+            </p>
+          </div>
+          <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
+            <p className="text-xs text-gray-600 mb-0.5">在場 NPC</p>
+            <p className="text-xs font-mono font-semibold text-gray-300">
+              {npcsRef.current.length} 人
+            </p>
+          </div>
+          <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
+            <p className="text-xs text-gray-600 mb-0.5">目前抽獎者</p>
+            <p className="text-xs font-mono font-semibold text-pink-400">
+              {statusInfo.activeDrawer ?? "—"}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
