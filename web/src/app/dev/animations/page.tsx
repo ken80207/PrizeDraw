@@ -67,6 +67,16 @@ const GachaMachineCSS3D = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 扭蛋機" /> },
 );
 
+const SlotMachinePixel = dynamic(
+  () => import("@/games/pixel/SlotMachine_Pixel").then((m) => ({ default: m.SlotMachine_Pixel })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 拉霸機" /> },
+);
+
+const PrizeRoomPixel = dynamic(
+  () => import("@/games/pixel/PrizeRoom_Pixel").then((m) => ({ default: m.PrizeRoom_Pixel })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 房間" height={500} /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -85,7 +95,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
 type MiniGameId = "slot" | "claw" | "gacha";
-type StyleMode = "2d" | "css3d" | "webgl";
+type StyleMode = "2d" | "css3d" | "webgl" | "pixel";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase1", label: "動畫效果", icon: "🎬" },
@@ -711,11 +721,11 @@ export default function AnimationsShowcasePage() {
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D 或 React Three Fiber WebGL 三種渲染模式可切換比較。
+                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL 或 <span className="text-yellow-400 font-semibold">Pixel Art</span> 四種渲染模式可切換比較。
                 </p>
-                {/* Three-way style toggle */}
+                {/* Four-way style toggle */}
                 <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl"] as const).map((mode) => (
+                  {(["2d", "css3d", "webgl", "pixel"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
@@ -726,7 +736,7 @@ export default function AnimationsShowcasePage() {
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
                     >
-                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : "WebGL 3D"}
+                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL 3D" : "Pixel Art"}
                     </button>
                   ))}
                 </div>
@@ -826,6 +836,37 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                         </>
+                      ) : miniGameStyle === "pixel" ? (
+                        /* Pixel Art versions */
+                        <>
+                          {activeMiniGame === "slot" && (
+                            <SlotMachinePixel
+                              key={`pixel-slot-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "claw" && (
+                            <div className="w-full flex items-center justify-center bg-gray-950 text-gray-500" style={{ height: 320 }}>
+                              <div className="text-center space-y-2">
+                                <div className="text-4xl">🚧</div>
+                                <p className="text-sm font-mono">開發中</p>
+                                <p className="text-xs text-gray-600">Pixel 夾娃娃機 Coming Soon</p>
+                              </div>
+                            </div>
+                          )}
+                          {activeMiniGame === "gacha" && (
+                            <div className="w-full flex items-center justify-center bg-gray-950 text-gray-500" style={{ height: 320 }}>
+                              <div className="text-center space-y-2">
+                                <div className="text-4xl">🚧</div>
+                                <p className="text-sm font-mono">開發中</p>
+                                <p className="text-xs text-gray-600">Pixel 扭蛋機 Coming Soon</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         /* 2D Canvas versions */
                         <>
@@ -864,7 +905,7 @@ export default function AnimationsShowcasePage() {
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
                       {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
-                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : " (2D Canvas)"}
+                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : " (2D Canvas)"}
                     </span>
                   </div>
                 </div>
@@ -993,11 +1034,13 @@ export default function AnimationsShowcasePage() {
                     ? "React Three Fiber 真3D 空間，OrbitControls 自由旋轉視角，點擊地板移動角色。"
                     : roomStyle === "css3d"
                     ? "純 CSS 3D Transform 房間，無 WebGL，適合低階裝置。NPC 自動走動並定期抽獎。"
+                    : roomStyle === "pixel"
+                    ? "16-bit 像素風格俯視商店。Tile-based，點擊地板移動角色，NPC 自動徘徊。Canvas pixelated rendering。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* Three-way style toggle */}
+                {/* Four-way style toggle */}
                 <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl"] as const).map((mode) => (
+                  {(["2d", "css3d", "webgl", "pixel"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setRoomStyle(mode)}
@@ -1008,7 +1051,7 @@ export default function AnimationsShowcasePage() {
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
                     >
-                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : "WebGL 3D"}
+                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL 3D" : "Pixel Art"}
                     </button>
                   ))}
                 </div>
@@ -1038,6 +1081,12 @@ export default function AnimationsShowcasePage() {
                             activeDrawer: info.activeDrawer,
                           })}
                         />
+                      ) : roomStyle === "pixel" ? (
+                        <PrizeRoomPixel
+                          key={`pixel-room-${npcCount}`}
+                          npcCount={npcCount}
+                          resultGrade={miniGameResult ?? undefined}
+                        />
                       ) : (
                         <IsometricRoom
                           npcCount={npcCount}
@@ -1052,6 +1101,8 @@ export default function AnimationsShowcasePage() {
                         ? "真 3D 房間 — 拖曳旋轉視角，點擊地板移動"
                         : roomStyle === "css3d"
                         ? "CSS 3D 房間 — 純 CSS Transform，無 WebGL"
+                        : roomStyle === "pixel"
+                        ? "Pixel Art 商店 — 16-bit 俯視，點擊移動"
                         : "2.5D 等距房間"}
                     </span>
                   </div>
@@ -1110,6 +1161,13 @@ export default function AnimationsShowcasePage() {
                         highlight={room3DInfo.activeDrawer !== null}
                       />
                       <DebugCell label="模式" value="CSS 3D" highlight />
+                    </>
+                  ) : roomStyle === "pixel" ? (
+                    <>
+                      <DebugCell label="渲染" value="Pixel Art" highlight />
+                      <DebugCell label="解析度" value="320×240" />
+                      <DebugCell label="Tile 大小" value="16px" />
+                      <DebugCell label="模式" value="Top-Down" highlight />
                     </>
                   ) : (
                     <>
