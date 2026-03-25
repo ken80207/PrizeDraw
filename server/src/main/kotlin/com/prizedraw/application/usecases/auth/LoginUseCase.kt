@@ -50,6 +50,7 @@ public class LoginUseCase(
             accessToken = tokenPair.accessToken,
             refreshToken = tokenPair.refreshToken,
             expiresIn = ACCESS_TOKEN_EXPIRES_IN_SECONDS,
+            needsPhoneBinding = player.phoneNumber == null,
         )
     }
 

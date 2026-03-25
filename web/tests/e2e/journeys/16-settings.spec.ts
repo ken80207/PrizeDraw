@@ -135,7 +135,7 @@ test.describe.serial('設定旅程', () => {
 
     const hasNicknameInput = await nicknameInput.first().isVisible().catch(() => false);
     if (hasNicknameInput) {
-      await nicknameInput.first().triple_click ? (await nicknameInput.first().click({ clickCount: 3 })) : (await nicknameInput.first().selectText?.().catch(() => null));
+      await nicknameInput.first().click({ clickCount: 3 });
       await nicknameInput.first().fill(newNickname);
       await page.waitForTimeout(300);
 

@@ -7,9 +7,11 @@ import com.prizedraw.application.ports.input.player.IUpdateAnimationPreferenceUs
 import com.prizedraw.application.ports.input.player.IUpdatePlayerProfileUseCase
 import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
+import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.application.usecases.auth.PlayerNotFoundException
 import com.prizedraw.application.usecases.player.PrizeNotFoundException
+import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.contracts.dto.player.DrawPointTransactionDto
 import com.prizedraw.contracts.dto.player.UpdatePlayerRequest
 import com.prizedraw.contracts.dto.player.WalletDto
@@ -28,14 +30,18 @@ import io.ktor.server.routing.patch
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 import java.util.UUID
+import com.prizedraw.domain.valueobjects.PlayerId as DomainPlayerId
 
 /**
  * Registers player profile and wallet routes. All routes require JWT authentication.
  *
  * - GET   [PlayerEndpoints.ME]                      — Retrieve authenticated player's profile
  * - PATCH [PlayerEndpoints.ME]                      — Update nickname / avatarUrl / locale
+ * - GET   [PlayerEndpoints.ME_PRIZES]               — List the authenticated player's prizes
+ * - GET   [PlayerEndpoints.ME_PRIZE_DETAIL]         — Get a single prize instance with joined definition data
  * - GET   [PlayerEndpoints.ME_WALLET]               — Retrieve point balances and transaction history
  * - PATCH [PlayerEndpoints.ME_ANIMATION_PREFERENCE] — Update preferred draw animation mode
+ * - GET   [PlayerEndpoints.PUBLIC_PRIZES]           — List a player's HOLDING prizes visible to others
  */
 public fun Route.playerRoutes() {
     val getProfileUseCase: IGetPlayerProfileUseCase by inject()
@@ -45,6 +51,7 @@ public fun Route.playerRoutes() {
     val drawPointTransactionRepository: IDrawPointTransactionRepository by inject()
     val revenuePointTransactionRepository: IRevenuePointTransactionRepository by inject()
     val prizeInventoryUseCase: IGetPrizeInventoryUseCase by inject()
+    val prizeRepository: IPrizeRepository by inject()
 
     authenticate("player") {
         get(PlayerEndpoints.ME) {
@@ -59,7 +66,7 @@ public fun Route.playerRoutes() {
             handleListPrizes(prizeInventoryUseCase)
         }
 
-        get("${PlayerEndpoints.ME_PRIZES}/{prizeId}") {
+        get(PlayerEndpoints.ME_PRIZE_DETAIL) {
             handleGetPrize(prizeInventoryUseCase)
         }
 
@@ -69,6 +76,12 @@ public fun Route.playerRoutes() {
 
         patch(PlayerEndpoints.ME_ANIMATION_PREFERENCE) {
             handleUpdateAnimationPreference(updateAnimationPreferenceUseCase)
+        }
+    }
+
+    authenticate("player") {
+        get(PlayerEndpoints.PUBLIC_PRIZES) {
+            handleGetPublicPrizes(prizeRepository)
         }
     }
 }
@@ -197,6 +210,41 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleUpdateAnimationP
     } catch (e: PlayerNotFoundException) {
         call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
     }
+}
+
+private suspend fun io.ktor.server.routing.RoutingContext.handleGetPublicPrizes(
+    prizeRepository: IPrizeRepository,
+) {
+    val rawId =
+        call.parameters["playerId"] ?: run {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing playerId"))
+            return
+        }
+    val playerId =
+        runCatching { DomainPlayerId(UUID.fromString(rawId)) }.getOrElse {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid playerId"))
+            return
+        }
+    val instances = prizeRepository.findInstancesByOwner(ownerId = playerId, state = PrizeState.HOLDING)
+    val dtos =
+        instances
+            .filter { it.deletedAt == null }
+            .mapNotNull { instance ->
+                val definition =
+                    prizeRepository.findDefinitionById(instance.prizeDefinitionId)
+                        ?: return@mapNotNull null
+                com.prizedraw.contracts.dto.prize.PrizeInstanceDto(
+                    id = instance.id.value.toString(),
+                    prizeDefinitionId = instance.prizeDefinitionId.value.toString(),
+                    grade = definition.grade,
+                    name = definition.name,
+                    photoUrl = definition.photos.firstOrNull(),
+                    state = instance.state,
+                    acquisitionMethod = instance.acquisitionMethod.name,
+                    acquiredAt = instance.acquiredAt,
+                )
+            }
+    call.respond(HttpStatusCode.OK, dtos)
 }
 
 private const val WALLET_TX_PAGE_SIZE = 50

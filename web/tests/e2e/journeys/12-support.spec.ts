@@ -65,7 +65,7 @@ test.describe.serial('客服支援旅程', () => {
 
     const hasCategorySelect = await categorySelect.first().isVisible().catch(() => false);
     if (hasCategorySelect) {
-      await categorySelect.first().selectOption({ label: /付款|Payment|PAYMENT/i }).catch(async () => {
+      await categorySelect.first().selectOption({ label: '付款問題' }).catch(async () => {
         // Try clicking and selecting
         await categorySelect.first().click();
         await page.getByRole('option', { name: /付款|Payment/i }).first().click().catch(() => null);

@@ -33,6 +33,7 @@ import java.util.UUID
  * Registers shipping order routes for both players and admin.
  *
  * Player routes (require JWT `player` auth):
+ * - GET    [ShippingEndpoints.ORDERS]                  -- List the authenticated player's shipping orders.
  * - POST   [ShippingEndpoints.ORDERS]                  -- Create a new shipping order.
  * - DELETE [ShippingEndpoints.ORDER_BY_ID]             -- Cancel a PENDING_SHIPMENT order.
  * - POST   [ShippingEndpoints.CONFIRM_DELIVERY]        -- Player confirms delivery.
@@ -50,6 +51,9 @@ public fun Route.shippingRoutes() {
     val shippingRepository: IShippingRepository by inject()
 
     authenticate("player") {
+        get(ShippingEndpoints.ORDERS) {
+            handlePlayerListOrders(shippingRepository)
+        }
         post(ShippingEndpoints.ORDERS) {
             handleCreateOrder(createUseCase)
         }
@@ -72,6 +76,29 @@ public fun Route.shippingRoutes() {
             handleAdminFulfill(fulfillUseCase)
         }
     }
+}
+
+private suspend fun io.ktor.server.routing.RoutingContext.handlePlayerListOrders(
+    shippingRepository: IShippingRepository,
+) {
+    val principal = call.principal<PlayerPrincipal>()!!
+    val statusParam = call.request.queryParameters["status"]
+    val status =
+        statusParam?.let {
+            runCatching { ShippingOrderStatus.valueOf(it) }.getOrNull()
+        }
+    val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
+    val limit =
+        (call.request.queryParameters["limit"]?.toIntOrNull() ?: DEFAULT_PAGE_SIZE)
+            .coerceIn(1, MAX_PAGE_SIZE)
+    val orders =
+        shippingRepository.findByPlayer(
+            playerId = principal.playerId,
+            status = status,
+            offset = offset,
+            limit = limit,
+        )
+    call.respond(HttpStatusCode.OK, orders.map { it.toDto() })
 }
 
 private suspend fun io.ktor.server.routing.RoutingContext.handleCreateOrder(

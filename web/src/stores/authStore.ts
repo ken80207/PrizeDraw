@@ -1,17 +1,12 @@
 /**
- * Authentication state store.
+ * Authentication state store backed by Zustand.
  *
- * Implements the auth store contract described in T100. Currently backed by a
- * module-level singleton using React's `use client` pattern. When `zustand` is
- * added to package.json, replace the `createStore` function body with:
- *
- *   import { create } from "zustand";
- *   export const useAuthStore = create<AuthStore>((set, get) => ({ ... }));
- *
- * The public interface (`player`, `isAuthenticated`, `login`, `logout`, `refreshToken`)
- * is identical to the Zustand slice contract so migration is non-breaking.
+ * Exposes the authenticated player profile, in-memory token pair, and session
+ * lifecycle actions. The public interface is identical to the previous singleton
+ * contract so all call sites are non-breaking.
  */
 
+import { create } from "zustand";
 import type { PlayerDto } from "./authStore.types";
 export type { PlayerDto };
 
@@ -53,50 +48,22 @@ interface TokenResponse {
   expiresIn: number;
 }
 
-// ---------------------------------------------------------------------------
-// Module-level singleton store (no external dependencies required).
-// ---------------------------------------------------------------------------
-
-let _state: Omit<AuthStore, "setSession" | "clearSession" | "refreshToken_"> = {
+export const useAuthStore = create<AuthStore>((set, get) => ({
   player: null,
   isAuthenticated: false,
   accessToken: null,
   refreshToken: null,
-};
-
-type Listener = () => void;
-const listeners = new Set<Listener>();
-
-function notify() {
-  listeners.forEach((fn) => fn());
-}
-
-export const authStore: AuthStore = {
-  get player() {
-    return _state.player;
-  },
-  get isAuthenticated() {
-    return _state.isAuthenticated;
-  },
-  get accessToken() {
-    return _state.accessToken;
-  },
-  get refreshToken() {
-    return _state.refreshToken;
-  },
 
   setSession(player, accessToken, refreshToken) {
-    _state = { player, isAuthenticated: true, accessToken, refreshToken };
-    notify();
+    set({ player, isAuthenticated: true, accessToken, refreshToken });
   },
 
   clearSession() {
-    _state = { player: null, isAuthenticated: false, accessToken: null, refreshToken: null };
-    notify();
+    set({ player: null, isAuthenticated: false, accessToken: null, refreshToken: null });
   },
 
   async refreshToken_(): Promise<boolean> {
-    const currentRefreshToken = _state.refreshToken;
+    const currentRefreshToken = get().refreshToken;
     if (!currentRefreshToken) return false;
 
     try {
@@ -107,23 +74,45 @@ export const authStore: AuthStore = {
       });
 
       if (!res.ok) {
-        authStore.clearSession();
+        get().clearSession();
         return false;
       }
 
       const data: TokenResponse = await res.json();
-      _state = {
-        ..._state,
+      set((state) => ({
+        ...state,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
-      };
-      notify();
+      }));
       return true;
     } catch {
-      authStore.clearSession();
+      get().clearSession();
       return false;
     }
   },
+}));
+
+/**
+ * Legacy singleton-style accessor for code that has not migrated to the hook.
+ * Prefer `useAuthStore` in React components.
+ */
+export const authStore = {
+  get player() {
+    return useAuthStore.getState().player;
+  },
+  get isAuthenticated() {
+    return useAuthStore.getState().isAuthenticated;
+  },
+  get accessToken() {
+    return useAuthStore.getState().accessToken;
+  },
+  get refreshToken() {
+    return useAuthStore.getState().refreshToken;
+  },
+  setSession: (player: PlayerDto, accessToken: string, refreshToken: string) =>
+    useAuthStore.getState().setSession(player, accessToken, refreshToken),
+  clearSession: () => useAuthStore.getState().clearSession(),
+  refreshToken_: () => useAuthStore.getState().refreshToken_(),
 };
 
 /**
@@ -132,7 +121,6 @@ export const authStore: AuthStore = {
  * @param listener Callback invoked whenever state changes.
  * @returns Unsubscribe function.
  */
-export function subscribeToAuthStore(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+export function subscribeToAuthStore(listener: () => void): () => void {
+  return useAuthStore.subscribe(listener);
 }

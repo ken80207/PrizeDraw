@@ -53,13 +53,8 @@ function NewExchangeContent() {
     if (!recipientId.trim()) return;
     setIsLoadingPrizes(true);
     setError(null);
-    // TODO: No public player prizes endpoint defined in api-contracts.
-    // The exchange offer requires knowing recipient's prize IDs which the recipient
-    // should communicate directly (e.g. via share link). For now, the user must
-    // enter the prize instance IDs manually or this feature requires a new
-    // GET /api/v1/players/{playerId}/prizes endpoint to be added to contracts.
     apiClient
-      .get<PrizeInstanceDto[]>(`/api/v1/players/${recipientId}/prizes?state=HOLDING`)
+      .get<PrizeInstanceDto[]>(`/api/v1/players/${recipientId}/prizes/public`)
       .then(setRecipientPrizes)
       .catch((err) =>
         setError(err instanceof Error ? err.message : "無法載入對方賞品，請確認玩家 ID 是否正確"),

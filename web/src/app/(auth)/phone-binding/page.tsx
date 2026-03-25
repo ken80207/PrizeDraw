@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
 const OTP_CODE_LENGTH = 6;
@@ -19,6 +20,7 @@ const OTP_CODE_LENGTH = 6;
  */
 export default function PhoneBindingPage() {
   const router = useRouter();
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -89,9 +91,6 @@ export default function PhoneBindingPage() {
     setError(null);
 
     try {
-      // Read access token from cookie / store
-      const accessToken = getStoredAccessToken();
-
       const res = await fetch("/api/v1/auth/phone/bind", {
         method: "POST",
         headers: {
@@ -217,13 +216,3 @@ function Spinner() {
   );
 }
 
-/**
- * Returns the stored access token from a cookie or localStorage.
- *
- * TODO: replace with reading from httpOnly cookie via middleware or from authStore.
- */
-function getStoredAccessToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}

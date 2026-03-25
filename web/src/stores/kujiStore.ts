@@ -4,13 +4,9 @@
  * Tracks the player's queue entry, active session expiry, and the current
  * ticket board snapshot. This store is updated by the WebSocket hook
  * (`useKujiBoard`) and the draw API responses.
- *
- * When Zustand is not yet available, this file provides a module-level
- * singleton with the same interface so callers are migration-safe.
- *
- * TODO(T113): Replace the singleton implementation with `create` from
- *   `zustand` once added to package.json.
  */
+
+import { create } from "zustand";
 
 export interface QueueEntryState {
   id: string;
@@ -75,42 +71,60 @@ export interface KujiStore {
   reset: () => void;
 }
 
-function createKujiStore(): KujiStore {
-  let queueEntry: QueueEntryState | null = null;
-  let sessionExpiry: string | null = null;
-  const currentBoard = new Map<number, TicketCellState>();
-  let lastDrawResult: DrawnTicketState[] | null = null;
+export const useKujiStore = create<KujiStore>((set) => ({
+  queueEntry: null,
+  sessionExpiry: null,
+  currentBoard: new Map(),
+  lastDrawResult: null,
 
-  return {
-    get queueEntry() { return queueEntry; },
-    get sessionExpiry() { return sessionExpiry; },
-    get currentBoard() { return currentBoard; },
-    get lastDrawResult() { return lastDrawResult; },
+  setQueueEntry(entry) {
+    set({ queueEntry: entry });
+  },
 
-    setQueueEntry(entry) { queueEntry = entry; },
-    setSessionExpiry(expiry) { sessionExpiry = expiry; },
+  setSessionExpiry(expiry) {
+    set({ sessionExpiry: expiry });
+  },
 
-    applyBoardSnapshot(tickets) {
-      currentBoard.clear();
-      for (const t of tickets) {
-        currentBoard.set(t.position, t);
-      }
-    },
+  applyBoardSnapshot(tickets) {
+    const board = new Map<number, TicketCellState>();
+    for (const t of tickets) {
+      board.set(t.position, t);
+    }
+    set({ currentBoard: board });
+  },
 
-    markTicketDrawn(ticket) {
-      currentBoard.set(ticket.position, { ...ticket, isDrawn: true });
-    },
+  markTicketDrawn(ticket) {
+    set((state) => {
+      const board = new Map(state.currentBoard);
+      board.set(ticket.position, { ...ticket, isDrawn: true });
+      return { currentBoard: board };
+    });
+  },
 
-    setLastDrawResult(result) { lastDrawResult = result; },
+  setLastDrawResult(result) {
+    set({ lastDrawResult: result });
+  },
 
-    reset() {
-      queueEntry = null;
-      sessionExpiry = null;
-      currentBoard.clear();
-      lastDrawResult = null;
-    },
-  };
-}
+  reset() {
+    set({
+      queueEntry: null,
+      sessionExpiry: null,
+      currentBoard: new Map(),
+      lastDrawResult: null,
+    });
+  },
+}));
 
-/** Module-level singleton. Replace with Zustand `create` when available. */
-export const kujiStore = createKujiStore();
+/** Legacy singleton accessor. Prefer `useKujiStore` in React components. */
+export const kujiStore = {
+  get queueEntry() { return useKujiStore.getState().queueEntry; },
+  get sessionExpiry() { return useKujiStore.getState().sessionExpiry; },
+  get currentBoard() { return useKujiStore.getState().currentBoard; },
+  get lastDrawResult() { return useKujiStore.getState().lastDrawResult; },
+  setQueueEntry: (entry: QueueEntryState | null) => useKujiStore.getState().setQueueEntry(entry),
+  setSessionExpiry: (expiry: string | null) => useKujiStore.getState().setSessionExpiry(expiry),
+  applyBoardSnapshot: (tickets: TicketCellState[]) => useKujiStore.getState().applyBoardSnapshot(tickets),
+  markTicketDrawn: (ticket: TicketCellState) => useKujiStore.getState().markTicketDrawn(ticket),
+  setLastDrawResult: (result: DrawnTicketState[] | null) => useKujiStore.getState().setLastDrawResult(result),
+  reset: () => useKujiStore.getState().reset(),
+};

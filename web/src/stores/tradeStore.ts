@@ -4,13 +4,9 @@
  * Tracks the current listing page, active filters, and the result of the last
  * purchase for optimistic UI updates. This store is updated by the marketplace
  * page component and the buy-flow hooks.
- *
- * When Zustand is not yet available, this file provides a module-level
- * singleton with the same interface so callers are migration-safe.
- *
- * TODO(T137): Replace the singleton implementation with `create` from
- *   `zustand` once added to package.json.
  */
+
+import { create } from "zustand";
 
 export interface TradeListingState {
   id: string;
@@ -77,80 +73,88 @@ export interface TradeStore {
   reset: () => void;
 }
 
-function createTradeStore(): TradeStore {
-  let listings: TradeListingState[] = [];
-  let gradeFilter = "";
-  let minPrice: number | null = null;
-  let maxPrice: number | null = null;
-  let currentPage = 0;
-  let hasMore = true;
-  let isLoading = false;
-  let error: string | null = null;
+export const useTradeStore = create<TradeStore>((set) => ({
+  listings: [],
+  gradeFilter: "",
+  minPrice: null,
+  maxPrice: null,
+  currentPage: 0,
+  hasMore: true,
+  isLoading: false,
+  error: null,
 
-  return {
-    get listings() { return listings; },
-    get gradeFilter() { return gradeFilter; },
-    get minPrice() { return minPrice; },
-    get maxPrice() { return maxPrice; },
-    get currentPage() { return currentPage; },
-    get hasMore() { return hasMore; },
-    get isLoading() { return isLoading; },
-    get error() { return error; },
+  setListings(newListings) {
+    set({ listings: newListings, hasMore: newListings.length > 0 });
+  },
 
-    setListings(newListings) {
-      listings = newListings;
-      hasMore = newListings.length > 0;
-    },
+  appendListings(newListings) {
+    set((state) => ({
+      listings: [...state.listings, ...newListings],
+      hasMore: newListings.length > 0,
+    }));
+  },
 
-    appendListings(newListings) {
-      listings = [...listings, ...newListings];
-      hasMore = newListings.length > 0;
-    },
+  setGradeFilter(grade) {
+    set({ gradeFilter: grade, currentPage: 0, listings: [] });
+  },
 
-    setGradeFilter(grade) {
-      gradeFilter = grade;
-      currentPage = 0;
-      listings = [];
-    },
+  setPriceRange(min, max) {
+    set({ minPrice: min, maxPrice: max, currentPage: 0, listings: [] });
+  },
 
-    setPriceRange(min, max) {
-      minPrice = min;
-      maxPrice = max;
-      currentPage = 0;
-      listings = [];
-    },
+  nextPage() {
+    set((state) => ({ currentPage: state.currentPage + 1 }));
+  },
 
-    nextPage() {
-      currentPage += 1;
-    },
+  markPurchased(listingId) {
+    set((state) => ({
+      listings: state.listings.map((l) =>
+        l.id === listingId ? { ...l, status: "COMPLETED" as const } : l,
+      ),
+    }));
+  },
 
-    markPurchased(listingId) {
-      listings = listings.map((l) =>
-        l.id === listingId ? { ...l, status: "COMPLETED" } : l,
-      );
-    },
+  removeListing(listingId) {
+    set((state) => ({
+      listings: state.listings.filter((l) => l.id !== listingId),
+    }));
+  },
 
-    removeListing(listingId) {
-      listings = listings.filter((l) => l.id !== listingId);
-    },
+  setLoadingState(isLoading, error) {
+    set({ isLoading, error });
+  },
 
-    setLoadingState(loading, err) {
-      isLoading = loading;
-      error = err;
-    },
+  reset() {
+    set({
+      listings: [],
+      gradeFilter: "",
+      minPrice: null,
+      maxPrice: null,
+      currentPage: 0,
+      hasMore: true,
+      isLoading: false,
+      error: null,
+    });
+  },
+}));
 
-    reset() {
-      listings = [];
-      gradeFilter = "";
-      minPrice = null;
-      maxPrice = null;
-      currentPage = 0;
-      hasMore = true;
-      isLoading = false;
-      error = null;
-    },
-  };
-}
-
-/** Module-level singleton. Replace with Zustand `create` when available. */
-export const tradeStore = createTradeStore();
+/** Legacy singleton accessor. Prefer `useTradeStore` in React components. */
+export const tradeStore = {
+  get listings() { return useTradeStore.getState().listings; },
+  get gradeFilter() { return useTradeStore.getState().gradeFilter; },
+  get minPrice() { return useTradeStore.getState().minPrice; },
+  get maxPrice() { return useTradeStore.getState().maxPrice; },
+  get currentPage() { return useTradeStore.getState().currentPage; },
+  get hasMore() { return useTradeStore.getState().hasMore; },
+  get isLoading() { return useTradeStore.getState().isLoading; },
+  get error() { return useTradeStore.getState().error; },
+  setListings: (listings: TradeListingState[]) => useTradeStore.getState().setListings(listings),
+  appendListings: (listings: TradeListingState[]) => useTradeStore.getState().appendListings(listings),
+  setGradeFilter: (grade: string) => useTradeStore.getState().setGradeFilter(grade),
+  setPriceRange: (min: number | null, max: number | null) => useTradeStore.getState().setPriceRange(min, max),
+  nextPage: () => useTradeStore.getState().nextPage(),
+  markPurchased: (listingId: string) => useTradeStore.getState().markPurchased(listingId),
+  removeListing: (listingId: string) => useTradeStore.getState().removeListing(listingId),
+  setLoadingState: (isLoading: boolean, error: string | null) => useTradeStore.getState().setLoadingState(isLoading, error),
+  reset: () => useTradeStore.getState().reset(),
+};

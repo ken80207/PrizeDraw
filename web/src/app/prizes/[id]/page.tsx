@@ -52,8 +52,6 @@ export default function PrizeDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    // TODO: No single-prize endpoint defined in PlayerEndpoints. Only list ME_PRIZES exists.
-    // Add GET /api/v1/players/me/prizes/{id} to PlayerEndpoints and server routes.
     apiClient
       .get<PrizeInstanceDto>(`/api/v1/players/me/prizes/${id}`)
       .then((data) => {
@@ -70,8 +68,6 @@ export default function PrizeDetailPage() {
       return;
     }
     try {
-      // TODO: No buyback-price endpoint in contracts. Add GET /api/v1/prizes/{id}/buyback-price
-      // to PrizeEndpoints and server routes.
       const result = await apiClient.get<{ buybackPrice: number }>(
         `/api/v1/prizes/buyback-price/${id}`,
       );
@@ -86,8 +82,6 @@ export default function PrizeDetailPage() {
     setIsBuyingBack(true);
     setBuybackError(null);
     try {
-      // TODO: No buyback endpoint in contracts. Add POST /api/v1/prizes/{id}/buyback
-      // to PrizeEndpoints and server routes.
       await apiClient.post(`/api/v1/prizes/${id}/buyback`, {});
       toast.success("官方回收成功！點數已存入收益帳戶");
       router.push("/prizes");

@@ -14,6 +14,7 @@ public data class TokenResponse(
     val accessToken: String,
     val refreshToken: String,
     val expiresIn: Long,
+    val needsPhoneBinding: Boolean = false,
 )
 
 @Serializable
