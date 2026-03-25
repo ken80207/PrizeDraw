@@ -117,6 +117,16 @@ const PrizeRoomSketch = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 房間" height={500} /> },
 );
 
+const ClawMachineSketch = dynamic(
+  () => import("@/games/sketch/ClawMachine_Sketch").then((m) => ({ default: m.ClawMachine_Sketch })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 夾娃娃機" /> },
+);
+
+const GachaMachineSketch = dynamic(
+  () => import("@/games/sketch/GachaMachine_Sketch").then((m) => ({ default: m.GachaMachine_Sketch })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 扭蛋機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -951,14 +961,22 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                           {activeMiniGame === "claw" && (
-                            <div className="flex items-center justify-center h-64 text-gray-500 font-mono text-sm">
-                              開發中 — Sketch 夾娃娃機
-                            </div>
+                            <ClawMachineSketch
+                              key={`sketch-claw-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
+                            />
                           )}
                           {activeMiniGame === "gacha" && (
-                            <div className="flex items-center justify-center h-64 text-gray-500 font-mono text-sm">
-                              開發中 — Sketch 扭蛋機
-                            </div>
+                            <GachaMachineSketch
+                              key={`sketch-gacha-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as GachaGameState)}
+                            />
                           )}
                         </>
                       ) : (
