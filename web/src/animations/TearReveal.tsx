@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Cover strip occupies the top this fraction of the ticket. */
-const COVER_RATIO = 0.32;
+/** Cover strip covers the ENTIRE ticket face — tearing reveals the prize underneath. */
+const COVER_RATIO = 1.0;
 
 /** Fraction of horizontal travel (relative to canvas width) that commits the tear. */
 const REVEAL_THRESHOLD = 0.70;
@@ -308,13 +309,61 @@ function drawCoverStrip(
   ctx.fillStyle = shimGrad;
   ctx.fillRect(0, 0, W, coverH);
 
-  // Cover text
-  ctx.font = `bold ${Math.min(coverH * 0.38, 16)}px 'Helvetica Neue', Arial, sans-serif`;
-  ctx.fillStyle = "rgba(80,70,60,0.70)";
+  // Decorative pattern — diagonal lines
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1;
+  for (let i = -coverH; i < W + coverH; i += 18) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + coverH, coverH);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Cover text — "一番賞" large in center, with decorative border
+  ctx.save();
+  ctx.font = `bold ${Math.min(28, W * 0.08)}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = "rgba(80,70,60,0.75)";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("一番賞　封條", W / 2, coverH / 2);
+  ctx.fillText("一 番 賞", W / 2, coverH * 0.35);
+
+  // Subtitle
+  ctx.font = `${Math.min(14, W * 0.04)}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = "rgba(80,70,60,0.5)";
+  ctx.fillText("← 從邊緣撕開 →", W / 2, coverH * 0.48);
+
+  // Decorative diamond ornament
+  ctx.fillStyle = "rgba(80,70,60,0.25)";
+  ctx.beginPath();
+  const cx = W / 2;
+  const cy = coverH * 0.65;
+  const sz = Math.min(24, W * 0.06);
+  ctx.moveTo(cx, cy - sz);
+  ctx.lineTo(cx + sz, cy);
+  ctx.lineTo(cx, cy + sz);
+  ctx.lineTo(cx - sz, cy);
+  ctx.closePath();
+  ctx.fill();
+
+  // "?" inside diamond
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = `bold ${sz}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillText("?", cx, cy + sz * 0.1);
+
+  // Bottom edge ornament line
+  ctx.strokeStyle = "rgba(80,70,60,0.2)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(W * 0.2, coverH * 0.82);
+  ctx.lineTo(W * 0.8, coverH * 0.82);
+  ctx.stroke();
+
   ctx.textBaseline = "alphabetic";
+  ctx.restore();
 
   // Thin top border highlight
   ctx.fillStyle = "rgba(255,255,255,0.55)";
@@ -882,8 +931,7 @@ export function TearReveal({
 
       {/* Touch hint — shown before user has started dragging */}
       {!revealed && !hasInteracted && progressState < 0.03 && (
-        <div className="absolute inset-0 flex items-start justify-between pointer-events-none px-3"
-          style={{ top: `${COVER_RATIO * 100 + 4}%` }}
+        <div className="absolute inset-0 flex items-center justify-between pointer-events-none px-3"
         >
           <span
             className="text-xs font-bold select-none px-2 py-1 rounded-full"
