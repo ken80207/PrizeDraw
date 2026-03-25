@@ -1,7 +1,15 @@
 package com.prizedraw.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -9,7 +17,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.prizedraw.contracts.dto.player.WalletDto
+import com.prizedraw.contracts.dto.status.AnnouncementDto
+import com.prizedraw.contracts.dto.status.AnnouncementType
+import com.prizedraw.contracts.dto.status.ServerStatus
+import com.prizedraw.contracts.dto.status.ServerStatusResponse
 import com.prizedraw.contracts.enums.DrawAnimationMode
+import com.prizedraw.domain.models.AppUpdateInfo
 import com.prizedraw.screens.auth.LoginScreen
 import com.prizedraw.screens.auth.PhoneBindingScreen
 import com.prizedraw.screens.campaign.CampaignListScreen
@@ -23,6 +36,9 @@ import com.prizedraw.screens.home.HomeScreen
 import com.prizedraw.screens.leaderboard.LeaderboardScreen
 import com.prizedraw.screens.prize.MyPrizesScreen
 import com.prizedraw.screens.settings.SettingsScreen
+import com.prizedraw.screens.status.AnnouncementBanner
+import com.prizedraw.screens.status.MaintenanceScreen
+import com.prizedraw.screens.status.UpdateRequiredScreen
 import com.prizedraw.screens.support.CreateTicketScreen
 import com.prizedraw.screens.support.SupportTicketListScreen
 import com.prizedraw.screens.support.TicketDetailScreen
@@ -36,6 +52,14 @@ import com.prizedraw.viewmodels.leaderboard.LeaderboardViewModel
 import com.prizedraw.viewmodels.prize.PrizeInventoryViewModel
 import com.prizedraw.viewmodels.support.SupportViewModel
 import com.prizedraw.viewmodels.trade.MarketplaceViewModel
+import kotlinx.coroutines.delay
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+private const val STATUS_POLL_INTERVAL_NORMAL_MS = 60_000L
+private const val STATUS_POLL_INTERVAL_MAINTENANCE_MS = 30_000L
 
 // ---------------------------------------------------------------------------
 // Route constant object
@@ -112,12 +136,19 @@ public object Routes {
  *
  * @param navController Navigation controller. Defaults to a new instance so
  *   callers can optionally inject their own (useful for testing).
- * @param appVersion Version string forwarded to [SettingsScreen].
+ * @param appVersion Version string forwarded to [SettingsScreen] and used for update checks.
+ * @param onOpenAppStore Callback invoked when the user taps "Update" on [UpdateRequiredScreen].
+ *   Implementations should open the platform-specific store URL (Play Store / App Store).
+ * @param fetchServerStatus Suspending function that retrieves [ServerStatusResponse].
+ *   Defaults to a no-op stub; inject the real [com.prizedraw.data.remote.StatusRemoteDataSource]
+ *   via the DI container in production.
  */
 @Composable
 public fun PrizeDrawNavGraph(
     navController: NavHostController = rememberNavController(),
     appVersion: String = "1.0.0",
+    onOpenAppStore: (url: String) -> Unit = {},
+    fetchServerStatus: suspend () -> ServerStatusResponse? = { null },
 ) {
     val authViewModel = remember { AuthViewModel() }
     val campaignViewModel = remember { KujiCampaignViewModel() }
@@ -127,10 +158,86 @@ public fun PrizeDrawNavGraph(
     val leaderboardViewModel = remember { LeaderboardViewModel() }
     val supportViewModel = remember { SupportViewModel() }
 
-    NavHost(
-        navController = navController,
-        startDestination = Routes.LOGIN,
-    ) {
+    // ---- Server status state ----
+    var serverStatus by remember { mutableStateOf<ServerStatusResponse?>(null) }
+    var updateDismissed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val response = runCatching { fetchServerStatus() }.getOrNull()
+            serverStatus = response
+            val isUnderMaintenance =
+                response?.status == ServerStatus.MAINTENANCE &&
+                    response.announcements.any { it.isBlocking }
+            val interval =
+                if (isUnderMaintenance) STATUS_POLL_INTERVAL_MAINTENANCE_MS else STATUS_POLL_INTERVAL_NORMAL_MS
+            delay(interval)
+        }
+    }
+
+    // ---- Blocking maintenance overlay ----
+    val blockingMaintenance =
+        serverStatus
+            ?.announcements
+            ?.firstOrNull { it.isBlocking && it.type == AnnouncementType.MAINTENANCE }
+
+    if (blockingMaintenance != null) {
+        MaintenanceScreen(
+            title = blockingMaintenance.title,
+            message = blockingMaintenance.message,
+            scheduledEnd = blockingMaintenance.scheduledEnd,
+            onRetry = {
+                // The LaunchedEffect loop handles polling; this provides immediate feedback.
+            },
+        )
+        return
+    }
+
+    // ---- Update required overlay ----
+    val platformMinVersion = serverStatus?.minAppVersion?.android // TODO: switch to ios on iOS target
+    val updateInfo = AppUpdateInfo.create(
+        currentVersion = appVersion,
+        minRequiredVersion = platformMinVersion,
+        updateUrl = null, // TODO: inject platform store URL
+    )
+    val updateAnnouncement: AnnouncementDto? =
+        serverStatus?.announcements?.firstOrNull { it.type == AnnouncementType.UPDATE_REQUIRED }
+
+    if (updateInfo.isUpdateRequired && !updateDismissed) {
+        UpdateRequiredScreen(
+            currentVersion = appVersion,
+            minRequiredVersion = platformMinVersion ?: "",
+            isBlocking = updateAnnouncement?.isBlocking ?: true,
+            onUpdate = { updateInfo.updateUrl?.let { onOpenAppStore(it) } },
+            onDismiss = if (updateAnnouncement?.isBlocking == false) {
+                { updateDismissed = true }
+            } else {
+                null
+            },
+        )
+        return
+    }
+
+    // ---- Non-blocking announcements banner ----
+    val bannerAnnouncement =
+        serverStatus
+            ?.announcements
+            ?.firstOrNull { !it.isBlocking && it.type == AnnouncementType.ANNOUNCEMENT }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (bannerAnnouncement != null) {
+            AnnouncementBanner(
+                announcementId = bannerAnnouncement.id,
+                title = bannerAnnouncement.title,
+                message = bannerAnnouncement.message,
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            NavHost(
+                navController = navController,
+                startDestination = Routes.LOGIN,
+            ) {
         // Auth flow
         composable(Routes.LOGIN) {
             LoginScreen(
@@ -381,5 +488,7 @@ public fun PrizeDrawNavGraph(
                 },
             )
         }
-    }
+        } // end NavHost
+        } // end Box
+    } // end Column
 }

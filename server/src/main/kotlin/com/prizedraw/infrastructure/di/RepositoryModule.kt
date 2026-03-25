@@ -2,6 +2,7 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
+import com.prizedraw.application.ports.output.IServerAnnouncementRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IChatRepository
@@ -27,6 +28,7 @@ import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.ServerAnnouncementRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.CampaignRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.ChatRepositoryImpl
@@ -86,4 +88,7 @@ public val repositoryModule =
         single<IChatRepository> { ChatRepositoryImpl() }
         single<IBroadcastRepository> { BroadcastRepositoryImpl() }
         single<IDrawSyncRepository> { DrawSyncRepositoryImpl() }
+
+        // Phase 20: Server Status / Maintenance Mode
+        single<IServerAnnouncementRepository> { ServerAnnouncementRepositoryImpl() }
     }

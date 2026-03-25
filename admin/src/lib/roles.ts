@@ -34,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: '/staff', icon: '🔐', label: '人員管理', minRole: 'ADMIN' },
   { href: '/audit', icon: '📋', label: '稽核紀錄', minRole: 'ADMIN' },
+  { href: '/announcements', icon: '📢', label: '公告管理', minRole: 'OPERATOR' },
   { href: '/feature-flags', icon: '🚩', label: 'Feature Flags', minRole: 'ADMIN' },
   { href: '/settings', icon: '⚙', label: '系統設定', minRole: 'ADMIN' },
 ];

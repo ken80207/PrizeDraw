@@ -1,6 +1,9 @@
 package com.prizedraw.infrastructure.di
 
+import com.prizedraw.application.ports.input.admin.ICreateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
+import com.prizedraw.application.ports.input.admin.IDeactivateAnnouncementUseCase
+import com.prizedraw.application.ports.input.admin.IUpdateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.ICreateStaffUseCase
 import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCase
 import com.prizedraw.application.ports.input.admin.IDeactivateStaffUseCase
@@ -60,7 +63,10 @@ import com.prizedraw.application.ports.output.IWithdrawalGateway
 import com.prizedraw.application.services.KujiQueueService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
+import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
+import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
 import com.prizedraw.application.usecases.admin.ManageAnimationModesUseCase
 import com.prizedraw.application.usecases.admin.UpdateBuybackPriceUseCase
@@ -487,6 +493,19 @@ public val useCaseModule =
             com.prizedraw.application.usecases.admin.GetAuditLogUseCase(
                 auditRepository = get(),
             )
+        }
+
+        // --- Phase 20: Server Status / Announcement Management ---
+        single<ICreateAnnouncementUseCase> {
+            CreateAnnouncementUseCase(announcementRepository = get())
+        }
+
+        single<IUpdateAnnouncementUseCase> {
+            UpdateAnnouncementUseCase(announcementRepository = get())
+        }
+
+        single<IDeactivateAnnouncementUseCase> {
+            DeactivateAnnouncementUseCase(announcementRepository = get())
         }
 
         // --- Phase 15: Coupons ---

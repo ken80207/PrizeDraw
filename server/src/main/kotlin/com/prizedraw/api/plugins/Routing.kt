@@ -1,5 +1,6 @@
 package com.prizedraw.api.plugins
 
+import com.prizedraw.api.routes.adminAnnouncementRoutes
 import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminPricingRoutes
@@ -17,6 +18,7 @@ import com.prizedraw.api.routes.lineWebhookRoute
 import com.prizedraw.api.routes.paymentRoutes
 import com.prizedraw.api.routes.playerRoutes
 import com.prizedraw.api.routes.shippingRoutes
+import com.prizedraw.api.routes.statusRoutes
 import com.prizedraw.api.routes.supportRoutes
 import com.prizedraw.api.routes.tradeRoutes
 import com.prizedraw.api.routes.withdrawalRoutes
@@ -82,6 +84,9 @@ public fun Application.configureRouting() {
             call.respondText(prometheusRegistry.scrape())
         }
 
+        // Phase 20: Server Status — public, no auth required, checked first by all clients
+        statusRoutes()
+
         // Phase 3: Auth, Player, Payment
         authRoutes()
         playerRoutes()
@@ -134,6 +139,9 @@ public fun Application.configureRouting() {
 
             // Phase 16: Animation mode admin controls
             adminAnimationRoutes()
+
+            // Phase 20: Announcement management
+            adminAnnouncementRoutes()
         }
     }
 }

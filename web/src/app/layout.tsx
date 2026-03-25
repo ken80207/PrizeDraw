@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastContainer } from "@/components/Toast";
+import { StatusGate } from "@/components/StatusGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,9 +38,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <StatusGate>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </StatusGate>
         <ToastContainer />
       </body>
     </html>
