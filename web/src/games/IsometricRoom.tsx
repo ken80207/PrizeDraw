@@ -15,7 +15,8 @@ type Direction = "NORTH" | "SOUTH" | "EAST" | "WEST";
 interface Character {
   id: string;
   nickname: string;
-  color: string;
+  shirtColor: string;
+  skinColor: string;
   pos: IsoPoint;
   targetPos: IsoPoint | null;
   path: IsoPoint[];
@@ -23,11 +24,10 @@ interface Character {
   direction: Direction;
   isPlayer: boolean;
   bubble: { text: string; color: string; expiry: number; type: "chat" | "prize" } | null;
+  bobPhase: number;
 }
 
-type TileType = "FLOOR" | "WALL" | "SHELF" | "COUNTER" | "CARPET" | "EMPTY";
-
-interface Tile { type: TileType }
+type TileType = "FLOOR" | "WALL" | "COUNTER" | "CARPET" | "EMPTY";
 
 export interface IsometricRoomProps {
   npcCount?: number;
@@ -38,20 +38,16 @@ export interface IsometricRoomProps {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CANVAS_W = 600;
-const CANVAS_H = 400;
+const CANVAS_W = 640;
+const CANVAS_H = 460;
 
-const MAP_W = 12;
-const MAP_H = 12;
-const TILE_W = 52;
-const TILE_H = 28;
+const MAP_W = 14;
+const MAP_H = 14;
+const TILE_W = 56;
+const TILE_H = 30;
 
-// Screen origin — where iso (0,0) maps to screen
 const ORIGIN_X = CANVAS_W / 2;
-const ORIGIN_Y = 60;
-
-// Character display constants
-const CHAR_R = 12;
+const ORIGIN_Y = 55;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Coordinate transforms
@@ -79,28 +75,29 @@ function snapToGrid(p: IsoPoint): IsoPoint {
 // ─────────────────────────────────────────────────────────────────────────────
 // Map definition
 // ─────────────────────────────────────────────────────────────────────────────
-
-// 0=floor, 1=wall, 2=shelf, 3=counter, 4=carpet, 5=empty
+// 0=floor 1=wall 3=counter 4=carpet 5=empty
 const MAP_DATA: number[][] = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 2, 2, 0, 0, 0, 0, 0, 0, 2, 2, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 4, 4, 4, 4, 4, 0, 0, 0, 1],
-  [1, 0, 0, 4, 4, 4, 4, 4, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 4, 4, 0, 3, 3, 0, 4, 4, 0, 0, 1],
+  [1, 0, 0, 4, 4, 0, 0, 0, 0, 4, 4, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
 ];
 
 const TILE_TYPES: Record<number, TileType> = {
-  0: "FLOOR", 1: "WALL", 2: "SHELF", 3: "COUNTER", 4: "CARPET", 5: "EMPTY",
+  0: "FLOOR", 1: "WALL", 3: "COUNTER", 4: "CARPET", 5: "EMPTY",
 };
 
-function buildTileMap(): Tile[][] {
+function buildTileMap(): { type: TileType }[][] {
   return MAP_DATA.map((row) => row.map((code) => ({ type: TILE_TYPES[code] ?? "FLOOR" })));
 }
 
@@ -119,7 +116,6 @@ function findPath(from: IsoPoint, to: IsoPoint): IsoPoint[] {
   if (!isWalkable(goal.isoX, goal.isoY)) return [];
 
   type Node = { pos: IsoPoint; g: number; f: number; parent: Node | null };
-
   const key = (p: IsoPoint) => `${Math.round(p.isoX)},${Math.round(p.isoY)}`;
   const heuristic = (a: IsoPoint, b: IsoPoint) =>
     Math.abs(a.isoX - b.isoX) + Math.abs(a.isoY - b.isoY);
@@ -131,26 +127,15 @@ function findPath(from: IsoPoint, to: IsoPoint): IsoPoint[] {
     open.sort((a, b) => a.f - b.f);
     const current = open.shift()!;
     const ck = key(current.pos);
-
     if (ck === key(goal)) {
       const path: IsoPoint[] = [];
       let node: Node | null = current;
-      while (node) {
-        path.unshift(node.pos);
-        node = node.parent;
-      }
-      return path.slice(1); // skip start position
+      while (node) { path.unshift(node.pos); node = node.parent; }
+      return path.slice(1);
     }
-
     if (closed.has(ck)) continue;
     closed.add(ck);
-
-    const dirs = [
-      { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-    ];
-
-    for (const d of dirs) {
+    for (const d of [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 }]) {
       const nx = current.pos.isoX + d.dx;
       const ny = current.pos.isoY + d.dy;
       if (!isWalkable(nx, ny)) continue;
@@ -165,203 +150,882 @@ function findPath(from: IsoPoint, to: IsoPoint): IsoPoint[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Drawing helpers
+// Sparkle particle system
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TILE_COLORS: Record<TileType, { top: string; left: string; right: string; stroke: string }> = {
-  FLOOR:   { top: "#1e2d3d", left: "#162233", right: "#14202e", stroke: "#263548" },
-  WALL:    { top: "#374151", left: "#1f2937", right: "#111827", stroke: "#4b5563" },
-  SHELF:   { top: "#78350f", left: "#451a03", right: "#3a1502", stroke: "#92400e" },
-  COUNTER: { top: "#1e40af", left: "#1e3a8a", right: "#1e3270", stroke: "#3b82f6" },
-  CARPET:  { top: "#4c1d95", left: "#2e1065", right: "#27005a", stroke: "#6d28d9" },
-  EMPTY:   { top: "transparent", left: "transparent", right: "transparent", stroke: "transparent" },
-};
+interface Sparkle {
+  x: number; y: number; vx: number; vy: number;
+  life: number; size: number; color: string; rotation: number; rotSpeed: number;
+}
 
-const TILE_LABELS: Partial<Record<TileType, string>> = {
-  SHELF: "展架", COUNTER: "櫃台",
-};
+const SPARKLE_COLORS = ["#fbbf24", "#f59e0b", "#fde68a", "#fff", "#fb923c", "#f472b6", "#a78bfa"];
 
-function drawTile(ctx: CanvasRenderingContext2D, isoX: number, isoY: number, type: TileType) {
-  if (type === "EMPTY") return;
+function spawnSparkles(x: number, y: number, count: number): Sparkle[] {
+  return Array.from({ length: count }, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+    return {
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1,
+      size: 2 + Math.random() * 4,
+      color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)] ?? "#fbbf24",
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+    };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Room Drawing — Back wall, shelves, counter
+// ─────────────────────────────────────────────────────────────────────────────
+
+function drawRoom(ctx: CanvasRenderingContext2D, t: number) {
+  // ── Sky / background gradient ──
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  bgGrad.addColorStop(0, "#1a0a2e");
+  bgGrad.addColorStop(1, "#0a0f1a");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // ── Back wall — far left corner ──
+  // The back wall in isometric view spans from iso (0,0) to (MAP_W, 0) and (0, 0) to (0, MAP_H)
+  // We draw a solid polygon behind the floor tiles
+
+  // Back wall LEFT face (along isoY = 0 axis, left side)
+  const wallTopLeft = isoToScreen({ isoX: 0, isoY: 0 });
+  const wallTopRight = isoToScreen({ isoX: MAP_W, isoY: 0 });
+  const wallBottomLeft = isoToScreen({ isoX: 0, isoY: MAP_H });
+  const wallH = 120; // wall height in pixels
+
+  // Left back wall panel
+  const lwGrad = ctx.createLinearGradient(0, wallTopLeft.y - wallH, 0, wallTopLeft.y);
+  lwGrad.addColorStop(0, "#2d1f4e");
+  lwGrad.addColorStop(1, "#1a1230");
+  ctx.fillStyle = lwGrad;
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - wallH);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y - wallH);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right back wall panel (along isoX = 0)
+  const rwGrad = ctx.createLinearGradient(wallTopLeft.x, 0, wallTopRight.x, 0);
+  rwGrad.addColorStop(0, "#231a3d");
+  rwGrad.addColorStop(1, "#342855");
+  ctx.fillStyle = rwGrad;
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - wallH);
+  ctx.lineTo(wallTopRight.x, wallTopRight.y - wallH);
+  ctx.lineTo(wallTopRight.x, wallTopRight.y);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wall edge line (top of walls)
+  ctx.strokeStyle = "#5b3f8a";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - wallH);
+  ctx.lineTo(wallBottomLeft.x, wallBottomLeft.y - wallH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - wallH);
+  ctx.lineTo(wallTopRight.x, wallTopRight.y - wallH);
+  ctx.stroke();
+
+  // Corner accent line
+  ctx.strokeStyle = "#7c5fc0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wallTopLeft.x, wallTopLeft.y - wallH);
+  ctx.lineTo(wallTopLeft.x, wallTopLeft.y);
+  ctx.stroke();
+
+  // ── Prize display shelves on the back wall ──
+  // Three grade display cases positioned along the right back wall
+  const displayData = [
+    { iso: { isoX: 2, isoY: 1 }, grade: "A賞", color: "#f59e0b", glow: "#fbbf24", label: "A賞" },
+    { iso: { isoX: 6, isoY: 1 }, grade: "B賞", color: "#38bdf8", glow: "#0ea5e9", label: "B賞" },
+    { iso: { isoX: 10, isoY: 1 }, grade: "C賞", color: "#34d399", glow: "#10b981", label: "C賞" },
+  ];
+
+  for (const disp of displayData) {
+    const sc = isoToScreen(disp.iso);
+    drawPrizeDisplay(ctx, sc.x, sc.y - wallH + 20, disp.color, disp.glow, disp.label, t);
+  }
+
+  // ── Poster on right back wall ──
+  drawPoster(ctx, t);
+
+  // ── Floor tiles ──
+  drawFloor(ctx, t);
+
+  // ── Entrance mat ──
+  drawEntranceMat(ctx);
+}
+
+function drawPrizeDisplay(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  color: string, glow: string, label: string, t: number
+) {
+  const w = 44, h = 54;
+
+  // Glow behind the cabinet
+  ctx.save();
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = 18 + Math.sin(t * 2) * 4;
+  const glowGrad = ctx.createRadialGradient(x, y + h / 2, 5, x, y + h / 2, w * 1.2);
+  glowGrad.addColorStop(0, `${glow}33`);
+  glowGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(x - w, y - 5, w * 2, h + 10);
+  ctx.restore();
+
+  // Cabinet body (3D box)
+  // Top face
+  ctx.fillStyle = "#3d2d6e";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y, w, h, 4);
+  ctx.fill();
+
+  // Glass front
+  const glassGrad = ctx.createLinearGradient(x - w / 2, y, x + w / 2, y);
+  glassGrad.addColorStop(0, "rgba(255,255,255,0.08)");
+  glassGrad.addColorStop(0.3, "rgba(255,255,255,0.03)");
+  glassGrad.addColorStop(1, "rgba(255,255,255,0.01)");
+  ctx.fillStyle = glassGrad;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2 + 3, y + 3, w - 6, h - 6, 2);
+  ctx.fill();
+  ctx.strokeStyle = `${color}88`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Prize box inside
+  ctx.save();
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = 10;
+  const boxGrad = ctx.createLinearGradient(x - w / 3, y + 10, x + w / 3, y + h - 10);
+  boxGrad.addColorStop(0, color);
+  boxGrad.addColorStop(1, `${color}44`);
+  ctx.fillStyle = boxGrad;
+  ctx.beginPath();
+  ctx.roundRect(x - 12, y + 12, 24, 24, 3);
+  ctx.fill();
+  ctx.restore();
+
+  // Label
+  ctx.fillStyle = color;
+  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x, y + h - 8);
+
+  // Border
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y, w, h, 4);
+  ctx.stroke();
+}
+
+function drawPoster(ctx: CanvasRenderingContext2D, t: number) {
+  // Position the poster on the right back wall
+  const sc = isoToScreen({ isoX: 12, isoY: 1 });
+  const px = sc.x - 10;
+  const py = sc.y - 105;
+  const pw = 50, ph = 68;
+
+  // Poster background
+  const pGrad = ctx.createLinearGradient(px, py, px, py + ph);
+  pGrad.addColorStop(0, "#4c1d95");
+  pGrad.addColorStop(1, "#1e1040");
+  ctx.fillStyle = pGrad;
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  // Top strip
+  const stripGrad = ctx.createLinearGradient(px, py, px + pw, py);
+  stripGrad.addColorStop(0, "#7c3aed");
+  stripGrad.addColorStop(1, "#db2777");
+  ctx.fillStyle = stripGrad;
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, 14, [3, 3, 0, 0]);
+  ctx.fill();
+
+  // Title text
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 7px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("一番賞", px + pw / 2, py + 7);
+
+  // Star decoration
+  const pulse = 0.8 + Math.sin(t * 3) * 0.2;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = "#fbbf24";
+  ctx.font = "bold 18px system-ui, sans-serif";
+  ctx.fillText("★", px + pw / 2, py + 34);
+  ctx.restore();
+
+  // Bottom text
+  ctx.fillStyle = "#f59e0b";
+  ctx.font = "bold 6px system-ui, sans-serif";
+  ctx.fillText("大賞", px + pw / 2, py + ph - 10);
+  ctx.fillText("絶賛開催中!", px + pw / 2, py + ph - 3);
+}
+
+function drawFloor(ctx: CanvasRenderingContext2D, t: number) {
+  // Draw floor tiles with wood plank effect in isometric order
+  for (let row = 0; row < MAP_H; row++) {
+    for (let col = 0; col < MAP_W; col++) {
+      const code = MAP_DATA[row]?.[col] ?? 1;
+      if (code === 1 || code === 5) continue;
+      drawFloorTile(ctx, col, row, code, t);
+    }
+  }
+}
+
+function drawFloorTile(ctx: CanvasRenderingContext2D, isoX: number, isoY: number, code: number, _t: number) {
   const s = isoToScreen({ isoX, isoY });
   const hw = TILE_W / 2;
   const hh = TILE_H / 2;
-  const col = TILE_COLORS[type];
-  const wallH = type === "WALL" ? 24 : type === "SHELF" || type === "COUNTER" ? 18 : 0;
 
-  // Top face (diamond)
+  // Alternate plank colors for wood effect
+  const isCarpet = code === 4;
+  const isCounter = code === 3;
+
+  let topColor: string;
+  let edgeLeft: string;
+  let edgeRight: string;
+  let strokeC: string;
+
+  if (isCounter) {
+    // Counter tiles — we draw them as 3D blocks later separately
+    return;
+  } else if (isCarpet) {
+    // Red carpet / display platform
+    const variation = ((isoX + isoY) % 2 === 0) ? 0 : 10;
+    topColor = `rgba(${60 + variation}, ${15}, ${80 + variation}, 0.9)`;
+    edgeLeft = "#1a0a2e";
+    edgeRight = "#230f3d";
+    strokeC = "#5b1080";
+  } else {
+    // Wood plank
+    const plankRow = (isoX + isoY) % 4;
+    const baseR = 70 + plankRow * 10;
+    const baseG = 38 + plankRow * 5;
+    const baseB = 10 + plankRow * 3;
+    topColor = `rgb(${baseR}, ${baseG}, ${baseB})`;
+    edgeLeft = `rgb(${baseR - 20}, ${baseG - 10}, ${baseB - 5})`;
+    edgeRight = `rgb(${baseR - 30}, ${baseG - 15}, ${baseB - 8})`;
+    strokeC = `rgb(${baseR - 10}, ${baseG - 5}, ${baseB})`;
+  }
+
+  // Diamond top face
   ctx.beginPath();
   ctx.moveTo(s.x, s.y - hh);
   ctx.lineTo(s.x + hw, s.y);
   ctx.lineTo(s.x, s.y + hh);
   ctx.lineTo(s.x - hw, s.y);
   ctx.closePath();
-  ctx.fillStyle = col.top;
+  ctx.fillStyle = topColor;
   ctx.fill();
-  ctx.strokeStyle = col.stroke;
-  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = strokeC;
+  ctx.lineWidth = 0.6;
   ctx.stroke();
 
-  if (wallH > 0) {
-    // Left face
+  // Subtle grain lines on wood
+  if (!isCarpet) {
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(s.x - hw * 0.4, s.y - hh * 0.3);
+    ctx.lineTo(s.x + hw * 0.6, s.y + hh * 0.1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Very subtle floor reflection
+  ctx.save();
+  ctx.globalAlpha = 0.04;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y - hh);
+  ctx.lineTo(s.x + hw * 0.6, s.y - hh * 0.3);
+  ctx.lineTo(s.x + hw * 0.2, s.y + hh * 0.1);
+  ctx.lineTo(s.x - hw * 0.2, s.y - hh * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Side edges for carpet
+  if (isCarpet) {
+    const edgeH = 6;
     ctx.beginPath();
     ctx.moveTo(s.x - hw, s.y);
     ctx.lineTo(s.x, s.y + hh);
-    ctx.lineTo(s.x, s.y + hh + wallH);
-    ctx.lineTo(s.x - hw, s.y + wallH);
+    ctx.lineTo(s.x, s.y + hh + edgeH);
+    ctx.lineTo(s.x - hw, s.y + edgeH);
     ctx.closePath();
-    ctx.fillStyle = col.left;
+    ctx.fillStyle = edgeLeft;
     ctx.fill();
-    ctx.strokeStyle = col.stroke;
+
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y + hh);
+    ctx.lineTo(s.x + hw, s.y);
+    ctx.lineTo(s.x + hw, s.y + edgeH);
+    ctx.lineTo(s.x, s.y + hh + edgeH);
+    ctx.closePath();
+    ctx.fillStyle = edgeRight;
+    ctx.fill();
+  }
+}
+
+function drawCounterBlock(ctx: CanvasRenderingContext2D, t: number) {
+  // Draw the main prize draw counter as a 3D isometric box
+  // Located at iso (6,4) and (7,4) — two tiles wide
+  const counterPositions = [
+    { isoX: 6, isoY: 4 },
+    { isoX: 7, isoY: 4 },
+  ];
+
+  for (const cp of counterPositions) {
+    const s = isoToScreen(cp);
+    const hw = TILE_W / 2;
+    const hh = TILE_H / 2;
+    const blockH = 36;
+
+    // Top face
+    const topGrad = ctx.createLinearGradient(s.x - hw, s.y, s.x + hw, s.y + hh);
+    topGrad.addColorStop(0, "#4338ca");
+    topGrad.addColorStop(1, "#312e81");
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y - hh);
+    ctx.lineTo(s.x + hw, s.y);
+    ctx.lineTo(s.x, s.y + hh);
+    ctx.lineTo(s.x - hw, s.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Left face
+    const leftGrad = ctx.createLinearGradient(s.x - hw, s.y, s.x - hw, s.y + blockH);
+    leftGrad.addColorStop(0, "#1e3a8a");
+    leftGrad.addColorStop(1, "#1e2060");
+    ctx.fillStyle = leftGrad;
+    ctx.beginPath();
+    ctx.moveTo(s.x - hw, s.y);
+    ctx.lineTo(s.x, s.y + hh);
+    ctx.lineTo(s.x, s.y + hh + blockH);
+    ctx.lineTo(s.x - hw, s.y + blockH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#3b82f6";
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
     // Right face
+    const rightGrad = ctx.createLinearGradient(s.x, s.y, s.x + hw, s.y + blockH);
+    rightGrad.addColorStop(0, "#1e3270");
+    rightGrad.addColorStop(1, "#141850");
+    ctx.fillStyle = rightGrad;
     ctx.beginPath();
     ctx.moveTo(s.x, s.y + hh);
     ctx.lineTo(s.x + hw, s.y);
-    ctx.lineTo(s.x + hw, s.y + wallH);
-    ctx.lineTo(s.x, s.y + hh + wallH);
+    ctx.lineTo(s.x + hw, s.y + blockH);
+    ctx.lineTo(s.x, s.y + hh + blockH);
     ctx.closePath();
-    ctx.fillStyle = col.right;
     ctx.fill();
-    ctx.strokeStyle = col.stroke;
+    ctx.strokeStyle = "#2563eb";
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    // Label on shelf/counter
-    const label = TILE_LABELS[type];
-    if (label) {
-      ctx.fillStyle = "rgba(255,255,255,0.5)";
-      ctx.font = "bold 9px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, s.x, s.y);
-    }
+    // Top edge
+    ctx.strokeStyle = "#6366f1";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y - hh);
+    ctx.lineTo(s.x + hw, s.y);
+    ctx.lineTo(s.x, s.y + hh);
+    ctx.lineTo(s.x - hw, s.y);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Counter label between the two tiles
+  const midS = isoToScreen({ isoX: 6.5, isoY: 4 });
+  const pulse = 0.85 + Math.sin(t * 2.5) * 0.15;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = "#93c5fd";
+  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("抽獎台", midS.x, midS.y - 5);
+  ctx.restore();
+
+  // Glowing draw box on top
+  ctx.save();
+  ctx.shadowColor = "#6366f1";
+  ctx.shadowBlur = 12 + Math.sin(t * 3) * 4;
+  const boxS = isoToScreen({ isoX: 6.5, isoY: 4 });
+  ctx.fillStyle = "#4338ca";
+  ctx.strokeStyle = "#818cf8";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(boxS.x - 16, boxS.y - 28, 32, 18, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#e0e7ff";
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("DRAW", boxS.x, boxS.y - 19);
+  ctx.restore();
+}
+
+function drawEntranceMat(ctx: CanvasRenderingContext2D) {
+  // Entrance at bottom of map (gap in wall at col 5-6)
+  const matS1 = isoToScreen({ isoX: 5, isoY: 12.5 });
+  const matS2 = isoToScreen({ isoX: 6, isoY: 12.5 });
+
+  // Welcome mat — stretched between iso points
+  const centerX = (matS1.x + matS2.x) / 2;
+  const centerY = (matS1.y + matS2.y) / 2;
+  const matW = 80, matH = 28;
+
+  ctx.fillStyle = "#7c2d12";
+  ctx.strokeStyle = "#dc2626";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(centerX - matW / 2, centerY - matH / 2, matW, matH, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  // Mat pattern
+  ctx.fillStyle = "#fca5a5";
+  ctx.font = "bold 7px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("WELCOME", centerX, centerY - 3);
+  ctx.fillStyle = "#f87171";
+  ctx.font = "6px system-ui, sans-serif";
+  ctx.fillText("歡迎光臨", centerX, centerY + 7);
+
+  // Door frame hint
+  ctx.strokeStyle = "#92400e";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(matS1.x - TILE_W / 2, matS1.y);
+  ctx.lineTo(matS1.x - TILE_W / 2, matS1.y - 50);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(matS2.x + TILE_W / 2, matS2.y);
+  ctx.lineTo(matS2.x + TILE_W / 2, matS2.y - 50);
+  ctx.stroke();
+}
+
+function drawQueueRope(ctx: CanvasRenderingContext2D) {
+  // Draw a velvet rope from counter to entrance
+  const counterS = isoToScreen({ isoX: 6, isoY: 5 });
+  const entranceS = isoToScreen({ isoX: 5.5, isoY: 11 });
+
+  ctx.save();
+  ctx.strokeStyle = "#b45309";
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([8, 4]);
+  ctx.lineDashOffset = 0;
+  ctx.shadowColor = "#d97706";
+  ctx.shadowBlur = 4;
+  ctx.beginPath();
+  ctx.moveTo(counterS.x, counterS.y);
+  // Zigzag waypoints for queue rope
+  const midX = (counterS.x + entranceS.x) / 2;
+  ctx.bezierCurveTo(
+    counterS.x - 30, counterS.y + 30,
+    entranceS.x + 30, entranceS.y - 30,
+    entranceS.x, entranceS.y
+  );
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Rope poles
+  const poles = [counterS, { x: midX - 20, y: counterS.y + 60 }, entranceS];
+  for (const pole of poles) {
+    // Pole post
+    ctx.fillStyle = "#d97706";
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(pole.x - 3, pole.y - 16, 6, 16, 1);
+    ctx.fill();
+    ctx.stroke();
+    // Pole top ball
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.arc(pole.x, pole.y - 18, 4, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
-function drawCharacter(
-  ctx: CanvasRenderingContext2D,
-  char: Character,
-  t: number,
-) {
+function drawAmbientLighting(ctx: CanvasRenderingContext2D, t: number) {
+  // Warm golden overhead light in center
+  const lightX = CANVAS_W / 2;
+  const lightY = CANVAS_H * 0.25;
+
+  const ambientGrad = ctx.createRadialGradient(lightX, lightY, 10, lightX, lightY, 280);
+  ambientGrad.addColorStop(0, "rgba(255, 200, 80, 0.06)");
+  ambientGrad.addColorStop(0.5, "rgba(255, 150, 40, 0.03)");
+  ambientGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = ambientGrad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Ceiling light fixtures
+  const fixtures = [
+    { x: CANVAS_W * 0.33, y: 30 },
+    { x: CANVAS_W * 0.67, y: 30 },
+  ];
+  for (const fix of fixtures) {
+    const pulse = 0.8 + Math.sin(t * 1.5 + fix.x * 0.01) * 0.2;
+    ctx.save();
+    ctx.globalAlpha = pulse * 0.7;
+    ctx.shadowColor = "#fffde7";
+    ctx.shadowBlur = 15;
+    const fixGrad = ctx.createRadialGradient(fix.x, fix.y, 2, fix.x, fix.y, 60);
+    fixGrad.addColorStop(0, "rgba(255, 253, 200, 0.2)");
+    fixGrad.addColorStop(1, "rgba(255, 200, 80, 0)");
+    ctx.fillStyle = fixGrad;
+    ctx.beginPath();
+    ctx.ellipse(fix.x, fix.y, 60, 40, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Light bulb
+    ctx.fillStyle = "#fffde7";
+    ctx.beginPath();
+    ctx.arc(fix.x, fix.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawAmbientParticles(ctx: CanvasRenderingContext2D, t: number) {
+  // Floating dust / sparkle particles
+  const particleCount = 12;
+  for (let i = 0; i < particleCount; i++) {
+    const phase = (t * 0.3 + i * 0.7) % 1;
+    // Each particle travels from bottom to top
+    const startX = 80 + (i * 47) % (CANVAS_W - 160);
+    const x = startX + Math.sin(t * 0.8 + i * 1.3) * 20;
+    const y = CANVAS_H - phase * CANVAS_H;
+    const alpha = Math.sin(phase * Math.PI) * 0.35;
+    const size = 1 + Math.sin(t * 2 + i) * 0.5;
+
+    if (alpha <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = SPARKLE_COLORS[i % SPARKLE_COLORS.length] ?? "#fbbf24";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Character drawing
+// ─────────────────────────────────────────────────────────────────────────────
+
+function drawCharacter(ctx: CanvasRenderingContext2D, char: Character, t: number) {
   const s = isoToScreen(char.pos);
-  const bobY = char.state === "WALKING" ? Math.sin(t * 10) * 2 : 0;
-  const cy = s.y - bobY;
+  const isWalking = char.state === "WALKING";
+  const isCelebrating = char.state === "CELEBRATING";
+  const isDrawing = char.state === "DRAWING";
+
+  // Bob animation
+  const bobY = isWalking ? Math.sin(t * 10 + char.bobPhase) * 2.5 : 0;
+  const celebBob = isCelebrating ? Math.abs(Math.sin(t * 8 + char.bobPhase)) * 4 : 0;
+  const offsetY = -bobY - celebBob;
+
+  const cx = s.x;
+  const cy = s.y + offsetY;
 
   ctx.save();
 
-  // Shadow
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  // Drop shadow on floor
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
-  ctx.ellipse(s.x, s.y + 2, CHAR_R * 0.9, CHAR_R * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, s.y + 4, 10, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body circle
-  const grd = ctx.createRadialGradient(s.x - 3, cy - 3, 1, s.x, cy, CHAR_R);
-  grd.addColorStop(0, lightenColor(char.color, 40));
-  grd.addColorStop(1, char.color);
-  ctx.fillStyle = grd;
-  ctx.strokeStyle = char.isPlayer ? "#fbbf24" : "rgba(255,255,255,0.3)";
-  ctx.lineWidth = char.isPlayer ? 2.5 : 1.5;
-  ctx.shadowColor = char.isPlayer ? "#fbbf24" : char.color;
-  ctx.shadowBlur = char.isPlayer ? 8 : 4;
+  // Player glow ring
+  if (char.isPlayer) {
+    ctx.save();
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 16;
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, s.y + 3, 12, 5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Leg walk animation
+  const legSwing = isWalking ? Math.sin(t * 10 + char.bobPhase) * 3 : 0;
+  const legBaseY = cy + 16;
+  const legW = 5;
+  const legH = 10;
+
+  // Left leg
+  ctx.fillStyle = "#1e293b";
   ctx.beginPath();
-  ctx.arc(s.x, cy, CHAR_R, 0, Math.PI * 2);
+  ctx.roundRect(cx - 6 - legSwing, legBaseY, legW, legH, 2);
+  ctx.fill();
+
+  // Right leg
+  ctx.beginPath();
+  ctx.roundRect(cx + 1 + legSwing, legBaseY, legW, legH, 2);
+  ctx.fill();
+
+  // Shoes
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.roundRect(cx - 7 - legSwing, legBaseY + legH - 2, 7, 4, 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(cx + 0 + legSwing, legBaseY + legH - 2, 7, 4, 2);
+  ctx.fill();
+
+  // Body (shirt)
+  const bodyGrad = ctx.createLinearGradient(cx - 8, cy + 2, cx + 8, cy + 16);
+  bodyGrad.addColorStop(0, lightenColor(char.shirtColor, 30));
+  bodyGrad.addColorStop(1, char.shirtColor);
+  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = darkenColor(char.shirtColor, 20);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cx - 8, cy + 2, 16, 15, 3);
   ctx.fill();
   ctx.stroke();
-  ctx.shadowBlur = 0;
 
-  // Celebration sparkles
-  if (char.state === "CELEBRATING") {
-    const sparkCount = 6;
-    for (let i = 0; i < sparkCount; i++) {
-      const angle = (i / sparkCount) * Math.PI * 2 + t * 3;
-      const dist = CHAR_R + 8 + Math.sin(t * 5 + i) * 3;
-      const sx = s.x + Math.cos(angle) * dist;
-      const sy = cy + Math.sin(angle) * dist;
+  // Arms
+  const armSwing = isWalking ? Math.sin(t * 10 + char.bobPhase + Math.PI) * 4 : 0;
+  const drawRaise = isDrawing ? -8 : 0;
+  // Left arm
+  ctx.fillStyle = char.shirtColor;
+  ctx.beginPath();
+  ctx.roundRect(cx - 13 + armSwing, cy + 3 + drawRaise, 5, 12, 2);
+  ctx.fill();
+  // Right arm
+  ctx.beginPath();
+  ctx.roundRect(cx + 8 - armSwing, cy + 3 - drawRaise, 5, 12, 2);
+  ctx.fill();
+
+  // Hands
+  ctx.fillStyle = char.skinColor;
+  ctx.beginPath();
+  ctx.arc(cx - 10 + armSwing, cy + 15 + drawRaise, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 10 - armSwing, cy + 15 - drawRaise, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Neck
+  ctx.fillStyle = char.skinColor;
+  ctx.beginPath();
+  ctx.roundRect(cx - 3, cy - 4, 6, 6, 1);
+  ctx.fill();
+
+  // Head
+  const headGrad = ctx.createRadialGradient(cx - 2, cy - 12, 1, cx, cy - 10, 9);
+  headGrad.addColorStop(0, lightenColor(char.skinColor, 20));
+  headGrad.addColorStop(1, char.skinColor);
+  ctx.fillStyle = headGrad;
+  ctx.strokeStyle = darkenColor(char.skinColor, 15);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 10, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Eyes
+  ctx.fillStyle = "#1e293b";
+  ctx.beginPath();
+  ctx.arc(cx - 3, cy - 11, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 3, cy - 11, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Smile (wider when celebrating)
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (isCelebrating) {
+    ctx.arc(cx, cy - 9, 4, 0.2, Math.PI - 0.2);
+  } else {
+    ctx.arc(cx, cy - 8, 3, 0.3, Math.PI - 0.3);
+  }
+  ctx.stroke();
+
+  // Hair (simple top)
+  ctx.fillStyle = darkenColor(char.shirtColor, 40);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 17, 7, 4, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Player crown indicator
+  if (char.isPlayer) {
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 9px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("▶", cx, cy - 22);
+  }
+
+  // Drawing sparkles
+  if (isDrawing) {
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 + t * 4;
+      const dist = 16 + Math.sin(t * 6 + i) * 4;
+      const sx = cx - 10 + Math.cos(angle) * dist * 0.5;
+      const sy = cy + 5 + Math.sin(angle) * dist * 0.5;
+      ctx.save();
       ctx.fillStyle = "#fbbf24";
-      ctx.globalAlpha = 0.8 + Math.sin(t * 8 + i) * 0.2;
-      ctx.beginPath();
-      ctx.arc(sx, sy, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.7 + Math.sin(t * 8 + i) * 0.3;
+      ctx.shadowColor = "#f59e0b";
+      ctx.shadowBlur = 6;
+      drawStar(ctx, sx, sy, 2.5, 5);
+      ctx.restore();
     }
   }
 
-  // Nickname label
-  ctx.fillStyle = char.isPlayer ? "#fbbf24" : "rgba(255,255,255,0.85)";
-  ctx.font = `${char.isPlayer ? "bold " : ""}10px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(char.nickname, s.x, cy - CHAR_R - 2);
-
-  // State indicator dot
-  const stateColors: Record<CharacterState, string> = {
-    IDLE: "#94a3b8", WALKING: "#22c55e",
-    QUEUING: "#f59e0b", DRAWING: "#ec4899",
-    CELEBRATING: "#fbbf24",
-  };
-  ctx.fillStyle = stateColors[char.state];
-  ctx.beginPath();
-  ctx.arc(s.x + CHAR_R - 3, cy - CHAR_R + 3, 3.5, 0, Math.PI * 2);
-  ctx.fill();
+  // Celebration sparkles
+  if (isCelebrating) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + t * 2;
+      const dist = 20 + Math.sin(t * 5 + i) * 5;
+      const sx = cx + Math.cos(angle) * dist;
+      const sy = cy - 5 + Math.sin(angle) * dist * 0.6;
+      ctx.save();
+      ctx.fillStyle = SPARKLE_COLORS[i % SPARKLE_COLORS.length] ?? "#fbbf24";
+      ctx.globalAlpha = 0.8 + Math.sin(t * 10 + i) * 0.2;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 8;
+      drawStar(ctx, sx, sy, 2, 4);
+      ctx.restore();
+    }
+  }
 
   ctx.restore();
 
+  // Name label
+  ctx.save();
+  ctx.fillStyle = char.isPlayer ? "#fbbf24" : "rgba(200,200,255,0.9)";
+  ctx.font = `${char.isPlayer ? "bold " : ""}9px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.shadowColor = "rgba(0,0,0,0.8)";
+  ctx.shadowBlur = 4;
+  ctx.fillText(char.nickname, cx, cy - 22);
+  ctx.restore();
+
+  // State dot
+  const stateDotColors: Record<CharacterState, string> = {
+    IDLE: "#64748b", WALKING: "#22c55e",
+    QUEUING: "#f59e0b", DRAWING: "#ec4899", CELEBRATING: "#fbbf24",
+  };
+  ctx.fillStyle = stateDotColors[char.state];
+  ctx.beginPath();
+  ctx.arc(cx + 8, cy - 18, 3, 0, Math.PI * 2);
+  ctx.fill();
+
   // Bubble
   if (char.bubble && Date.now() < char.bubble.expiry) {
-    drawBubble(ctx, char.bubble.text, char.bubble.color, s.x, cy - CHAR_R - 14, char.bubble.type);
+    drawBubble(ctx, char.bubble.text, char.bubble.color, cx, cy - 26, char.bubble.type);
   }
+}
+
+function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, points: number) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (i * Math.PI) / points - Math.PI / 2;
+    const radius = i % 2 === 0 ? r : r * 0.4;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawBubble(
   ctx: CanvasRenderingContext2D,
-  text: string,
-  color: string,
-  x: number,
-  y: number,
+  text: string, color: string,
+  x: number, y: number,
   type: "chat" | "prize",
 ) {
-  const padding = 6;
+  const padding = 7;
   ctx.font = `bold 11px system-ui, sans-serif`;
   const tw = ctx.measureText(text).width;
   const bw = tw + padding * 2;
-  const bh = 20;
+  const bh = 22;
   const bx = x - bw / 2;
   const by = y - bh;
 
   ctx.save();
   ctx.shadowColor = color;
-  ctx.shadowBlur = type === "prize" ? 12 : 6;
+  ctx.shadowBlur = type === "prize" ? 14 : 6;
 
   // Bubble background
-  ctx.fillStyle = type === "prize" ? "rgba(0,0,0,0.85)" : "rgba(15,23,42,0.9)";
+  const bubbleBg = type === "prize"
+    ? ctx.createLinearGradient(bx, by, bx + bw, by + bh)
+    : null;
+  if (bubbleBg) {
+    bubbleBg.addColorStop(0, "rgba(0,0,0,0.9)");
+    bubbleBg.addColorStop(1, `${color}22`);
+    ctx.fillStyle = bubbleBg;
+  } else {
+    ctx.fillStyle = "rgba(15,23,42,0.92)";
+  }
   ctx.strokeStyle = color;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(bx, by, bw, bh, 5);
+  ctx.roundRect(bx, by, bw, bh, 6);
   ctx.fill();
   ctx.stroke();
 
-  // Pointer
+  // Tail
+  ctx.fillStyle = type === "prize" ? "rgba(0,0,0,0.9)" : "rgba(15,23,42,0.92)";
   ctx.beginPath();
   ctx.moveTo(x - 5, by + bh);
-  ctx.lineTo(x, by + bh + 6);
+  ctx.lineTo(x, by + bh + 7);
   ctx.lineTo(x + 5, by + bh);
   ctx.closePath();
-  ctx.fillStyle = type === "prize" ? "rgba(0,0,0,0.85)" : "rgba(15,23,42,0.9)";
   ctx.fill();
 
   ctx.shadowBlur = 0;
-
-  // Text
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, x, by + bh / 2);
-
   ctx.restore();
 }
 
@@ -373,31 +1037,41 @@ function lightenColor(hex: string, amount: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
+function darkenColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.max(0, (num >> 16) - amount);
+  const g = Math.max(0, ((num >> 8) & 0xff) - amount);
+  const b = Math.max(0, (num & 0xff) - amount);
+  return `rgb(${r},${g},${b})`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // NPC management
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NPC_COLORS = ["#6366f1", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899"];
+const SHIRT_COLORS = ["#6366f1", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6"];
+const SKIN_TONES = ["#fcd9b0", "#f4c28a", "#e8a96a", "#d4895a", "#c07040", "#a05830"];
+
 const WALKABLE_TILES: IsoPoint[] = [];
-for (let row = 0; row < MAP_H; row++) {
-  for (let col = 0; col < MAP_W; col++) {
-    const code = MAP_DATA[row]?.[col] ?? 1;
-    if (code === 0 || code === 4) {
-      WALKABLE_TILES.push({ isoX: col, isoY: row });
-    }
+for (let row = 1; row < MAP_H - 1; row++) {
+  for (let col = 1; col < MAP_W - 1; col++) {
+    if (isWalkable(col, row)) WALKABLE_TILES.push({ isoX: col, isoY: row });
   }
 }
 
 function randomWalkableTile(): IsoPoint {
-  const idx = Math.floor(Math.random() * WALKABLE_TILES.length);
-  return WALKABLE_TILES[idx] ?? { isoX: 5, isoY: 8 };
+  // Prefer lower half of map (crowd area)
+  const filtered = WALKABLE_TILES.filter((t) => t.isoY >= 6);
+  const pool = filtered.length > 0 ? filtered : WALKABLE_TILES;
+  return pool[Math.floor(Math.random() * pool.length)] ?? { isoX: 5, isoY: 9 };
 }
 
 function makeNpc(id: number): Character {
   return {
     id: `NPC_${String(id).padStart(2, "0")}`,
-    nickname: `NPC_${String(id).padStart(2, "0")}`,
-    color: NPC_COLORS[id % NPC_COLORS.length] ?? "#6366f1",
+    nickname: `NPC${String(id).padStart(2, "0")}`,
+    shirtColor: SHIRT_COLORS[id % SHIRT_COLORS.length] ?? "#6366f1",
+    skinColor: SKIN_TONES[id % SKIN_TONES.length] ?? "#fcd9b0",
     pos: randomWalkableTile(),
     targetPos: null,
     path: [],
@@ -405,45 +1079,43 @@ function makeNpc(id: number): Character {
     direction: "SOUTH",
     isPlayer: false,
     bubble: null,
+    bobPhase: Math.random() * Math.PI * 2,
   };
 }
 
 const GRADES = ["A賞", "B賞", "C賞", "D賞"];
-const DRAW_MESSAGES = [
-  "好厲害！", "哇！", "感謝！", "耶！✨", "好的！", "來了！",
-  "必中！", "加油！", "期待！",
-];
+const DRAW_MESSAGES = ["好厲害！", "哇！", "羨慕！", "耶！", "好的！", "來了！", "必中！", "期待！", "恭喜！"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProps) {
+export function IsometricRoom({ npcCount = 4, onStateChange }: IsometricRoomProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
-  const tileMapRef = useRef<Tile[][]>(buildTileMap());
+  const tileMapRef = useRef(buildTileMap());
 
-  // Characters
   const playerRef = useRef<Character>({
     id: "PLAYER",
     nickname: "你",
-    color: "#fbbf24",
-    pos: { isoX: 5, isoY: 9 },
+    shirtColor: "#fbbf24",
+    skinColor: "#fcd9b0",
+    pos: { isoX: 6, isoY: 10 },
     targetPos: null,
     path: [],
     state: "IDLE",
     direction: "SOUTH",
     isPlayer: true,
     bubble: null,
+    bobPhase: 0,
   });
 
   const npcsRef = useRef<Character[]>(
-    Array.from({ length: Math.min(npcCount, 6) }, (_, i) => makeNpc(i + 1)),
+    Array.from({ length: Math.min(npcCount, 7) }, (_, i) => makeNpc(i + 1))
   );
 
-  // Rebuild NPCs when count changes
   useEffect(() => {
-    npcsRef.current = Array.from({ length: Math.min(npcCount, 6) }, (_, i) => makeNpc(i + 1));
+    npcsRef.current = Array.from({ length: Math.min(npcCount, 7) }, (_, i) => makeNpc(i + 1));
   }, [npcCount]);
 
   const activeDrawerRef = useRef<string | null>(null);
@@ -451,38 +1123,38 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
   const timeRef = useRef(0);
   const lastNpcMoveRef = useRef(0);
   const lastDrawRef = useRef(0);
+  const sparklesRef = useRef<Sparkle[]>([]);
+  const flashRef = useRef(0);
 
   const [chatInput, setChatInput] = useState("");
-  const [statusInfo, setStatusInfo] = useState({ yourPos: { isoX: 5, isoY: 9 }, queue: [] as string[], activeDrawer: null as string | null });
+  const [statusInfo, setStatusInfo] = useState({
+    yourPos: { isoX: 6, isoY: 10 } as IsoPoint,
+    queue: [] as string[],
+    activeDrawer: null as string | null,
+  });
 
-  // Move player on canvas click
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const scaleX = CANVAS_W / rect.width;
-      const scaleY = CANVAS_H / rect.height;
-      const sx = (e.clientX - rect.left) * scaleX;
-      const sy = (e.clientY - rect.top) * scaleY;
-      const isoRaw = screenToIso({ x: sx, y: sy });
-      const target = snapToGrid(isoRaw);
-
-      if (!isWalkable(target.isoX, target.isoY)) return;
-      const player = playerRef.current;
-      const path = findPath(player.pos, target);
-      if (path.length > 0) {
-        player.path = path;
-        player.targetPos = target;
-        player.state = "WALKING";
-      }
-    },
-    [],
-  );
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const scaleX = CANVAS_W / rect.width;
+    const scaleY = CANVAS_H / rect.height;
+    const sx = (e.clientX - rect.left) * scaleX;
+    const sy = (e.clientY - rect.top) * scaleY;
+    const isoRaw = screenToIso({ x: sx, y: sy });
+    const target = snapToGrid(isoRaw);
+    if (!isWalkable(target.isoX, target.isoY)) return;
+    const player = playerRef.current;
+    const path = findPath(player.pos, target);
+    if (path.length > 0) {
+      player.path = path;
+      player.targetPos = target;
+      player.state = "WALKING";
+    }
+  }, []);
 
   const sendChat = useCallback(() => {
     if (!chatInput.trim()) return;
-    const player = playerRef.current;
-    player.bubble = {
+    playerRef.current.bubble = {
       text: chatInput.slice(0, 20),
       color: "#a78bfa",
       expiry: Date.now() + 3500,
@@ -492,49 +1164,67 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
   }, [chatInput]);
 
   const simulateDraw = useCallback(() => {
-    // Pick a random NPC to draw
     const npc = npcsRef.current[Math.floor(Math.random() * npcsRef.current.length)];
     if (!npc) return;
     activeDrawerRef.current = npc.id;
-    npc.state = "DRAWING";
+    npc.state = "WALKING";
 
-    // Move to counter
-    const counterPos = { isoX: 5, isoY: 6 };
+    // Move to counter area
+    const counterPos = { isoX: 6 + (Math.random() > 0.5 ? 0 : 1), isoY: 5 };
     const path = findPath(npc.pos, counterPos);
     npc.path = path.length > 0 ? path : [];
     npc.targetPos = counterPos;
-    if (path.length > 0) npc.state = "WALKING";
 
-    // After a delay, reveal prize
     setTimeout(() => {
-      const grade = GRADES[Math.floor(Math.random() * GRADES.length)] ?? "D賞";
-      npc.state = "CELEBRATING";
-      npc.bubble = {
-        text: `✨ ${grade}！`,
-        color: grade === "A賞" ? "#fbbf24" : grade === "B賞" ? "#38bdf8" : grade === "C賞" ? "#34d399" : "#a78bfa",
-        expiry: Date.now() + 5000,
-        type: "prize",
-      };
-      activeDrawerRef.current = null;
-
-      // Other NPCs react
-      for (const other of npcsRef.current) {
-        if (other.id !== npc.id && Math.random() > 0.4) {
-          setTimeout(() => {
-            other.bubble = {
-              text: DRAW_MESSAGES[Math.floor(Math.random() * DRAW_MESSAGES.length)] ?? "！",
-              color: "#94a3b8",
-              expiry: Date.now() + 2500,
-              type: "chat",
-            };
-          }, Math.random() * 1500);
-        }
-      }
-
+      npc.state = "DRAWING";
+      // After drawing pause, reveal prize
       setTimeout(() => {
-        npc.state = "IDLE";
-      }, 3000);
-    }, 3500);
+        const grade = GRADES[Math.floor(Math.random() * GRADES.length)] ?? "D賞";
+        const gradeColors: Record<string, string> = {
+          "A賞": "#fbbf24", "B賞": "#38bdf8", "C賞": "#34d399", "D賞": "#a78bfa",
+        };
+        npc.state = "CELEBRATING";
+        npc.bubble = {
+          text: `✨ ${grade}！`,
+          color: gradeColors[grade] ?? "#fbbf24",
+          expiry: Date.now() + 5000,
+          type: "prize",
+        };
+        activeDrawerRef.current = null;
+
+        // Flash + sparkles for A賞
+        if (grade === "A賞") {
+          flashRef.current = 1;
+          const counterS = isoToScreen({ isoX: 6.5, isoY: 4 });
+          sparklesRef.current = [
+            ...sparklesRef.current,
+            ...spawnSparkles(counterS.x, counterS.y, 40),
+          ];
+        } else {
+          const npcS = isoToScreen(npc.pos);
+          sparklesRef.current = [
+            ...sparklesRef.current,
+            ...spawnSparkles(npcS.x, npcS.y - 10, 15),
+          ];
+        }
+
+        // Other NPCs react
+        for (const other of npcsRef.current) {
+          if (other.id !== npc.id && Math.random() > 0.4) {
+            setTimeout(() => {
+              other.bubble = {
+                text: DRAW_MESSAGES[Math.floor(Math.random() * DRAW_MESSAGES.length)] ?? "！",
+                color: "#94a3b8",
+                expiry: Date.now() + 2500,
+                type: "chat",
+              };
+            }, Math.random() * 1500);
+          }
+        }
+
+        setTimeout(() => { npc.state = "IDLE"; }, 3500);
+      }, 2500);
+    }, (path.length * 500) + 500);
   }, []);
 
   const addPrizeBubble = useCallback((grade: string) => {
@@ -549,10 +1239,14 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
       expiry: Date.now() + 5000,
       type: "prize",
     };
-    setTimeout(() => { player.state = "IDLE"; }, 3000);
+    if (grade === "A賞") {
+      flashRef.current = 1;
+      const ps = isoToScreen(player.pos);
+      sparklesRef.current = [...sparklesRef.current, ...spawnSparkles(ps.x, ps.y - 10, 50)];
+    }
+    setTimeout(() => { player.state = "IDLE"; }, 3500);
   }, []);
 
-  // RAF loop
   const loop = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -563,7 +1257,7 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
     timeRef.current += 0.016;
     const t = timeRef.current;
 
-    // ── Move characters along paths ────────────────────────────────────────
+    // ── Move characters ──
     const moveCharacter = (char: Character) => {
       if (char.path.length === 0) {
         if (char.state === "WALKING") char.state = "IDLE";
@@ -574,30 +1268,29 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
       const dx = next.isoX - char.pos.isoX;
       const dy = next.isoY - char.pos.isoY;
       const dist = Math.hypot(dx, dy);
-      const speed = 0.06;
-
+      const speed = 0.07;
       if (dist < speed + 0.01) {
         char.pos = next;
         char.path.shift();
-        if (char.path.length === 0) {
+        if (char.path.length === 0 && char.state === "WALKING") {
           char.state = activeDrawerRef.current === char.id ? "DRAWING" : "IDLE";
         }
       } else {
-        char.pos = { isoX: char.pos.isoX + (dx / dist) * speed, isoY: char.pos.isoY + (dy / dist) * speed };
-        // Direction
-        if (Math.abs(dx) > Math.abs(dy)) {
-          char.direction = dx > 0 ? "EAST" : "WEST";
-        } else {
-          char.direction = dy > 0 ? "SOUTH" : "NORTH";
-        }
+        char.pos = {
+          isoX: char.pos.isoX + (dx / dist) * speed,
+          isoY: char.pos.isoY + (dy / dist) * speed,
+        };
+        char.direction = Math.abs(dx) > Math.abs(dy)
+          ? (dx > 0 ? "EAST" : "WEST")
+          : (dy > 0 ? "SOUTH" : "NORTH");
       }
     };
 
     moveCharacter(playerRef.current);
     for (const npc of npcsRef.current) moveCharacter(npc);
 
-    // NPC random movement
-    if (now - lastNpcMoveRef.current > 3000 + Math.random() * 2000) {
+    // NPC random wander
+    if (now - lastNpcMoveRef.current > 3500 + Math.random() * 2000) {
       lastNpcMoveRef.current = now;
       for (const npc of npcsRef.current) {
         if (npc.state !== "IDLE") continue;
@@ -612,69 +1305,109 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
       }
     }
 
-    // Auto-simulate a draw occasionally
-    if (now - lastDrawRef.current > 8000 + Math.random() * 4000 && !activeDrawerRef.current) {
+    // Auto draw simulation
+    if (now - lastDrawRef.current > 9000 + Math.random() * 4000 && !activeDrawerRef.current) {
       lastDrawRef.current = now;
-      if (Math.random() > 0.4) simulateDraw();
+      if (Math.random() > 0.35) simulateDraw();
     }
 
-    // Update status info
+    // Update sparkles
+    sparklesRef.current = sparklesRef.current
+      .filter((sp) => sp.life > 0)
+      .map((sp) => ({
+        ...sp,
+        x: sp.x + sp.vx,
+        y: sp.y + sp.vy,
+        vy: sp.vy + 0.15,
+        life: sp.life - 0.02,
+        rotation: sp.rotation + sp.rotSpeed,
+      }));
+
+    // Flash decay
+    if (flashRef.current > 0) flashRef.current = Math.max(0, flashRef.current - 0.02);
+
+    // Update status
     setStatusInfo({
       yourPos: snapToGrid(playerRef.current.pos),
       queue: queueRef.current,
       activeDrawer: activeDrawerRef.current,
     });
 
-    // ── Draw ──────────────────────────────────────────────────────────────
-    ctx.fillStyle = "#0a0f1a";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // ── DRAW FRAME ──
+    // Background + room
+    drawRoom(ctx, t);
 
-    // Draw tiles in isometric order (back to front)
-    const tileMap = tileMapRef.current;
-    for (let row = 0; row < MAP_H; row++) {
-      for (let col = 0; col < MAP_W; col++) {
-        const tile = tileMap[row]?.[col];
-        if (tile) drawTile(ctx, col, row, tile.type);
-      }
-    }
+    // Draw counter 3D blocks (before characters for depth)
+    drawCounterBlock(ctx, t);
 
-    // Collect all characters and sort by isoX + isoY for proper depth
+    // Queue rope
+    drawQueueRope(ctx);
+
+    // Depth-sort all characters by isoX + isoY
     const allChars: Character[] = [playerRef.current, ...npcsRef.current];
     allChars.sort((a, b) => (a.pos.isoX + a.pos.isoY) - (b.pos.isoX + b.pos.isoY));
+    for (const char of allChars) drawCharacter(ctx, char, t);
 
-    // Draw characters
-    for (const char of allChars) {
-      drawCharacter(ctx, char, t);
+    // Sparkles (on top)
+    for (const sp of sparklesRef.current) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, sp.life);
+      ctx.fillStyle = sp.color;
+      ctx.shadowColor = sp.color;
+      ctx.shadowBlur = 8;
+      ctx.translate(sp.x, sp.y);
+      ctx.rotate(sp.rotation);
+      drawStar(ctx, 0, 0, sp.size, 4);
+      ctx.restore();
     }
 
-    // UI overlay: top bar
-    ctx.fillStyle = "rgba(10,15,26,0.8)";
-    ctx.fillRect(0, 0, CANVAS_W, 36);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "11px system-ui, sans-serif";
+    // Ambient lighting & particles
+    drawAmbientLighting(ctx, t);
+    drawAmbientParticles(ctx, t);
+
+    // A賞 win flash
+    if (flashRef.current > 0) {
+      ctx.fillStyle = `rgba(251,191,36,${flashRef.current * 0.3})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
+    // ── UI Overlay ──
+    // Top bar
+    const barGrad = ctx.createLinearGradient(0, 0, CANVAS_W, 0);
+    barGrad.addColorStop(0, "rgba(88,28,135,0.92)");
+    barGrad.addColorStop(0.5, "rgba(126,34,206,0.92)");
+    barGrad.addColorStop(1, "rgba(88,28,135,0.92)");
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(0, 0, CANVAS_W, 32);
+
+    ctx.fillStyle = "#e9d5ff";
+    ctx.font = "bold 11px system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText("2.5D 一番賞虛擬商店  |  點擊地板移動角色", 12, 18);
+    ctx.fillText("一番賞抽獎房間  |  點擊地板移動角色", 12, 16);
 
-    // Player indicator in corner
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.font = "bold 10px system-ui, sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(`你的位置 (${Math.round(playerRef.current.pos.isoX)}, ${Math.round(playerRef.current.pos.isoY)})`, CANVAS_W - 12, 18);
+    ctx.fillText(
+      `你: (${Math.round(playerRef.current.pos.isoX)}, ${Math.round(playerRef.current.pos.isoY)})`,
+      CANVAS_W - 12, 16
+    );
 
     rafRef.current = requestAnimationFrame(loop);
   }, [simulateDraw]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
   }, [loop]);
 
   useEffect(() => {
     onStateChange?.(statusInfo);
   }, [statusInfo, onStateChange]);
+
+  // Keep tileMap reference stable
+  void tileMapRef.current;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -682,14 +1415,13 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
-        className="rounded-2xl border border-gray-700 shadow-2xl block cursor-pointer"
-        style={{ background: "#0a0f1a" }}
+        className="rounded-2xl border border-purple-800/60 shadow-2xl block cursor-pointer"
+        style={{ background: "#0a0f1a", maxWidth: "100%" }}
         onClick={handleCanvasClick}
       />
 
       {/* Controls */}
-      <div className="w-full max-w-[600px] grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Chat */}
+      <div className="w-full max-w-[640px] grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex gap-2">
           <input
             type="text"
@@ -698,34 +1430,32 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
             onKeyDown={(e) => e.key === "Enter" && sendChat()}
             placeholder="輸入訊息..."
             maxLength={20}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+            className="flex-1 bg-gray-900/80 border border-purple-800/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
           />
           <button
             onClick={sendChat}
             disabled={!chatInput.trim()}
-            className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold transition-all"
+            className="px-3 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
           >
             發送
           </button>
         </div>
 
-        {/* Simulate draw */}
         <button
           onClick={simulateDraw}
           disabled={!!activeDrawerRef.current}
-          className="px-4 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold transition-all"
+          className="px-4 py-2 rounded-lg bg-pink-700 hover:bg-pink-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-semibold transition-all"
         >
           觸發 NPC 抽獎
         </button>
 
-        {/* Prize bubble buttons */}
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <span className="text-xs text-gray-500 flex items-center">添加獎品氣泡:</span>
           {["A賞", "B賞", "C賞", "D賞"].map((g) => (
             <button
               key={g}
               onClick={() => addPrizeBubble(g)}
-              className="px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 text-white text-xs font-semibold transition-all"
+              className="px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 active:scale-95 text-white text-xs font-semibold transition-all border border-gray-700"
             >
               {g}
             </button>
@@ -734,20 +1464,20 @@ export function IsometricRoom({ npcCount = 3, onStateChange }: IsometricRoomProp
       </div>
 
       {/* Info panel */}
-      <div className="w-full max-w-[600px] grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <div className="rounded-lg bg-gray-800/60 border border-gray-800 p-2.5">
+      <div className="w-full max-w-[640px] grid grid-cols-3 gap-2">
+        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
           <p className="text-xs text-gray-600 mb-0.5">你的位置</p>
-          <p className="text-xs font-mono font-semibold text-gray-200">
+          <p className="text-xs font-mono font-semibold text-gray-300">
             ({statusInfo.yourPos.isoX}, {statusInfo.yourPos.isoY})
           </p>
         </div>
-        <div className="rounded-lg bg-gray-800/60 border border-gray-800 p-2.5">
+        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
           <p className="text-xs text-gray-600 mb-0.5">在場 NPC</p>
-          <p className="text-xs font-mono font-semibold text-gray-200">
+          <p className="text-xs font-mono font-semibold text-gray-300">
             {npcsRef.current.length} 人
           </p>
         </div>
-        <div className="rounded-lg bg-gray-800/60 border border-gray-800 p-2.5">
+        <div className="rounded-lg bg-gray-900/60 border border-purple-900/40 p-2.5">
           <p className="text-xs text-gray-600 mb-0.5">目前抽獎者</p>
           <p className="text-xs font-mono font-semibold text-pink-400">
             {statusInfo.activeDrawer ?? "—"}
