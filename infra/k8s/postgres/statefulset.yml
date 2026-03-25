@@ -1,0 +1,185 @@
+# =============================================================================
+# PostgreSQL StatefulSet
+#
+# For production: replace this StatefulSet with a managed database service
+# (e.g. AWS RDS Aurora PostgreSQL, Google Cloud SQL, Azure Database).
+# This manifest is provided as a self-hosted reference and for staging/dev
+# environments where a managed service is not available.
+#
+# If using a managed service, only the Service (ExternalName) resource is needed
+# to route connections from the cluster to the managed endpoint.
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: prizeDraw
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: prizedraw
+  POSTGRES_USER: prizedraw
+  # PgBouncer pool mode — transaction mode for Ktor/Exposed (no session-level state)
+  PGBOUNCER_POOL_MODE: transaction
+  PGBOUNCER_MAX_CLIENT_CONN: "200"
+  PGBOUNCER_DEFAULT_POOL_SIZE: "40"
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: prizeDraw
+  labels:
+    app: postgres
+    component: database
+spec:
+  serviceName: postgres-headless
+  replicas: 1          # Scale to 2+ with streaming replication (Patroni / CloudNativePG)
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      terminationGracePeriodSeconds: 120
+
+      securityContext:
+        runAsUser: 999      # postgres UID
+        runAsGroup: 999
+        fsGroup: 999
+
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: database-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "prizedraw", "-d", "prizedraw"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "prizedraw", "-d", "prizedraw"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-init
+              mountPath: /docker-entrypoint-initdb.d
+
+          args:
+            - postgres
+            - -c
+            - max_connections=200
+            - -c
+            - shared_buffers=512MB
+            - -c
+            - effective_cache_size=1536MB
+            - -c
+            - maintenance_work_mem=128MB
+            - -c
+            - checkpoint_completion_target=0.9
+            - -c
+            - wal_buffers=16MB
+            - -c
+            - default_statistics_target=100
+            - -c
+            - random_page_cost=1.1
+            - -c
+            - log_min_duration_statement=1000
+            - -c
+            - log_checkpoints=on
+            - -c
+            - log_connections=off
+            - -c
+            - log_disconnections=off
+
+      volumes:
+        - name: postgres-init
+          configMap:
+            name: postgres-init-scripts
+            optional: true
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+        labels:
+          app: postgres
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: ssd          # Use fast SSD storage class for DB
+        resources:
+          requests:
+            storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: prizeDraw
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# Headless service for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: prizeDraw
+  labels:
+    app: postgres
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

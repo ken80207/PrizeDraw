@@ -1,0 +1,109 @@
+# ============================================================
+# Prize Draw Platform - .gitignore
+# ============================================================
+
+# ---- Kotlin / Gradle ----
+.gradle/
+build/
+out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+local.properties
+gradle.properties.local
+
+# Kotlin
+*.kotlin_module
+
+# ---- IntelliJ IDEA / Android Studio ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+*.swp
+*.swo
+*~
+
+# ---- Node.js / pnpm ----
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Next.js ----
+.next/
+out/
+.vercel/
+.turbo/
+next-env.d.ts
+
+# ---- Build outputs ----
+dist/
+*.min.js
+*.min.css
+
+# ---- Environment / Secrets ----
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+infra/docker/.env
+*.pem
+*.key
+*.cert
+firebase-service-account.json
+google-credentials.json
+
+# ---- Testing ----
+coverage/
+.coverage
+htmlcov/
+test-results/
+playwright-report/
+playwright/.cache/
+maestro/
+
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ---- Linux ----
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ---- Windows ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Temporary files ----
+*.tmp
+*.temp
+.cache/
+
+# ---- KMP / Kotlin Multiplatform ----
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.pbxproj
+!*.xcodeproj/*.pbxproj
+.kotlin/
+kotlin-js-store/

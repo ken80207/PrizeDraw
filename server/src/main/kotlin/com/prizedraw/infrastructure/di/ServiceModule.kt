@@ -1,0 +1,86 @@
+package com.prizedraw.infrastructure.di
+
+import com.prizedraw.api.plugins.createMeterRegistry
+import com.prizedraw.application.ports.output.IBroadcastRepository
+import com.prizedraw.application.ports.output.IChatRepository
+import com.prizedraw.application.ports.output.IDrawSyncRepository
+import com.prizedraw.application.services.BroadcastService
+import com.prizedraw.application.services.ChatService
+import com.prizedraw.application.services.DrawSyncService
+import com.prizedraw.application.services.StaffTokenService
+import com.prizedraw.application.services.TokenService
+import com.prizedraw.infrastructure.external.redis.RedisClient
+import com.prizedraw.infrastructure.external.redis.RedisPubSub
+import com.prizedraw.infrastructure.persistence.repositories.RefreshTokenFamilyRepositoryImpl
+import com.prizedraw.infrastructure.websocket.ConnectionManager
+import io.ktor.server.config.ApplicationConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import org.koin.dsl.module
+
+/**
+ * Koin module providing application-layer services.
+ *
+ * - [TokenService] — JWT creation, verification, and refresh token rotation.
+ * - [PrometheusMeterRegistry] — Micrometer metrics registry for Prometheus scraping.
+ */
+public fun serviceModule(config: ApplicationConfig) =
+    module {
+        single<PrometheusMeterRegistry> { createMeterRegistry() }
+
+        single<TokenService.RefreshTokenFamilyStore> { RefreshTokenFamilyRepositoryImpl() }
+
+        single<TokenService> {
+            val tokenConfig =
+                TokenService.TokenConfig(
+                    jwtSecret = config.property("jwt.secret").getString(),
+                    // Support both camelCase and dotted sub-keys from application.conf
+                    accessTokenTtlSeconds =
+                        config
+                            .propertyOrNull("jwt.accessTokenTtlSeconds")
+                            ?.getString()
+                            ?.toLong()
+                            ?: config.propertyOrNull("jwt.accessTokenExpirySeconds")?.getString()?.toLong()
+                            ?: (15 * 60L),
+                    refreshTokenFamilyTtlDays =
+                        config
+                            .propertyOrNull("jwt.refreshFamilyTtlDays")
+                            ?.getString()
+                            ?.toLong()
+                            ?: config.propertyOrNull("jwt.refreshTokenExpiryDays")?.getString()?.toLong()
+                            ?: 30L,
+                    issuer = config.propertyOrNull("jwt.issuer")?.getString() ?: "prizedraw",
+                )
+            TokenService(tokenConfig, get())
+        }
+
+        single<StaffTokenService> {
+            StaffTokenService(
+                jwtSecret = config.property("jwt.secret").getString(),
+                issuer = config.propertyOrNull("jwt.issuer")?.getString() ?: "prizedraw",
+            )
+        }
+
+        // Gameification services (Phase 19+)
+        single<DrawSyncService> {
+            DrawSyncService(
+                drawSyncRepository = get<IDrawSyncRepository>(),
+                redisPubSub = get<RedisPubSub>(),
+            )
+        }
+
+        single<ChatService> {
+            ChatService(
+                chatRepository = get<IChatRepository>(),
+                redisPubSub = get<RedisPubSub>(),
+                redisClient = get<RedisClient>(),
+            )
+        }
+
+        single<BroadcastService> {
+            BroadcastService(
+                broadcastRepository = get<IBroadcastRepository>(),
+                redisPubSub = get<RedisPubSub>(),
+                connectionManager = get<ConnectionManager>(),
+            )
+        }
+    }

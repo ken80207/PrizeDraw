@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prizeDraw-server
+  namespace: prizeDraw
+  labels:
+    app: server
+    component: backend
+  annotations:
+    # Tell Prometheus to scrape this service's pods
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  # Session affinity ensures that a WebSocket client's upgrade request and
+  # subsequent frames are routed to the same pod. The 3-minute timeout covers
+  # the kuji draw session window (configurable draw_session_seconds).
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 180
+  selector:
+    app: server
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP

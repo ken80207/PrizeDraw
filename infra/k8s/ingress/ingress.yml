@@ -1,0 +1,143 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prizeDraw-ingress
+  namespace: prizeDraw
+  labels:
+    app: prizeDraw
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # TLS / certificate management via cert-manager (Let's Encrypt)
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # WebSocket support: disable proxy buffering for upgrade requests
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    # Enable gzip at the ingress layer as a second compression pass
+    nginx.ingress.kubernetes.io/enable-gzip: "true"
+    nginx.ingress.kubernetes.io/gzip-types: "application/json text/plain text/html application/javascript"
+    # Rate limiting at ingress level (coarse-grained — application layer is finer)
+    nginx.ingress.kubernetes.io/limit-rps: "200"
+    nginx.ingress.kubernetes.io/limit-connections: "100"
+    # HSTS header at ingress (complements SecurityHeaders plugin)
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Maximum body size for file uploads (profile avatars, prize photos)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # CORS is handled by the application — disable ingress CORS
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.prizedraw.tw
+        - www.prizedraw.tw
+        - prizedraw.tw
+        - admin.prizedraw.tw
+        - cs.prizedraw.tw
+      secretName: prizeDraw-tls-cert
+
+  rules:
+    # -----------------------------------------------------------------------
+    # API backend (Ktor server) — REST + WebSocket
+    # -----------------------------------------------------------------------
+    - host: api.prizedraw.tw
+      http:
+        paths:
+          # REST API
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-server
+                port:
+                  name: http
+          # WebSocket endpoints (Ktor handles upgrade internally)
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-server
+                port:
+                  name: http
+          # Health / readiness endpoints (for external health checks)
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: prizeDraw-server
+                port:
+                  name: http
+          - path: /ready
+            pathType: Exact
+            backend:
+              service:
+                name: prizeDraw-server
+                port:
+                  name: http
+          # Prometheus metrics (restrict to internal; configure NetworkPolicy separately)
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: prizeDraw-server
+                port:
+                  name: http
+
+    # -----------------------------------------------------------------------
+    # Player-facing web app (Next.js)
+    # -----------------------------------------------------------------------
+    - host: prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-web
+                port:
+                  name: http
+
+    - host: www.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-web
+                port:
+                  name: http
+
+    # -----------------------------------------------------------------------
+    # Admin dashboard (Next.js)
+    # -----------------------------------------------------------------------
+    - host: admin.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-admin
+                port:
+                  name: http
+
+    # -----------------------------------------------------------------------
+    # Customer Service app (Next.js) — internal staff tool
+    # -----------------------------------------------------------------------
+    - host: cs.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizeDraw-cs
+                port:
+                  name: http

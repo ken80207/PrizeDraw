@@ -1,0 +1,8 @@
+packages:
+  - 'web'
+  - 'admin'
+  - 'cs'
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

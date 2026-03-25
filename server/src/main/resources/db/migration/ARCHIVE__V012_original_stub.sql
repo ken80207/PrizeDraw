@@ -1,0 +1,4 @@
+-- ARCHIVED: This file is intentionally left as a placeholder.
+-- The canonical V012 migration is V012__create_feature_flags.sql.
+-- Flyway requires unique version numbers; this file is NOT executed.
+-- Rename to a non-V prefix (e.g. X012__...) if Flyway flags a duplicate.

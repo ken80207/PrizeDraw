@@ -1,0 +1,97 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: "2026-01-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ruler:
+  alertmanager_url: http://alertmanager:9093
+
+# Ingestion limits — tuned for a multi-pod Ktor deployment
+limits_config:
+  # Allow up to 10MB/s of log ingestion per tenant
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 20
+  # Maximum label name/value length
+  max_label_name_length: 1024
+  max_label_value_length: 2048
+  # Retain logs for 30 days
+  retention_period: 720h
+  # Allow up to 5000 log lines per push
+  max_entries_limit_per_query: 5000
+
+# Compactor handles retention enforcement
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  delete_request_store: filesystem
+
+# Analytics opt-out (self-hosted)
+analytics:
+  reporting_enabled: false
+
+# -----------------------------------------------------------------------
+# Promtail pipeline configuration (inline reference for operator)
+# Deploy as a separate Promtail config — shown here for documentation.
+# -----------------------------------------------------------------------
+# Promtail scrapes the following log streams:
+#
+# - job: prizeDraw/server
+#   static_configs:
+#     - targets: [localhost]
+#       labels:
+#         job: prizeDraw-server
+#         app: server
+#         __path__: /var/log/pods/prizeDraw_server_*/server/*.log
+#   pipeline_stages:
+#     # Parse JSON structured logs emitted by Logback with JsonLayout
+#     - json:
+#         expressions:
+#           level: level
+#           logger: logger_name
+#           traceId: mdc.traceId
+#           playerId: mdc.playerId
+#           campaignId: mdc.campaignId
+#           message: message
+#     # Promote structured fields to Loki labels for fast filtering
+#     - labels:
+#         level:
+#         traceId:
+#     # Drop DEBUG logs in production to reduce ingestion cost
+#     - match:
+#         selector: '{level="DEBUG"}'
+#         action: drop
+# -----------------------------------------------------------------------

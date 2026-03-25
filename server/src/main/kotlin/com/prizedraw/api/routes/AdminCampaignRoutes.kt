@@ -1,0 +1,364 @@
+package com.prizedraw.api.routes
+
+import com.prizedraw.api.plugins.StaffPrincipal
+import com.prizedraw.api.plugins.satisfies
+import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
+import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCase
+import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
+import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
+import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.application.usecases.admin.AdminCampaignNotFoundException
+import com.prizedraw.application.usecases.admin.InvalidCampaignTransitionException
+import com.prizedraw.contracts.dto.admin.ChangeCampaignStatusRequest
+import com.prizedraw.contracts.dto.admin.CreateKujiCampaignAdminRequest
+import com.prizedraw.contracts.dto.admin.CreateUnlimitedCampaignAdminRequest
+import com.prizedraw.contracts.dto.admin.UpdateCampaignAdminRequest
+import com.prizedraw.contracts.dto.campaign.KujiCampaignDetailDto
+import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
+import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
+import com.prizedraw.contracts.dto.campaign.TicketBoxDto
+import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDetailDto
+import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
+import com.prizedraw.contracts.endpoints.AdminEndpoints
+import com.prizedraw.contracts.enums.CampaignStatus
+import com.prizedraw.contracts.enums.CampaignType
+import com.prizedraw.contracts.enums.StaffRole
+import com.prizedraw.contracts.enums.TicketBoxStatus
+import com.prizedraw.domain.entities.KujiCampaign
+import com.prizedraw.domain.entities.PrizeDefinition
+import com.prizedraw.domain.entities.TicketBox
+import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.domain.valueobjects.CampaignId
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.call
+import io.ktor.server.auth.principal
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
+import io.ktor.server.routing.post
+import org.koin.ktor.ext.inject
+import java.util.UUID
+
+/**
+ * Registers admin campaign management routes.
+ *
+ * All routes require `authenticate("staff")` in the parent scope and
+ * [StaffRole.OPERATOR] or above (enforced inline per handler).
+ *
+ * - POST   [AdminEndpoints.CAMPAIGNS_KUJI]      -- create kuji campaign
+ * - POST   [AdminEndpoints.CAMPAIGNS_UNLIMITED] -- create unlimited campaign
+ * - GET [AdminEndpoints.CAMPAIGNS]            -- list all campaigns (filterable)
+ * - GET [AdminEndpoints.CAMPAIGN_BY_ID]       -- campaign detail
+ * - PATCH  [AdminEndpoints.CAMPAIGN_BY_ID]       -- update name/description/coverImage
+ * - PATCH  [AdminEndpoints.CAMPAIGN_STATUS]      -- change campaign status
+ */
+public fun Route.adminCampaignRoutes() {
+    adminCampaignCreateRoutes()
+    adminCampaignQueryRoutes()
+    adminCampaignMutationRoutes()
+}
+
+// --- Create routes ---
+
+private fun Route.adminCampaignCreateRoutes() {
+    val createKuji: ICreateKujiCampaignUseCase by inject()
+    val createUnlimited: ICreateUnlimitedCampaignUseCase by inject()
+
+    post(AdminEndpoints.CAMPAIGNS_KUJI) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
+        val req = call.receive<CreateKujiCampaignAdminRequest>()
+        val campaign =
+            createKuji.execute(
+                staffId = staff.staffId,
+                title = req.title,
+                description = req.description,
+                coverImageUrl = req.coverImageUrl,
+                pricePerDraw = req.pricePerDraw,
+                drawSessionSeconds = req.drawSessionSeconds,
+            )
+        call.respond(HttpStatusCode.Created, campaign.toDto())
+    }
+
+    post(AdminEndpoints.CAMPAIGNS_UNLIMITED) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
+        val req = call.receive<CreateUnlimitedCampaignAdminRequest>()
+        val campaign =
+            createUnlimited.execute(
+                staffId = staff.staffId,
+                title = req.title,
+                description = req.description,
+                coverImageUrl = req.coverImageUrl,
+                pricePerDraw = req.pricePerDraw,
+                rateLimitPerSecond = req.rateLimitPerSecond,
+            )
+        call.respond(HttpStatusCode.Created, campaign.toDto())
+    }
+}
+
+// --- Query routes ---
+
+private fun Route.adminCampaignQueryRoutes() {
+    val campaignRepository: ICampaignRepository by inject()
+    val ticketBoxRepository: ITicketBoxRepository by inject()
+    val prizeRepository: IPrizeRepository by inject()
+
+    get(AdminEndpoints.CAMPAIGNS) {
+        call.requireStaff(StaffRole.OPERATOR) ?: return@get
+        val typeParam = call.request.queryParameters["type"]
+        val statusParam = call.request.queryParameters["status"]
+        val filterStatus =
+            statusParam?.let {
+                runCatching { CampaignStatus.valueOf(it) }.getOrNull()
+            }
+        val items = buildCampaignList(typeParam, filterStatus, campaignRepository)
+        call.respond(HttpStatusCode.OK, items)
+    }
+
+    get(AdminEndpoints.CAMPAIGN_BY_ID) {
+        call.requireStaff(StaffRole.OPERATOR) ?: return@get
+        val campaignId = call.parseCampaignId() ?: return@get
+        val typeParam = call.request.queryParameters["type"] ?: "kuji"
+        val response =
+            buildCampaignDetail(
+                typeParam,
+                campaignId,
+                campaignRepository,
+                ticketBoxRepository,
+                prizeRepository,
+            )
+        if (response == null) {
+            call.respond(HttpStatusCode.NotFound, mapOf("error" to "Campaign not found"))
+        } else {
+            call.respond(HttpStatusCode.OK, response)
+        }
+    }
+}
+
+// --- Mutation routes ---
+
+private fun Route.adminCampaignMutationRoutes() {
+    val updateStatus: IUpdateCampaignStatusUseCase by inject()
+    val updateCampaign: IUpdateCampaignUseCase by inject()
+
+    patch(AdminEndpoints.CAMPAIGN_BY_ID) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@patch
+        val campaignId = call.parseCampaignId() ?: return@patch
+        val typeParam = call.request.queryParameters["type"] ?: "kuji"
+        val campaignType = parseCampaignType(typeParam)
+        val req = call.receive<UpdateCampaignAdminRequest>()
+        runCatching {
+            updateCampaign.execute(
+                staffId = staff.staffId,
+                campaignId = campaignId,
+                campaignType = campaignType,
+                title = req.title,
+                description = req.description,
+                coverImageUrl = req.coverImageUrl,
+                confirmProbabilityUpdate = req.confirmProbabilityUpdate,
+            )
+        }.fold(
+            onSuccess = { call.respond(HttpStatusCode.NoContent) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+
+    patch(AdminEndpoints.CAMPAIGN_STATUS) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@patch
+        val campaignId = call.parseCampaignId() ?: return@patch
+        val typeParam = call.request.queryParameters["type"] ?: "kuji"
+        val campaignType = parseCampaignType(typeParam)
+        val req = call.receive<ChangeCampaignStatusRequest>()
+        runCatching {
+            updateStatus.execute(
+                staffId = staff.staffId,
+                campaignId = campaignId,
+                campaignType = campaignType,
+                newStatus = req.status,
+            )
+        }.fold(
+            onSuccess = { call.respond(HttpStatusCode.NoContent) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+}
+
+// --- Helpers ---
+
+private suspend fun io.ktor.server.application.ApplicationCall.requireStaff(minimumRole: StaffRole): StaffPrincipal? {
+    val staff = principal<StaffPrincipal>()
+    if (staff == null) {
+        respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
+        return null
+    }
+    if (!staff.role.satisfies(minimumRole)) {
+        respond(
+            HttpStatusCode.Forbidden,
+            mapOf("error" to "Insufficient role: requires $minimumRole or above"),
+        )
+        return null
+    }
+    return staff
+}
+
+private suspend fun io.ktor.server.application.ApplicationCall.parseCampaignId(): CampaignId? {
+    val raw =
+        parameters["campaignId"] ?: run {
+            respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing campaignId"))
+            return null
+        }
+    return runCatching { CampaignId(UUID.fromString(raw)) }.getOrElse {
+        respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid campaignId"))
+        null
+    }
+}
+
+private fun parseCampaignType(raw: String): CampaignType =
+    when (raw.lowercase()) {
+        "unlimited" -> CampaignType.UNLIMITED
+        else -> CampaignType.KUJI
+    }
+
+private suspend fun io.ktor.server.application.ApplicationCall.respondError(e: Throwable) {
+    when (e) {
+        is InvalidCampaignTransitionException ->
+            respond(HttpStatusCode.UnprocessableEntity, mapOf("error" to e.message))
+        is AdminCampaignNotFoundException ->
+            respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
+        is IllegalArgumentException ->
+            respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
+        is IllegalStateException ->
+            respond(HttpStatusCode.UnprocessableEntity, mapOf("error" to e.message))
+        else ->
+            respond(HttpStatusCode.InternalServerError, mapOf("error" to "Unexpected error"))
+    }
+}
+
+private suspend fun buildCampaignList(
+    typeParam: String?,
+    filterStatus: CampaignStatus?,
+    campaignRepository: ICampaignRepository,
+): List<Map<String, Any?>> {
+    val kujiItems =
+        if (typeParam == null || typeParam.equals("kuji", ignoreCase = true)) {
+            campaignRepository.findAllKuji(filterStatus).map { it.toAdminListItem() }
+        } else {
+            emptyList()
+        }
+    val unlimitedItems =
+        if (typeParam == null || typeParam.equals("unlimited", ignoreCase = true)) {
+            campaignRepository.findAllUnlimited(filterStatus).map { it.toAdminListItem() }
+        } else {
+            emptyList()
+        }
+    return kujiItems + unlimitedItems
+}
+
+private suspend fun buildCampaignDetail(
+    typeParam: String,
+    campaignId: CampaignId,
+    campaignRepository: ICampaignRepository,
+    ticketBoxRepository: ITicketBoxRepository,
+    prizeRepository: IPrizeRepository,
+): Any? =
+    when (typeParam.lowercase()) {
+        "unlimited" -> {
+            val campaign = campaignRepository.findUnlimitedById(campaignId) ?: return null
+            val prizes =
+                prizeRepository.findDefinitionsByCampaign(
+                    campaignId,
+                    CampaignType.UNLIMITED,
+                )
+            UnlimitedCampaignDetailDto(
+                campaign = campaign.toDto(),
+                prizes = prizes.map { it.toDto() },
+            )
+        }
+        else -> {
+            val campaign = campaignRepository.findKujiById(campaignId) ?: return null
+            val boxes = ticketBoxRepository.findByCampaignId(campaignId)
+            val prizes =
+                prizeRepository.findDefinitionsByCampaign(
+                    campaignId,
+                    CampaignType.KUJI,
+                )
+            KujiCampaignDetailDto(
+                campaign = campaign.toDto(),
+                boxes = boxes.map { it.toDto() },
+                prizes = prizes.map { it.toDto() },
+            )
+        }
+    }
+
+// --- Mapping helpers ---
+
+private fun KujiCampaign.toDto(): KujiCampaignDto =
+    KujiCampaignDto(
+        id = id.value.toString(),
+        title = title,
+        description = description,
+        coverImageUrl = coverImageUrl,
+        pricePerDraw = pricePerDraw,
+        drawSessionSeconds = drawSessionSeconds,
+        status = status,
+        activatedAt = activatedAt,
+        soldOutAt = soldOutAt,
+    )
+
+private fun UnlimitedCampaign.toDto(): UnlimitedCampaignDto =
+    UnlimitedCampaignDto(
+        id = id.value.toString(),
+        title = title,
+        description = description,
+        coverImageUrl = coverImageUrl,
+        pricePerDraw = pricePerDraw,
+        rateLimitPerSecond = rateLimitPerSecond,
+        status = status,
+        activatedAt = activatedAt,
+    )
+
+private fun TicketBox.toDto(): TicketBoxDto =
+    TicketBoxDto(
+        id = id.toString(),
+        name = name,
+        totalTickets = totalTickets,
+        remainingTickets = remainingTickets,
+        status = TicketBoxStatus.valueOf(status.name),
+        displayOrder = displayOrder,
+    )
+
+private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
+    PrizeDefinitionDto(
+        id = id.value.toString(),
+        grade = grade,
+        name = name,
+        photos = photos,
+        buybackPrice = buybackPrice,
+        buybackEnabled = buybackEnabled,
+        probabilityBps = probabilityBps,
+        ticketCount = ticketCount,
+        displayOrder = displayOrder,
+    )
+
+private fun KujiCampaign.toAdminListItem(): Map<String, Any?> =
+    mapOf(
+        "id" to id.value.toString(),
+        "title" to title,
+        "type" to "KUJI",
+        "status" to status.name,
+        "pricePerDraw" to pricePerDraw,
+        "createdAt" to createdAt.toString(),
+    )
+
+private fun UnlimitedCampaign.toAdminListItem(): Map<String, Any?> =
+    mapOf(
+        "id" to id.value.toString(),
+        "title" to title,
+        "type" to "UNLIMITED",
+        "status" to status.name,
+        "pricePerDraw" to pricePerDraw,
+        "createdAt" to createdAt.toString(),
+    )

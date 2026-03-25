@@ -1,0 +1,222 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prizeDraw-server
+  namespace: prizeDraw
+  labels:
+    app: server
+    component: backend
+    version: "1.0.0"
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0       # zero-downtime deployments
+  template:
+    metadata:
+      labels:
+        app: server
+        component: backend
+      annotations:
+        # Force pod restart when ConfigMap/Secret changes (via checksum annotation)
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Graceful shutdown — give Ktor time to drain in-flight requests
+      terminationGracePeriodSeconds: 60
+
+      # Pod anti-affinity: spread pods across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: server
+
+      serviceAccountName: prizeDraw-server
+
+      containers:
+        - name: server
+          image: ghcr.io/prizedraw/server:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # -------------------------------------------------------------------
+          # Resource limits — tuned for JVM 21 with virtual threads
+          # Adjust based on load testing results
+          # -------------------------------------------------------------------
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+          # -------------------------------------------------------------------
+          # Health checks
+          # -------------------------------------------------------------------
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              httpHeaders:
+                - name: Accept
+                  value: application/json
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+              httpHeaders:
+                - name: Accept
+                  value: application/json
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+
+          # Start-up probe: give the JVM longer to initialize on first boot
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+
+          # -------------------------------------------------------------------
+          # Environment — non-sensitive values from ConfigMap
+          # -------------------------------------------------------------------
+          envFrom:
+            - configMapRef:
+                name: prizeDraw-server-config
+
+          # -------------------------------------------------------------------
+          # Environment — sensitive values from Secret
+          # -------------------------------------------------------------------
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: database-url
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: database-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: database-password
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: redis-url
+            - name: STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: storage-access-key
+            - name: STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: prizeDraw-secrets
+                  key: storage-secret-key
+            # Pod-level metadata for distributed tracing context
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          # -------------------------------------------------------------------
+          # JVM tuning — container-aware heap sizing
+          # -------------------------------------------------------------------
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:+UseContainerSupport
+                -XX:MaxRAMPercentage=70.0
+                -XX:+UseZGC
+                -XX:+ZGenerational
+                -Djava.security.egd=file:/dev/./urandom
+                -Dserver.port=8080
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+      # Security context — run as non-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prizeDraw-server-config
+  namespace: prizeDraw
+  labels:
+    app: server
+data:
+  PORT: "8080"
+  JWT_ISSUER: "prizedraw"
+  JWT_AUDIENCE: "prizedraw-api"
+  JWT_ACCESS_EXPIRY_SECONDS: "900"
+  JWT_REFRESH_EXPIRY_DAYS: "30"
+  DATABASE_POOL_SIZE: "20"
+  STORAGE_ENDPOINT: "https://s3.ap-northeast-1.amazonaws.com"
+  STORAGE_BUCKET: "prizeDraw-production"
+  STORAGE_REGION: "ap-northeast-1"
+  CORS_ALLOWED_HOSTS: "https://prizedraw.tw,https://admin.prizedraw.tw"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "60"

@@ -1,0 +1,279 @@
+groups:
+  # ===========================================================================
+  # Financial Integrity Alerts
+  # ===========================================================================
+  - name: financial_integrity
+    interval: 60s
+    rules:
+      # Payment failure rate exceeds 5% over the last 5 minutes
+      - alert: HighPaymentFailureRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              uri=~"/api/v1/payments/webhook.*",
+              status=~"4[0-9]{2}|5[0-9]{2}"
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{
+              uri=~"/api/v1/payments/webhook.*"
+            }[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: payments
+        annotations:
+          summary: "Payment failure rate above 5%"
+          description: >
+            Payment webhook failure rate is {{ $value | humanizePercentage }} over the
+            last 5 minutes. Threshold: 5%. Check ECPay/NewebPay integration and payment
+            order status.
+          runbook: "https://wiki.prizedraw.internal/runbooks/payment-failures"
+
+      # Points ledger update latency spike
+      - alert: PointsLedgerHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(db_query_seconds_bucket{query_type="update_balance"}[5m])
+          ) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Points ledger p95 latency above 500ms"
+          description: >
+            The p95 latency for `updateBalance` DB operations is {{ $value | humanizeDuration }}.
+            Optimistic lock retries may be spiking. Check draw volume and DB connection pool.
+
+  # ===========================================================================
+  # API Performance Alerts
+  # ===========================================================================
+  - name: api_performance
+    interval: 30s
+    rules:
+      # API p95 latency exceeds 500ms
+      - alert: ApiHighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, uri) (
+              rate(http_server_requests_seconds_bucket{
+                uri!~"/metrics|/health|/ready"
+              }[5m])
+            )
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "API p95 latency above 500ms on {{ $labels.uri }}"
+          description: >
+            Endpoint {{ $labels.uri }} p95 response time is {{ $value | humanizeDuration }}.
+            Investigate slow queries, connection pool exhaustion, or downstream service latency.
+
+      # Overall HTTP 5xx error rate exceeds 1%
+      - alert: HighErrorRate5xx
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              status=~"5[0-9]{2}",
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+          ) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "HTTP 5xx error rate above 1%"
+          description: >
+            Server error rate is {{ $value | humanizePercentage }} over last 5 minutes.
+            Threshold: 1%. Check application logs in Loki for stack traces.
+          runbook: "https://wiki.prizedraw.internal/runbooks/high-error-rate"
+
+      # API p99 latency on draw endpoints (tighter SLO)
+      - alert: DrawEndpointHighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (
+              rate(http_server_requests_seconds_bucket{
+                uri=~"/api/v1/draw.*"
+              }[5m])
+            )
+          ) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Draw endpoint p99 latency above 1 second"
+          description: >
+            Draw endpoint p99 is {{ $value | humanizeDuration }}.
+            Queue system or DB transactions may be bottlenecked.
+
+  # ===========================================================================
+  # WebSocket / Realtime Alerts
+  # ===========================================================================
+  - name: websocket
+    interval: 30s
+    rules:
+      # Active WebSocket connections approaching capacity (8000 / 10000 limit)
+      - alert: WebSocketConnectionsHigh
+        expr: |
+          prizeDraw_websocket_active_connections > 8000
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "WebSocket connection count above 8,000"
+          description: >
+            Active WebSocket connections: {{ $value }}.
+            Approaching per-pod limit of 10,000. Scale horizontally via HPA or trigger
+            manual scale-out.
+
+      # WebSocket broadcast latency p95 exceeds 2 seconds
+      - alert: WebSocketBroadcastLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            rate(prizeDraw_ws_broadcast_latency_seconds_bucket[5m])
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "WebSocket broadcast p95 latency above 2 seconds"
+          description: >
+            WebSocket draw event broadcast p95 latency is {{ $value | humanizeDuration }}.
+            Redis pub/sub or connection fanout may be overloaded.
+
+  # ===========================================================================
+  # Database Alerts
+  # ===========================================================================
+  - name: database
+    interval: 30s
+    rules:
+      # HikariCP connection pool exhaustion
+      - alert: DbConnectionPoolExhausted
+        expr: |
+          hikaricp_connections_pending > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "HikariCP connection pool has pending waiters"
+          description: >
+            {{ $value }} threads are waiting for a DB connection.
+            Pool may be exhausted. Check max pool size and long-running transactions.
+
+      # PostgreSQL replication lag (if replicas are configured)
+      - alert: PostgresReplicationLag
+        expr: |
+          pg_replication_lag > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "PostgreSQL replica lag above 30 seconds"
+          description: >
+            Replication lag is {{ $value }} seconds. Read replicas may serve stale data.
+
+  # ===========================================================================
+  # Infrastructure Alerts
+  # ===========================================================================
+  - name: infrastructure
+    interval: 60s
+    rules:
+      # Disk usage exceeds 80%
+      - alert: DiskUsageHigh
+        expr: |
+          (
+            1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+                 / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})
+          ) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "Disk usage above 80% on {{ $labels.device }}"
+          description: >
+            Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is
+            {{ $value | humanizePercentage }} full. Consider expanding storage or
+            running log rotation.
+
+      # Pod crash-looping
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total{
+            namespace="prizeDraw"
+          }[15m]) * 60 * 15 > 3
+        for: 5m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash-looping"
+          description: >
+            Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted
+            more than 3 times in 15 minutes. Check pod logs for root cause.
+
+      # Memory usage high
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            jvm_memory_used_bytes{area="heap"}
+            / jvm_memory_max_bytes{area="heap"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "JVM heap usage above 85% on {{ $labels.instance }}"
+          description: >
+            JVM heap is {{ $value | humanizePercentage }} full on {{ $labels.instance }}.
+            GC pressure may degrade response times. Consider increasing heap or
+            investigating memory leaks.
+
+  # ===========================================================================
+  # Redis Alerts
+  # ===========================================================================
+  - name: redis
+    interval: 30s
+    rules:
+      # Redis memory usage exceeds 80% of maxmemory
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "Redis memory usage above 80%"
+          description: >
+            Redis is using {{ $value | humanizePercentage }} of maxmemory.
+            Eviction policy may start expiring cache entries prematurely.
+
+      # Redis connection errors
+      - alert: RedisConnectionErrors
+        expr: |
+          rate(redis_rejected_connections_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Redis is rejecting connections"
+          description: >
+            Redis has rejected {{ $value | humanize }} connections/second.
+            Connection pool may be exhausted or Redis is overloaded.

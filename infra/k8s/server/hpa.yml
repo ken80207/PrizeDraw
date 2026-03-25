@@ -1,0 +1,65 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: prizeDraw-server
+  namespace: prizeDraw
+  labels:
+    app: server
+    component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prizeDraw-server
+
+  minReplicas: 2
+  maxReplicas: 10
+
+  metrics:
+    # Primary scaling signal: CPU utilization
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # Secondary scaling signal: memory (JVM heap pressure)
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+    # Custom metric: active WebSocket connections per pod
+    # Requires Prometheus Adapter configured to expose this metric
+    - type: Pods
+      pods:
+        metric:
+          name: prizeDraw_websocket_active_connections
+        target:
+          type: AverageValue
+          averageValue: "1000"
+
+  behavior:
+    # Scale out aggressively during draw spikes
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+      selectPolicy: Max
+
+    # Scale in conservatively to avoid flapping
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min
