@@ -6,30 +6,48 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Fraction of peel distance that locks in and triggers tear-off. */
-const REVEAL_THRESHOLD = 0.65;
+/** Cover strip occupies the top this fraction of the ticket. */
+const COVER_RATIO = 0.32;
 
-/** Spring physics constants for snap-back animation. */
-const SPRING_STIFFNESS = 0.12;
-const SPRING_DAMPING = 0.70;
+/** Fraction of horizontal travel (relative to canvas width) that commits the tear. */
+const REVEAL_THRESHOLD = 0.70;
 
-/** Tear-off animation: paper flies toward the top-right. */
-const TEAROFF_ROT_SPEED = 5; // degrees per frame
-const TEAROFF_VX = 14;       // px per frame (rightward)
-const TEAROFF_VY = -10;      // px per frame (upward)
-const TEAROFF_ALPHA_DEC = 0.032;
+/** Spring physics — snap-back animation when released before threshold. */
+const SPRING_STIFFNESS = 0.14;
+const SPRING_DAMPING = 0.68;
 
-/** Paper colour stops — warm parchment. */
-const PAPER_FILL = "#e8d5b7";
-const PAPER_FILL_DARK = "#c8a57a";
-/** The underside of the curled paper (slightly lighter/whiter). */
-const PAPER_BACK_FILL = "#f5ead4";
+/** How tall (px, in canvas-space) the curl arc rises above the perforation. */
+const CURL_HEIGHT = 44;
+
+/** Shimmer animation: highlight sweeps across the cover strip edges. */
+const SHIMMER_SPEED = 0.012; // 0..1 per frame
+
+// Cover strip colours — metallic silver/gold
+const COVER_COLOR_1 = "#B8B8B8";
+const COVER_COLOR_2 = "#E0E0E0";
+const COVER_COLOR_3 = "#F0F0F0";
+const COVER_COLOR_4 = "#D0D0D0";
+const COVER_COLOR_5 = "#A0A0A0";
+
+// Ticket body colour
+const TICKET_BG = "#FFF8F0";
+
+// Grade badge colour map (matches GradeBadge.tsx)
+const GRADE_COLORS: Record<string, { bg: string; text: string }> = {
+  "A賞":    { bg: "#EF4444", text: "#FFFFFF" },
+  "B賞":    { bg: "#F97316", text: "#FFFFFF" },
+  "C賞":    { bg: "#3B82F6", text: "#FFFFFF" },
+  "D賞":    { bg: "#22C55E", text: "#FFFFFF" },
+  "E賞":    { bg: "#A855F7", text: "#FFFFFF" },
+  "F賞":    { bg: "#EC4899", text: "#FFFFFF" },
+  "Last賞": { bg: "#F59E0B", text: "#FFFFFF" },
+  "LAST賞": { bg: "#F59E0B", text: "#FFFFFF" },
+};
+const DEFAULT_GRADE_COLOR = { bg: "#6B7280", text: "#FFFFFF" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface Point { x: number; y: number; }
 
 export interface TearRevealProps {
   prizePhotoUrl: string;
@@ -39,336 +57,403 @@ export interface TearRevealProps {
   onProgress?: (progress: number) => void;
 }
 
-interface TearOffState {
-  rotation: number;
-  tx: number;
-  ty: number;
-  alpha: number;
+/** Which horizontal edge the user grabbed to start tearing. */
+type TearDirection = "left" | "right";
+
+interface TearState {
+  /** 0 = cover fully on, 1 = cover fully torn off. */
+  progress: number;
+  /** true while the strip is flying off screen after threshold. */
+  tearingOff: boolean;
+  /** Translation offset for the tear-off fly animation (canvas-space px). */
+  tearOffX: number;
+  tearOffAlpha: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Corner-peel geometry
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// Strategy: the paper always peels from the bottom-right corner.
-// The "peel corner" starts at (W, H) and is dragged by the pointer.
-// Everything to the bottom-right of a straight fold line (from the peel
-// corner toward the opposite diagonal) is revealed; the rest stays covered.
-//
-// The fold line passes through the midpoint between the drag point and the
-// original corner, perpendicular to the drag vector — exactly like folding
-// a physical piece of paper.
-//
-// We derive two fold-line endpoints by extending that perpendicular until it
-// hits the canvas edges, then clip the canvas into "covered" and "folded"
-// halves using those endpoints.
-//
-// The "folded flap" is the mirrored paper underside shown on the peeled side.
+// Pure geometry helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** The fold line passes through the midpoint of [cornerPt, dragPt],
- *  perpendicular to the drag direction. Returns { midPoint, perpDir }. */
-function getFoldLine(cornerPt: Point, dragPt: Point): { mid: Point; perp: Point } {
-  const mid: Point = {
-    x: (cornerPt.x + dragPt.x) / 2,
-    y: (cornerPt.y + dragPt.y) / 2,
-  };
-  // Drag direction
-  const dx = dragPt.x - cornerPt.x;
-  const dy = dragPt.y - cornerPt.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 0.001) return { mid, perp: { x: 1, y: 0 } };
-  // Perpendicular (rotate 90°)
-  const perp: Point = { x: -dy / len, y: dx / len };
-  return { mid, perp };
-}
-
-/** Intersect the fold line (through `pt`, direction `dir`) with all 4 canvas
- *  edges and return the (at most 2) intersection points on those edges. */
-function foldLineEdgeIntersections(
-  pt: Point,
-  dir: Point,
-  W: number,
-  H: number,
-): Point[] {
-  const edges: [Point, Point][] = [
-    [{ x: 0, y: 0 }, { x: W, y: 0 }],   // top
-    [{ x: W, y: 0 }, { x: W, y: H }],   // right
-    [{ x: W, y: H }, { x: 0, y: H }],   // bottom
-    [{ x: 0, y: H }, { x: 0, y: 0 }],   // left
-  ];
-  const pts: Point[] = [];
-  for (const [a, b] of edges) {
-    const ex = b.x - a.x;
-    const ey = b.y - a.y;
-    const denom = dir.x * ey - dir.y * ex;
-    if (Math.abs(denom) < 0.0001) continue;
-    const t = ((a.x - pt.x) * ey - (a.y - pt.y) * ex) / denom;
-    const s = ((a.x - pt.x) * dir.y - (a.y - pt.y) * dir.x) / denom;
-    if (s >= -0.001 && s <= 1.001) {
-      pts.push({ x: pt.x + t * dir.x, y: pt.y + t * dir.y });
-    }
-  }
-  // Deduplicate near-identical points (corners)
-  const unique: Point[] = [];
-  for (const p of pts) {
-    if (!unique.some((u) => Math.hypot(u.x - p.x, u.y - p.y) < 1)) {
-      unique.push(p);
-    }
-  }
-  return unique.slice(0, 2);
-}
-
-/** Return 6 canvas-transform coefficients for reflecting through the fold line
- *  (passes through `pt`, unit normal `n`). */
-function reflectMatrix(pt: Point, n: Point): [number, number, number, number, number, number] {
-  const nx = n.x, ny = n.y;
-  const a = 1 - 2 * nx * nx;
-  const b = -2 * nx * ny;
-  const c = -2 * nx * ny;
-  const d = 1 - 2 * ny * ny;
-  const dot2 = 2 * (pt.x * nx + pt.y * ny);
-  return [a, b, c, d, dot2 * nx, dot2 * ny];
-}
-
-/** Peel progress [0..1]: ratio of drag distance to the canvas diagonal. */
-function computeProgress(
-  dragPt: Point,
-  cornerPt: Point,
-  W: number,
-  H: number,
+/**
+ * Given the current drag state, compute the x-coordinate where the tear
+ * front currently sits (canvas px), and how far that is as a [0..1] fraction.
+ *
+ * When tearing from the LEFT edge:
+ *   tearX starts at 0 and moves rightward → progress = tearX / W
+ * When tearing from the RIGHT edge:
+ *   tearX starts at W and moves leftward → progress = (W - tearX) / W
+ */
+function computeTearProgress(
+  startClientX: number,
+  currentClientX: number,
+  direction: TearDirection,
+  canvasW: number,
 ): number {
-  const dist = Math.hypot(dragPt.x - cornerPt.x, dragPt.y - cornerPt.y);
-  const diag = Math.hypot(W, H);
-  return Math.min(dist / (diag * 0.85), 1);
+  const delta = currentClientX - startClientX;
+  const travel = direction === "left" ? delta : -delta;
+  return Math.min(Math.max(travel / canvasW, 0), 1);
+}
+
+function tearXFromProgress(progress: number, direction: TearDirection, W: number): number {
+  return direction === "left" ? progress * W : W - progress * W;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Canvas rendering
+// Canvas drawing
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Draw the full parchment paper fill across the entire canvas. */
-function drawPaper(ctx: CanvasRenderingContext2D, W: number, H: number, ox = 0, oy = 0): void {
-  const grad = ctx.createLinearGradient(ox, oy, ox + W * 0.7, oy + H * 0.7);
-  grad.addColorStop(0, PAPER_FILL);
-  grad.addColorStop(0.6, PAPER_FILL_DARK);
-  grad.addColorStop(1, "#a07848");
-  ctx.fillStyle = grad;
-  ctx.fillRect(ox, oy, W, H);
+/**
+ * Draw the full ticket background (cream card).
+ * This is always the bottom layer — the prize content is composited on top via
+ * the React <img> / <div> below the canvas.
+ */
+function drawTicketBody(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  coverH: number,
+  prizeGrade: string | undefined,
+  prizeName: string | undefined,
+  prizeImage: HTMLImageElement | null,
+): void {
+  // Card background
+  ctx.fillStyle = TICKET_BG;
+  ctx.fillRect(0, 0, W, H);
 
-  // Subtle paper grain
-  const prevAlpha = ctx.globalAlpha;
+  // Subtle card texture — very light horizontal lines
+  ctx.save();
   ctx.globalAlpha = 0.04;
-  ctx.fillStyle = "#000";
-  for (let y = oy; y < oy + H; y += 5) {
-    for (let x = ox; x < ox + W; x += 7) {
-      if (Math.sin(x * 0.31 + y * 0.77 + 42) > 0.6) ctx.fillRect(x, y, 2, 2);
+  ctx.strokeStyle = "#8B7355";
+  ctx.lineWidth = 1;
+  for (let y = coverH + 8; y < H; y += 6) {
+    ctx.beginPath();
+    ctx.moveTo(8, y);
+    ctx.lineTo(W - 8, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Perforation line ────────────────────────────────────────────────────
+  // 3D indent: dark shadow above, light highlight below
+  ctx.save();
+  ctx.setLineDash([5, 5]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.moveTo(4, coverH - 0.5);
+  ctx.lineTo(W - 4, coverH - 0.5);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.60)";
+  ctx.beginPath();
+  ctx.moveTo(4, coverH + 0.5);
+  ctx.lineTo(W - 4, coverH + 0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // ── Ticket number ────────────────────────────────────────────────────────
+  const numY = coverH + 24;
+  ctx.save();
+  ctx.font = "bold 13px 'Helvetica Neue', Arial, sans-serif";
+  ctx.fillStyle = "#999080";
+  ctx.textAlign = "center";
+  ctx.fillText("No. 一番賞", W / 2, numY);
+  ctx.restore();
+
+  // ── Prize image ──────────────────────────────────────────────────────────
+  const imgY = coverH + 38;
+  const imgH = H - imgY - (prizeGrade || prizeName ? 72 : 20);
+  const imgX = 12;
+  const imgW = W - 24;
+
+  if (prizeImage && prizeImage.complete && prizeImage.naturalWidth > 0) {
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, imgX, imgY, imgW, Math.max(imgH, 0), 6);
+    ctx.clip();
+    // Fit image with cover-fit logic
+    const aspectImg = prizeImage.naturalWidth / prizeImage.naturalHeight;
+    const aspectSlot = imgW / Math.max(imgH, 1);
+    let drawW: number, drawH: number, drawX: number, drawY: number;
+    if (aspectImg > aspectSlot) {
+      drawH = imgH;
+      drawW = imgH * aspectImg;
+      drawX = imgX + (imgW - drawW) / 2;
+      drawY = imgY;
+    } else {
+      drawW = imgW;
+      drawH = imgW / aspectImg;
+      drawX = imgX;
+      drawY = imgY + (imgH - drawH) / 2;
+    }
+    ctx.drawImage(prizeImage, drawX, drawY, drawW, drawH);
+    ctx.restore();
+  } else {
+    // Placeholder gradient
+    ctx.save();
+    const grad = ctx.createLinearGradient(imgX, imgY, imgX + imgW, imgY + imgH);
+    grad.addColorStop(0, "#E2D5C0");
+    grad.addColorStop(1, "#C8B898");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    roundRect(ctx, imgX, imgY, imgW, Math.max(imgH, 0), 6);
+    ctx.fill();
+    // Camera icon placeholder
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = `${Math.min(imgH * 0.4, 48)}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🎁", imgX + imgW / 2, imgY + imgH / 2);
+    ctx.textBaseline = "alphabetic";
+    ctx.restore();
+  }
+
+  // ── Prize info area ──────────────────────────────────────────────────────
+  if (prizeGrade || prizeName) {
+    const infoY = H - 64;
+
+    // Grade badge
+    if (prizeGrade) {
+      const colors = GRADE_COLORS[prizeGrade] ?? DEFAULT_GRADE_COLOR;
+      ctx.save();
+      ctx.font = "bold 20px 'Helvetica Neue', Arial, sans-serif";
+      const badgeText = prizeGrade;
+      const tw = ctx.measureText(badgeText).width;
+      const bx = W / 2 - tw / 2 - 14;
+      const bw = tw + 28;
+      const bh = 30;
+      const by = infoY;
+      ctx.fillStyle = colors.bg;
+      ctx.beginPath();
+      roundRect(ctx, bx, by, bw, bh, 6);
+      ctx.fill();
+      ctx.fillStyle = colors.text;
+      ctx.textAlign = "center";
+      ctx.fillText(badgeText, W / 2, by + 22);
+      ctx.restore();
+    }
+
+    // Prize name
+    if (prizeName) {
+      ctx.save();
+      ctx.font = "14px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillStyle = "#5C4A30";
+      ctx.textAlign = "center";
+      const nameY = prizeGrade ? infoY + 44 : infoY + 18;
+      ctx.fillText(prizeName, W / 2, nameY);
+      ctx.restore();
     }
   }
-  ctx.globalAlpha = prevAlpha;
 }
 
-/** Draw the back side of the curled paper (lighter, slightly warm white). */
-function drawPaperBack(ctx: CanvasRenderingContext2D, W: number, H: number, ox = 0, oy = 0): void {
-  const grad = ctx.createLinearGradient(ox, oy, ox + W, oy + H);
-  grad.addColorStop(0, PAPER_BACK_FILL);
-  grad.addColorStop(1, "#ede0ca");
+/** Polyfill-safe rounded rect path (no ctx.roundRect usage for compat). */
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** Draw the metallic cover strip with optional horizontal clipping. */
+function drawCoverStrip(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  coverH: number,
+  clipStartX: number,
+  clipEndX: number,
+  shimmerPhase: number,
+): void {
+  if (clipEndX <= clipStartX) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(clipStartX, 0, clipEndX - clipStartX, coverH);
+  ctx.clip();
+
+  // Base metallic gradient (horizontal)
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, COVER_COLOR_1);
+  grad.addColorStop(0.20, COVER_COLOR_2);
+  grad.addColorStop(0.45, COVER_COLOR_3);
+  grad.addColorStop(0.70, COVER_COLOR_4);
+  grad.addColorStop(1, COVER_COLOR_5);
   ctx.fillStyle = grad;
-  ctx.fillRect(ox, oy, W, H);
+  ctx.fillRect(0, 0, W, coverH);
+
+  // Vertical sheen overlay (simulates metallic sheen)
+  const sheen = ctx.createLinearGradient(0, 0, 0, coverH);
+  sheen.addColorStop(0, "rgba(255,255,255,0.35)");
+  sheen.addColorStop(0.4, "rgba(255,255,255,0.08)");
+  sheen.addColorStop(1, "rgba(0,0,0,0.15)");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, W, coverH);
+
+  // Shimmer sweep highlight
+  const shimX = shimmerPhase * (W + 80) - 40;
+  const shimGrad = ctx.createLinearGradient(shimX - 40, 0, shimX + 40, 0);
+  shimGrad.addColorStop(0, "rgba(255,255,255,0)");
+  shimGrad.addColorStop(0.5, "rgba(255,255,255,0.55)");
+  shimGrad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = shimGrad;
+  ctx.fillRect(0, 0, W, coverH);
+
+  // Cover text
+  ctx.font = `bold ${Math.min(coverH * 0.38, 16)}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = "rgba(80,70,60,0.70)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("一番賞　封條", W / 2, coverH / 2);
+  ctx.textBaseline = "alphabetic";
+
+  // Thin top border highlight
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillRect(0, 0, W, 2);
+
+  // Thin bottom border shadow
+  ctx.fillStyle = "rgba(0,0,0,0.20)";
+  ctx.fillRect(0, coverH - 2, W, 2);
+
+  ctx.restore();
 }
 
-/** Clip the context to the "still covered" half-plane (the side that doesn't
- *  contain the drag point). */
-function clipCoveredHalf(
+/**
+ * Draw the curling torn portion.
+ * The torn part of the cover peels up and away from the tear edge,
+ * showing the underside (lighter color) and casting a shadow below it.
+ */
+function drawCurlEffect(
   ctx: CanvasRenderingContext2D,
-  foldMid: Point,
-  dragUnit: Point, // unit vector from corner toward drag point
-  W: number,
-  H: number,
-): void {
-  const intersections = foldLineEdgeIntersections(foldMid, { x: -dragUnit.y, y: dragUnit.x }, W, H);
-  if (intersections.length < 2) {
-    ctx.rect(0, 0, W, H);
-    return;
-  }
-  // Covered half = corners where dot(corner - foldMid, dragUnit) < 0
-  const coveredCorners: Point[] = [];
-  for (const c of [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: H }, { x: 0, y: H }]) {
-    const dot = (c.x - foldMid.x) * dragUnit.x + (c.y - foldMid.y) * dragUnit.y;
-    if (dot <= 0) coveredCorners.push(c);
-  }
-  const pts = [intersections[0], ...coveredCorners, intersections[1]];
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
-}
-
-/** Clip the context to the "peeled" half-plane (the drag direction side). */
-function clipPeeledHalf(
-  ctx: CanvasRenderingContext2D,
-  foldMid: Point,
-  dragUnit: Point,
-  W: number,
-  H: number,
-): void {
-  const intersections = foldLineEdgeIntersections(foldMid, { x: -dragUnit.y, y: dragUnit.x }, W, H);
-  if (intersections.length < 2) {
-    ctx.rect(0, 0, W, H);
-    return;
-  }
-  const peeledCorners: Point[] = [];
-  for (const c of [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: H }, { x: 0, y: H }]) {
-    const dot = (c.x - foldMid.x) * dragUnit.x + (c.y - foldMid.y) * dragUnit.y;
-    if (dot >= 0) peeledCorners.push(c);
-  }
-  const pts = [intersections[0], ...peeledCorners, intersections[1]];
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
-}
-
-interface PeelRenderState {
-  /** The drag point in canvas coordinates (where the user's finger is). */
-  dragPt: Point;
-  /** The anchor corner (always bottom-right). */
-  cornerPt: Point;
-  tearOff?: TearOffState;
-}
-
-function renderFrame(
-  ctx: CanvasRenderingContext2D,
-  state: PeelRenderState,
+  tearX: number,
+  coverH: number,
+  direction: TearDirection,
   progress: number,
 ): void {
-  const { width: W, height: H } = ctx.canvas;
+  if (progress < 0.01) return;
+
+  // The curl originates at the tear edge (tearX) along the bottom of the cover (coverH).
+  // It curves upward and away in the tear direction.
+  const curlSign = direction === "left" ? -1 : 1; // which way the torn part flew
+  const curlExtent = Math.min(progress * 60 + 20, 80); // how far the curl extends
+
+  ctx.save();
+
+  // Shadow cast by the lifted curl onto the ticket below
+  ctx.globalAlpha = 0.22 * Math.min(progress * 3, 1);
+  const shadowGrad = ctx.createLinearGradient(
+    tearX, coverH,
+    tearX - curlSign * 18, coverH + 14,
+  );
+  shadowGrad.addColorStop(0, "rgba(0,0,0,0.55)");
+  shadowGrad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.rect(
+    direction === "left" ? tearX - 20 : tearX,
+    coverH - 4,
+    direction === "left" ? 20 : 20,
+    18,
+  );
+  ctx.fill();
+
+  ctx.globalAlpha = Math.min(progress * 2, 1) * 0.88;
+
+  // Back-of-cover — lighter warm silver
+  const backGrad = ctx.createLinearGradient(
+    tearX, coverH,
+    tearX - curlSign * curlExtent, coverH - CURL_HEIGHT,
+  );
+  backGrad.addColorStop(0, "#D8D8D8");
+  backGrad.addColorStop(0.5, "#EFEFEF");
+  backGrad.addColorStop(1, "rgba(240,240,240,0.3)");
+
+  // Curl path using a quadratic bezier
+  const cp1x = tearX - curlSign * (curlExtent * 0.4);
+  const cp1y = coverH - CURL_HEIGHT * 0.6;
+  const endX = tearX - curlSign * curlExtent;
+  const endY = coverH - CURL_HEIGHT * 0.8;
+  const stripWidth = Math.max(coverH * 0.85, 20);
+
+  ctx.beginPath();
+  ctx.moveTo(tearX, coverH);
+  ctx.quadraticCurveTo(cp1x, cp1y, endX, endY);
+  ctx.lineTo(endX, endY - stripWidth * 0.25);
+  ctx.quadraticCurveTo(cp1x, cp1y - stripWidth * 0.3, tearX, coverH - stripWidth * 0.15);
+  ctx.closePath();
+  ctx.fillStyle = backGrad;
+  ctx.fill();
+
+  // Subtle edge highlight on the curl
+  ctx.globalAlpha = 0.4 * Math.min(progress * 2, 1);
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tearX, coverH);
+  ctx.quadraticCurveTo(cp1x, cp1y, endX, endY);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Master render function. Draws one frame of the tear animation.
+ *
+ * Layers (bottom to top):
+ *  1. Ticket body with prize info (always visible — the reveal is implicit)
+ *  2. Un-torn portion of cover strip (right or left side, depending on direction)
+ *  3. Curl effect at the tear edge
+ */
+function renderFrame(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  coverH: number,
+  progress: number,
+  direction: TearDirection,
+  shimmerPhase: number,
+  tearOffX: number,
+  tearOffAlpha: number,
+  isTearingOff: boolean,
+  prizeGrade: string | undefined,
+  prizeName: string | undefined,
+  prizeImage: HTMLImageElement | null,
+): void {
   ctx.clearRect(0, 0, W, H);
 
-  if (state.tearOff) {
-    // Paper is flying off screen
-    const { rotation, tx, ty, alpha } = state.tearOff;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    const cx = W / 2 + tx;
-    const cy = H / 2 + ty;
-    ctx.translate(cx, cy);
-    ctx.rotate((rotation * Math.PI) / 180);
-    drawPaper(ctx, W, H, -W / 2, -H / 2);
-    ctx.restore();
-    return;
-  }
+  // ── 1. Ticket body ──────────────────────────────────────────────────────
+  drawTicketBody(ctx, W, H, coverH, prizeGrade, prizeName, prizeImage);
 
-  if (progress <= 0) {
-    drawPaper(ctx, W, H);
-    return;
-  }
+  if (progress >= 1 && !isTearingOff) return; // fully revealed — nothing more to draw
 
-  const { dragPt, cornerPt } = state;
-  const dx = dragPt.x - cornerPt.x;
-  const dy = dragPt.y - cornerPt.y;
-  const dragLen = Math.hypot(dx, dy);
-  if (dragLen < 2) {
-    drawPaper(ctx, W, H);
-    return;
-  }
+  // ── 2. Cover strip (un-torn portion) ────────────────────────────────────
+  const tearX = tearXFromProgress(progress, direction, W);
 
-  // Unit vector in the drag direction (from corner toward drag point)
-  const dragUnit: Point = { x: dx / dragLen, y: dy / dragLen };
-
-  // Fold line: perpendicular to drag, passes through the midpoint of [corner, drag]
-  const { mid: foldMid, perp: foldPerp } = getFoldLine(cornerPt, dragPt);
-
-  // ── 1. Draw the still-covered portion of the paper ────────────────────
   ctx.save();
-  ctx.beginPath();
-  clipCoveredHalf(ctx, foldMid, dragUnit, W, H);
-  ctx.clip();
-  drawPaper(ctx, W, H);
+  if (isTearingOff) {
+    ctx.globalAlpha = tearOffAlpha;
+    ctx.translate(tearOffX, 0);
+  }
+
+  // Clip to only the remaining (un-torn) part
+  const coverStartX = direction === "left" ? tearX : 0;
+  const coverEndX = direction === "left" ? W : tearX;
+  drawCoverStrip(ctx, W, coverH, coverStartX, coverEndX, shimmerPhase);
+
   ctx.restore();
 
-  // ── 2. Draw the reflected (folded-back) underside in the peeled region ─
-  // The underside is the mirror image of the paper through the fold line.
-  ctx.save();
-  ctx.beginPath();
-  clipPeeledHalf(ctx, foldMid, dragUnit, W, H);
-  ctx.clip();
-
-  // Apply the reflection transform
-  const [a, b, c, d, e, f] = reflectMatrix(foldMid, dragUnit);
-  ctx.transform(a, b, c, d, e, f);
-  drawPaperBack(ctx, W, H);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.restore();
-
-  // ── 3. Shadow cast by the lifted paper onto the prize image ────────────
-  // Draw a gradient shadow on the revealed (prize) side near the fold edge.
-  {
-    const intersections = foldLineEdgeIntersections(foldMid, foldPerp, W, H);
-    if (intersections.length >= 2) {
-      const p0 = intersections[0];
-      const p1 = intersections[1];
-      const shadowWidth = 36;
-
-      ctx.save();
-      ctx.beginPath();
-      // Shadow falls on the "prize visible" side (same as peeled half, but we
-      // want it under the paper). We clip to a strip near the fold edge.
-      clipPeeledHalf(ctx, foldMid, dragUnit, W, H);
-      ctx.clip();
-
-      // Gradient goes from fold edge INTO the peeled zone (away from fold)
-      const shadowGrad = ctx.createLinearGradient(
-        p0.x, p0.y,
-        p0.x + dragUnit.x * shadowWidth,
-        p0.y + dragUnit.y * shadowWidth,
-      );
-      shadowGrad.addColorStop(0, "rgba(0,0,0,0.38)");
-      shadowGrad.addColorStop(0.5, "rgba(0,0,0,0.12)");
-      shadowGrad.addColorStop(1, "rgba(0,0,0,0)");
-
-      ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.lineTo(p1.x + dragUnit.x * shadowWidth, p1.y + dragUnit.y * shadowWidth);
-      ctx.lineTo(p0.x + dragUnit.x * shadowWidth, p0.y + dragUnit.y * shadowWidth);
-      ctx.closePath();
-      ctx.fillStyle = shadowGrad;
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // ── 4. Fold-edge highlight (bright crease line on the paper front) ─────
-  {
-    const intersections = foldLineEdgeIntersections(foldMid, foldPerp, W, H);
-    if (intersections.length >= 2) {
-      const p0 = intersections[0];
-      const p1 = intersections[1];
-
-      ctx.save();
-      ctx.beginPath();
-      clipCoveredHalf(ctx, foldMid, dragUnit, W, H);
-      ctx.clip();
-
-      // Thin highlight strip at the fold edge on the paper front side
-      const hiWidth = 8;
-      const hiGrad = ctx.createLinearGradient(
-        p0.x, p0.y,
-        p0.x - dragUnit.x * hiWidth,
-        p0.y - dragUnit.y * hiWidth,
-      );
-      hiGrad.addColorStop(0, "rgba(255,255,255,0.60)");
-      hiGrad.addColorStop(1, "rgba(255,255,255,0)");
-
-      ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.lineTo(p1.x - dragUnit.x * hiWidth, p1.y - dragUnit.y * hiWidth);
-      ctx.lineTo(p0.x - dragUnit.x * hiWidth, p0.y - dragUnit.y * hiWidth);
-      ctx.closePath();
-      ctx.fillStyle = hiGrad;
-      ctx.fill();
-      ctx.restore();
-    }
+  // ── 3. Curl effect at tear edge ──────────────────────────────────────────
+  if (!isTearingOff && progress > 0) {
+    drawCurlEffect(ctx, tearX, coverH, direction, progress);
   }
 }
 
@@ -377,23 +462,24 @@ function renderFrame(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Corner-peel paper reveal animation.
+ * Ichiban Kuji (一番賞) horizontal cover-strip tear reveal.
  *
- * The paper always peels from the bottom-right corner — the most natural and
- * universally understood gesture for peeling a sticker or label.
+ * The ticket has a metallic silver cover strip on the top ~30%.
+ * The user grabs either the left or right edge of the strip and drags
+ * horizontally. The strip tears along a perforation line, progressively
+ * revealing the prize info underneath (grade badge, name, image).
  *
- * Interaction:
- * - Drag from anywhere on the paper; the fold angle follows the drag direction
- *   and the peel originates from the bottom-right corner.
- * - Releasing below 65% progress: paper snaps back with spring physics.
- * - Releasing at 65% or more: paper tears off with a fly-away animation.
+ * - Releasing before 70% progress: cover springs back horizontally.
+ * - Releasing at/after 70%: remaining strip flies off and onRevealed fires.
  *
- * Visual layers (bottom → top):
- * 1. Prize image (plain <img>)
- * 2. Canvas overlay: covered paper + reflected underside + shadow + highlight
+ * Visual layers (bottom to top in the DOM):
+ *  1. Ticket body drawn on canvas (always visible)
+ *  2. Canvas overlay: cover strip + curl effect
  */
 export function TearReveal({
   prizePhotoUrl,
+  prizeGrade,
+  prizeName,
   onRevealed,
   onProgress,
 }: TearRevealProps) {
@@ -401,41 +487,80 @@ export function TearReveal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
 
-  // All gesture state lives in refs to avoid stale-closure issues in RAF.
+  // ── Preload prize image ───────────────────────────────────────────────────
+  const prizeImageRef = useRef<HTMLImageElement | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!prizePhotoUrl) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      prizeImageRef.current = img;
+      setImageLoaded(true);
+    };
+    img.onerror = () => {
+      prizeImageRef.current = null;
+      setImageLoaded(true); // still render; drawTicketBody handles null image gracefully
+    };
+    img.src = prizePhotoUrl;
+  }, [prizePhotoUrl]);
+
+  // ── Interaction state (all refs to avoid stale closures in RAF) ───────────
   const isDraggingRef = useRef(false);
-  const dragPtRef = useRef<Point>({ x: 0, y: 0 });
-  // The corner anchor is recomputed on resize; stored in ref.
-  const cornerPtRef = useRef<Point>({ x: 0, y: 0 });
+  const startClientXRef = useRef(0);
+  const currentClientXRef = useRef(0);
+  const directionRef = useRef<TearDirection>("left");
   const progressRef = useRef(0);
-  const [progressState, setProgressState] = useState(0);
-  const velocityRef = useRef(0);
-  const tearOffRef = useRef<TearOffState | undefined>(undefined);
+  const [progressState, setProgressState] = useState(0); // for hint visibility only
+  const velocityRef = useRef(0); // for spring-back
   const [revealed, setRevealed] = useState(false);
-  // Detect canvas support once at construction time via a lazy initializer so
-  // we never call setState inside a useEffect body (which triggers cascading renders).
-  const [canvasSupported] = useState<boolean>(() => {
-    if (typeof document === "undefined") return true; // SSR — assume supported
-    const probe = document.createElement("canvas");
-    return typeof probe.getContext === "function";
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Shimmer phase — animated continuously until first drag
+  const shimmerRef = useRef(0);
+
+  // Tear-off fly state
+  const tearOffRef = useRef<TearState>({
+    progress: 0,
+    tearingOff: false,
+    tearOffX: 0,
+    tearOffAlpha: 1,
   });
 
-  // ── Draw ─────────────────────────────────────────────────────────────────
+  // Canvas dimensions ref
+  const dimRef = useRef({ W: 0, H: 0, coverH: 0 });
+
+  // ── Canvas support ────────────────────────────────────────────────────────
+  const [canvasSupported] = useState<boolean>(() => {
+    if (typeof document === "undefined") return true;
+    return typeof document.createElement("canvas").getContext === "function";
+  });
+
+  // ── Core draw call ────────────────────────────────────────────────────────
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const { W, H, coverH } = dimRef.current;
+    if (W === 0) return;
+
+    const ts = tearOffRef.current;
     renderFrame(
-      ctx,
-      {
-        dragPt: dragPtRef.current,
-        cornerPt: cornerPtRef.current,
-        tearOff: tearOffRef.current,
-      },
-      progressRef.current,
+      ctx, W, H, coverH,
+      ts.tearingOff ? ts.progress : progressRef.current,
+      directionRef.current,
+      shimmerRef.current,
+      ts.tearOffX,
+      ts.tearOffAlpha,
+      ts.tearingOff,
+      prizeGrade,
+      prizeName,
+      prizeImageRef.current,
     );
-  }, []);
+  }, [prizeGrade, prizeName]);
 
   const scheduleDraw = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -445,20 +570,30 @@ export function TearReveal({
     });
   }, [draw]);
 
-  // ── Spring-back ──────────────────────────────────────────────────────────
-  //
-  // Use a ref to hold the latest callback so the RAF reschedule doesn't
-  // require the function itself in its own dependency array (which would
-  // trigger the no-forward-reference lint rule).
+  // ── Shimmer loop (runs until first interaction) ───────────────────────────
 
-  const springBackRef = useRef<() => void>(() => { /* initialised below */ });
-
-  const springBack = useCallback(() => {
-    springBackRef.current();
-  }, []);
+  const shimmerLoopRef = useRef<() => void>(() => { /* noop placeholder */ });
 
   useEffect(() => {
-    springBackRef.current = () => {
+    shimmerLoopRef.current = () => {
+      if (isDraggingRef.current || progressRef.current > 0.01 || revealed) return;
+      shimmerRef.current = (shimmerRef.current + SHIMMER_SPEED) % 1;
+      draw();
+      rafRef.current = requestAnimationFrame(shimmerLoopRef.current);
+    };
+  }, [draw, revealed]);
+
+  const startShimmer = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(shimmerLoopRef.current);
+  }, []);
+
+  // ── Spring-back ───────────────────────────────────────────────────────────
+
+  const springBackLoopRef = useRef<() => void>(() => { /* noop */ });
+
+  useEffect(() => {
+    springBackLoopRef.current = () => {
       if (isDraggingRef.current) return;
 
       velocityRef.current =
@@ -466,90 +601,114 @@ export function TearReveal({
       progressRef.current += velocityRef.current;
       if (progressRef.current < 0) progressRef.current = 0;
 
-      // Ease drag point back toward the corner
-      const lerp = 0.15;
-      dragPtRef.current = {
-        x: dragPtRef.current.x + (cornerPtRef.current.x - dragPtRef.current.x) * lerp,
-        y: dragPtRef.current.y + (cornerPtRef.current.y - dragPtRef.current.y) * lerp,
-      };
-
+      // Keep startClientX / currentClientX in sync so progress mapping stays valid
+      // Just drive from progressRef directly — no need to recalc client coords.
       setProgressState(progressRef.current);
       onProgress?.(progressRef.current);
       draw();
 
-      if (Math.abs(progressRef.current) < 0.002 && Math.abs(velocityRef.current) < 0.002) {
+      if (
+        Math.abs(progressRef.current) < 0.002 &&
+        Math.abs(velocityRef.current) < 0.002
+      ) {
         progressRef.current = 0;
         velocityRef.current = 0;
-        dragPtRef.current = { ...cornerPtRef.current };
         setProgressState(0);
         onProgress?.(0);
         draw();
+        startShimmer();
         return;
       }
 
-      rafRef.current = requestAnimationFrame(springBackRef.current);
+      rafRef.current = requestAnimationFrame(springBackLoopRef.current);
     };
-  }, [draw, onProgress]);
+  }, [draw, onProgress, startShimmer]);
 
-  // ── Tear-off animation ───────────────────────────────────────────────────
+  // ── Tear-off animation ────────────────────────────────────────────────────
 
-  const runTearOffRef = useRef<() => void>(() => { /* initialised below */ });
-
-  const runTearOff = useCallback(() => {
-    runTearOffRef.current();
-  }, []);
+  const tearOffLoopRef = useRef<() => void>(() => { /* noop */ });
 
   useEffect(() => {
-    runTearOffRef.current = () => {
-      if (!tearOffRef.current) return;
+    tearOffLoopRef.current = () => {
+      const ts = tearOffRef.current;
+      if (!ts.tearingOff) return;
+
+      // Slide the strip off in the tear direction, fade out
+      const slideSpeed = directionRef.current === "left" ? -22 : 22;
       tearOffRef.current = {
-        rotation: tearOffRef.current.rotation + TEAROFF_ROT_SPEED,
-        tx: tearOffRef.current.tx + TEAROFF_VX,
-        ty: tearOffRef.current.ty + TEAROFF_VY,
-        alpha: tearOffRef.current.alpha - TEAROFF_ALPHA_DEC,
+        ...ts,
+        tearOffX: ts.tearOffX + slideSpeed,
+        tearOffAlpha: ts.tearOffAlpha - 0.048,
+        progress: Math.min(ts.progress + 0.07, 1),
       };
+
       draw();
-      if (tearOffRef.current.alpha > 0) {
-        rafRef.current = requestAnimationFrame(runTearOffRef.current);
+
+      if (tearOffRef.current.tearOffAlpha > 0) {
+        rafRef.current = requestAnimationFrame(tearOffLoopRef.current);
       } else {
-        tearOffRef.current = undefined;
+        tearOffRef.current = { progress: 1, tearingOff: false, tearOffX: 0, tearOffAlpha: 0 };
+        progressRef.current = 1;
         setRevealed(true);
         onRevealed();
       }
     };
   }, [draw, onRevealed]);
 
-  // ── Pointer events ───────────────────────────────────────────────────────
+  // ── Pointer coordinate helper ─────────────────────────────────────────────
 
-  const toCanvasPoint = useCallback((clientX: number, clientY: number): Point => {
+  const toCanvasX = useCallback((clientX: number): number => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return 0;
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height),
-    };
+    return (clientX - rect.left) * (canvas.width / rect.width);
   }, []);
+
+  // ── Edge detection: did the user touch near the left or right edge? ───────
+
+  const detectEdgeSide = useCallback((clientX: number): TearDirection | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+    const { W } = dimRef.current;
+
+    // 28% of canvas width from each side counts as "grabbing the edge"
+    const edgeZone = W * 0.28;
+    if (canvasX <= edgeZone) return "left";
+    if (canvasX >= W - edgeZone) return "right";
+    return null; // middle tap — no tear initiated
+  }, []);
+
+  // ── Pointer events ────────────────────────────────────────────────────────
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (revealed) return;
+      if (revealed || tearOffRef.current.tearingOff) return;
+
+      // Only start a tear if user grabs near an edge of the cover strip
+      const side = detectEdgeSide(e.clientX);
+      if (!side) return;
+
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+
+      directionRef.current = side;
+      startClientXRef.current = e.clientX;
+      currentClientXRef.current = e.clientX;
       isDraggingRef.current = true;
       velocityRef.current = 0;
       progressRef.current = 0;
 
-      // Start the drag point at the corner so the fold appears naturally as
-      // soon as the user moves. The actual position is updated on pointer move.
-      dragPtRef.current = { ...cornerPtRef.current };
+      setHasInteracted(true);
+      setProgressState(0);
 
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       draw();
     },
-    [revealed, draw],
+    [revealed, detectEdgeSide, draw],
   );
 
   const handlePointerMove = useCallback(
@@ -558,33 +717,46 @@ export function TearReveal({
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const pt = toCanvasPoint(e.clientX, e.clientY);
-      dragPtRef.current = pt;
-
-      const p = computeProgress(pt, cornerPtRef.current, canvas.width, canvas.height);
+      currentClientXRef.current = e.clientX;
+      const p = computeTearProgress(
+        startClientXRef.current,
+        e.clientX,
+        directionRef.current,
+        dimRef.current.W,
+      );
       progressRef.current = p;
       setProgressState(p);
       onProgress?.(p);
       scheduleDraw();
     },
-    [revealed, toCanvasPoint, scheduleDraw, onProgress],
+    [revealed, scheduleDraw, onProgress],
   );
 
   const handlePointerUp = useCallback(() => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
 
-    if (progressRef.current >= REVEAL_THRESHOLD) {
-      tearOffRef.current = { rotation: 0, tx: 0, ty: 0, alpha: 1 };
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(runTearOff);
-    } else {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(springBack);
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
-  }, [runTearOff, springBack]);
 
-  // ── Canvas setup and resize ──────────────────────────────────────────────
+    if (progressRef.current >= REVEAL_THRESHOLD) {
+      // Commit: animate the remaining strip flying off
+      tearOffRef.current = {
+        progress: progressRef.current,
+        tearingOff: true,
+        tearOffX: 0,
+        tearOffAlpha: 1,
+      };
+      rafRef.current = requestAnimationFrame(tearOffLoopRef.current);
+    } else {
+      // Abandon: spring back to fully covered
+      rafRef.current = requestAnimationFrame(springBackLoopRef.current);
+    }
+  }, []);
+
+  // ── Canvas setup and resize ───────────────────────────────────────────────
 
   useEffect(() => {
     if (!canvasSupported) return;
@@ -594,13 +766,15 @@ export function TearReveal({
 
     const sync = () => {
       const { width, height } = container.getBoundingClientRect();
-      canvas.width = Math.round(width);
-      canvas.height = Math.round(height);
-      // Anchor is always the bottom-right corner
-      cornerPtRef.current = { x: canvas.width, y: canvas.height };
-      // Reset drag point to the corner so the paper starts fully flat
-      dragPtRef.current = { ...cornerPtRef.current };
-      progressRef.current = 0;
+      const W = Math.round(width);
+      const H = Math.round(height);
+      canvas.width = W;
+      canvas.height = H;
+      dimRef.current = {
+        W,
+        H,
+        coverH: Math.round(H * COVER_RATIO),
+      };
       draw();
     };
 
@@ -613,13 +787,30 @@ export function TearReveal({
     };
   }, [draw, canvasSupported]);
 
+  // Kick off shimmer once canvas is ready and image has loaded
+  useEffect(() => {
+    if (canvasSupported && imageLoaded && !revealed) {
+      startShimmer();
+    }
+  }, [canvasSupported, imageLoaded, revealed, startShimmer]);
+
+  // Redraw when image loads (so ticket body reflects loaded image)
+  useEffect(() => {
+    if (imageLoaded) draw();
+  }, [imageLoaded, draw]);
+
   // ─────────────────────────────────────────────────────────────────────────
 
   if (!canvasSupported) {
     return (
       <div className="relative overflow-hidden rounded-xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={prizePhotoUrl} alt="Prize" className="block w-full h-full object-cover" draggable={false} />
+        <img
+          src={prizePhotoUrl}
+          alt="Prize"
+          className="block w-full h-full object-cover"
+          draggable={false}
+        />
       </div>
     );
   }
@@ -630,32 +821,11 @@ export function TearReveal({
       className="relative select-none overflow-hidden rounded-xl touch-none"
       style={{ cursor: revealed ? "default" : progressState > 0.05 ? "grabbing" : "grab" }}
     >
-      {/* Prize image on the bottom layer */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={prizePhotoUrl}
-        alt="Prize"
-        className="block w-full h-full object-cover"
-        draggable={false}
-      />
-
-      {/* Hint — shown only before the user has started dragging */}
-      {!revealed && progressState < 0.04 && (
-        <div className="absolute inset-0 flex items-end justify-end pointer-events-none pb-4 pr-4">
-          <span
-            className="font-bold text-sm drop-shadow-md select-none px-3 py-1.5 rounded-full"
-            style={{
-              color: "#5a3a10",
-              background: "rgba(255,235,180,0.70)",
-              backdropFilter: "blur(2px)",
-            }}
-          >
-            從右下角撕開
-          </span>
-        </div>
-      )}
-
-      {/* Paper overlay canvas */}
+      {/*
+        Canvas is the sole visual layer. The ticket body (including prize photo,
+        grade badge, and prize name) is drawn directly onto the canvas so we
+        can composite the cover strip cleanly on top without z-index tricks.
+      */}
       {!revealed && (
         <canvas
           ref={canvasRef}
@@ -666,7 +836,73 @@ export function TearReveal({
           onPointerCancel={handlePointerUp}
         />
       )}
+
+      {/*
+        Revealed state: show a plain static ticket (no canvas).
+        Reuse the same ticket-like card styling so the layout doesn't jump.
+      */}
+      {revealed && (
+        <div
+          className="relative w-full h-full flex flex-col items-center justify-end pb-4"
+          style={{ background: TICKET_BG }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={prizePhotoUrl}
+            alt="Prize"
+            className="block w-full flex-1 object-contain"
+            draggable={false}
+          />
+          {(prizeGrade || prizeName) && (
+            <div className="flex flex-col items-center gap-1 pt-2">
+              {prizeGrade && (
+                <span
+                  className="inline-flex items-center px-3 py-1 rounded-md text-sm font-bold"
+                  style={{
+                    background: (GRADE_COLORS[prizeGrade] ?? DEFAULT_GRADE_COLOR).bg,
+                    color: (GRADE_COLORS[prizeGrade] ?? DEFAULT_GRADE_COLOR).text,
+                  }}
+                >
+                  {prizeGrade}
+                </span>
+              )}
+              {prizeName && (
+                <span className="text-sm" style={{ color: "#5C4A30" }}>{prizeName}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Touch hint — shown before user has started dragging */}
+      {!revealed && !hasInteracted && progressState < 0.03 && (
+        <div className="absolute inset-0 flex items-start justify-between pointer-events-none px-3"
+          style={{ top: `${COVER_RATIO * 100 + 4}%` }}
+        >
+          <span
+            className="text-xs font-bold select-none px-2 py-1 rounded-full"
+            style={{
+              color: "#5a3a10",
+              background: "rgba(255,235,180,0.80)",
+              backdropFilter: "blur(2px)",
+              marginTop: "4px",
+            }}
+          >
+            ← 從邊緣撕開封條
+          </span>
+          <span
+            className="text-xs font-bold select-none px-2 py-1 rounded-full"
+            style={{
+              color: "#5a3a10",
+              background: "rgba(255,235,180,0.80)",
+              backdropFilter: "blur(2px)",
+              marginTop: "4px",
+            }}
+          >
+            封條撕開 →
+          </span>
+        </div>
+      )}
     </div>
   );
 }
-

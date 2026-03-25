@@ -15,360 +15,423 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlin.math.abs
-import kotlin.math.hypot
-import kotlin.math.sin
+import kotlin.math.min
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Fraction of revealed area that commits the peel and triggers tear-off. */
-private const val REVEAL_THRESHOLD = 0.7f
+/** Cover strip occupies the top this fraction of the ticket height. */
+private const val COVER_RATIO = 0.32f
 
-/** Width of the fold-shadow strip in canvas pixels. */
-private const val CURL_WIDTH = 32f
+/**
+ * Fraction of canvas width the user must drag before releasing locks in a
+ * full tear-off. Below this, the cover snaps back.
+ */
+private const val REVEAL_THRESHOLD = 0.70f
 
-/** Paper parchment colour stops (warm brown gradient). */
-private val PAPER_COLOR_LIGHT = Color(0xFFE8D5B7)
-private val PAPER_COLOR_MID1 = Color(0xFFD9BC93)
-private val PAPER_COLOR_MID2 = Color(0xFFC8A57A)
-private val PAPER_COLOR_DARK = Color(0xFF8B6914)
+/** How far the curl arc rises above the perforation line (dp-independent px). */
+private const val CURL_HEIGHT = 44f
 
-/** Fold-shadow colours. */
-private val SHADOW_NEAR = Color(0x72000000)
-private val SHADOW_FAR = Color.Transparent
+/**
+ * Grab zone: what fraction of the canvas width from each edge counts as
+ * "touching the cover strip edge" and initiates a tear.
+ */
+private const val EDGE_ZONE_RATIO = 0.28f
 
-/** Fold-highlight colour (bright crease on the peeled side). */
-private val HIGHLIGHT_NEAR = Color(0x8CFFFFFF)
-private val HIGHLIGHT_FAR = Color.Transparent
+// ── Cover strip metallic colours ─────────────────────────────────────────────
+private val COVER_C1 = Color(0xFFB8B8B8)
+private val COVER_C2 = Color(0xFFE0E0E0)
+private val COVER_C3 = Color(0xFFF0F0F0)
+private val COVER_C4 = Color(0xFFD0D0D0)
+private val COVER_C5 = Color(0xFFA0A0A0)
+
+// ── Ticket body ───────────────────────────────────────────────────────────────
+private val TICKET_BG = Color(0xFFFFF8F0)
+private val TICKET_LINE_COLOR = Color(0x0A8B7355)
+
+// ── Perforation ───────────────────────────────────────────────────────────────
+private val PERF_SHADOW = Color(0x40000000)
+private val PERF_HIGHLIGHT = Color(0x99FFFFFF)
+
+// ── Grade badge colours ───────────────────────────────────────────────────────
+private data class GradeColor(val bg: Color, val text: Color)
+
+private val GRADE_COLORS: Map<String, GradeColor> = mapOf(
+    "A賞"    to GradeColor(Color(0xFFEF4444), Color.White),
+    "B賞"    to GradeColor(Color(0xFFF97316), Color.White),
+    "C賞"    to GradeColor(Color(0xFF3B82F6), Color.White),
+    "D賞"    to GradeColor(Color(0xFF22C55E), Color.White),
+    "E賞"    to GradeColor(Color(0xFFA855F7), Color.White),
+    "F賞"    to GradeColor(Color(0xFFEC4899), Color.White),
+    "Last賞" to GradeColor(Color(0xFFF59E0B), Color.White),
+    "LAST賞" to GradeColor(Color(0xFFF59E0B), Color.White),
+)
+private val DEFAULT_GRADE_COLOR = GradeColor(Color(0xFF6B7280), Color.White)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tear direction enum
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Which horizontal edge the user grabbed to initiate the tear. */
+private enum class TearDirection { LEFT, RIGHT }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Geometry helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Computes the peel progress [0f..1f] for the given drag.
+ * Compute the horizontal tear progress [0f..1f] from a drag gesture.
  *
- * Progress is a blend of:
- * - how many of the four canvas corners are on the "peeled" side of the fold line, and
- * - how far the drag distance is relative to 75% of the canvas diagonal.
+ * Tearing from LEFT: finger moves rightward → tearX sweeps left-to-right.
+ * Tearing from RIGHT: finger moves leftward → tearX sweeps right-to-left.
  */
-private fun computeProgress(
-    start: Offset,
-    current: Offset,
+private fun computeTearProgress(
+    startX: Float,
+    currentX: Float,
+    direction: TearDirection,
     canvasW: Float,
-    canvasH: Float,
 ): Float {
-    val drag = current - start
-    val dragLen = drag.getDistance()
-    if (dragLen < 1f) return 0f
-
-    val dragUnit = drag / dragLen
-    val foldPoint = current
-
-    val corners =
-        listOf(
-            Offset(0f, 0f),
-            Offset(canvasW, 0f),
-            Offset(canvasW, canvasH),
-            Offset(0f, canvasH),
-        )
-
-    val peeled =
-        corners.count { c ->
-            val v = c - foldPoint
-            (v.x * dragUnit.x + v.y * dragUnit.y) > 0f
-        }
-    val cornerFraction = peeled / 4f
-
-    val diag = hypot(canvasW, canvasH)
-    val distFraction = (dragLen / (diag * 0.75f)).coerceIn(0f, 1f)
-
-    return (cornerFraction * 0.6f + distFraction * 0.4f).coerceIn(0f, 1f)
+    val delta = currentX - startX
+    val travel = if (direction == TearDirection.LEFT) delta else -delta
+    return (travel / canvasW).coerceIn(0f, 1f)
 }
 
-/**
- * Returns the fold-line direction unit vector — perpendicular to the drag direction.
- * The fold line runs through [foldPoint] in this direction.
- */
-private fun foldDirection(dragUnit: Offset): Offset {
-    // Rotate drag 90°: (-dy, dx)
-    val d = Offset(-dragUnit.y, dragUnit.x)
-    val len = d.getDistance()
-    return if (len > 0.001f) d / len else Offset(1f, 0f)
-}
-
-/**
- * Finds the two points where the fold line (through [foldPoint], direction [foldDir])
- * intersects the canvas boundary rectangle [0,0]..[W,H].
- */
-private fun foldLineIntersections(
-    foldPoint: Offset,
-    foldDir: Offset,
+/** The absolute x-coordinate of the tear front given the current progress. */
+private fun tearXFromProgress(
+    progress: Float,
+    direction: TearDirection,
     W: Float,
-    H: Float,
-): List<Offset> {
-    val edges =
-        listOf(
-            Pair(Offset(0f, 0f), Offset(W, 0f)), // top
-            Pair(Offset(W, 0f), Offset(W, H)), // right
-            Pair(Offset(W, H), Offset(0f, H)), // bottom
-            Pair(Offset(0f, H), Offset(0f, 0f)), // left
-        )
-
-    val results = mutableListOf<Offset>()
-    for ((a, b) in edges) {
-        val ex = b.x - a.x
-        val ey = b.y - a.y
-        val denom = foldDir.x * ey - foldDir.y * ex
-        if (abs(denom) < 0.0001f) continue
-        val t = ((a.x - foldPoint.x) * ey - (a.y - foldPoint.y) * ex) / denom
-        val s = ((a.x - foldPoint.x) * foldDir.y - (a.y - foldPoint.y) * foldDir.x) / denom
-        if (s in 0f..1f) {
-            results.add(Offset(foldPoint.x + t * foldDir.x, foldPoint.y + t * foldDir.y))
-        }
-    }
-    return results.distinctBy { "${it.x.toInt()},${it.y.toInt()}" }
-}
-
-/**
- * Builds a [Path] that covers the desired half-plane of the canvas.
- *
- * @param peeled true → the drag-forward (peeled) half; false → the covered half.
- */
-private fun buildHalfPlaneClipPath(
-    foldPoint: Offset,
-    dragUnit: Offset,
-    foldDir: Offset,
-    W: Float,
-    H: Float,
-    peeled: Boolean,
-): Path {
-    val sign = if (peeled) 1f else -1f
-    val eps = 0.5f
-
-    val intersections = foldLineIntersections(foldPoint, foldDir, W, H)
-
-    val allCorners =
-        listOf(
-            Offset(0f, 0f),
-            Offset(W, 0f),
-            Offset(W, H),
-            Offset(0f, H),
-        )
-    val oneSideCorners =
-        allCorners.filter { c ->
-            val v = c - foldPoint
-            sign * (v.x * dragUnit.x + v.y * dragUnit.y) >= -eps
-        }
-
-    if (intersections.size < 2) {
-        // Degenerate fallback — cover entire canvas
-        return Path().apply { addRect(Rect(0f, 0f, W, H)) }
-    }
-
-    val points =
-        buildList {
-            add(intersections[0])
-            addAll(oneSideCorners)
-            add(intersections[1])
-        }
-
-    return Path().apply {
-        moveTo(points[0].x, points[0].y)
-        for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
-        close()
-    }
+): Float = when (direction) {
+    TearDirection.LEFT  -> progress * W
+    TearDirection.RIGHT -> W - progress * W
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Drawing helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Draws the full parchment paper fill. */
-private fun DrawScope.drawPaper() {
-    drawRect(
-        brush =
-            Brush.linearGradient(
-                colorStops =
-                    arrayOf(
-                        0.00f to PAPER_COLOR_LIGHT,
-                        0.30f to PAPER_COLOR_MID1,
-                        0.60f to PAPER_COLOR_MID2,
-                        1.00f to PAPER_COLOR_DARK,
-                    ),
-                start = Offset(0f, 0f),
-                end = Offset(size.width * 0.8f, size.height * 0.8f),
-            ),
+/**
+ * Draws the ticket body: cream background, subtle texture, perforation line,
+ * ticket number label, and the prize info area (grade badge + prize name).
+ *
+ * The prize image itself is rendered by [AsyncImage] in the Composable layer
+ * behind the Canvas, so this function only draws the structural chrome.
+ */
+private fun DrawScope.drawTicketBody(
+    coverH: Float,
+    prizeGrade: String?,
+    prizeName: String?,
+    textMeasurer: androidx.compose.ui.text.TextMeasurer,
+) {
+    val W = size.width
+    val H = size.height
+
+    // ── Card background ───────────────────────────────────────────────────
+    drawRect(color = TICKET_BG)
+
+    // ── Subtle horizontal texture lines ──────────────────────────────────
+    var lineY = coverH + 8f
+    while (lineY < H) {
+        drawLine(
+            color = TICKET_LINE_COLOR,
+            start = Offset(8f, lineY),
+            end = Offset(W - 8f, lineY),
+            strokeWidth = 1f,
+        )
+        lineY += 6f
+    }
+
+    // ── Perforation line (dashed, with 3D indent effect) ─────────────────
+    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f))
+
+    // Shadow line (0.5px above perforation)
+    drawLine(
+        color = PERF_SHADOW,
+        start = Offset(4f, coverH - 0.5f),
+        end = Offset(W - 4f, coverH - 0.5f),
+        strokeWidth = 1f,
+        pathEffect = dashEffect,
+    )
+    // Highlight line (0.5px below perforation)
+    drawLine(
+        color = PERF_HIGHLIGHT,
+        start = Offset(4f, coverH + 0.5f),
+        end = Offset(W - 4f, coverH + 0.5f),
+        strokeWidth = 1f,
+        pathEffect = dashEffect,
     )
 
-    // Subtle grain dots
-    val seed = 42
-    for (yi in 0 until (size.height / 5).toInt()) {
-        for (xi in 0 until (size.width / 7).toInt()) {
-            val x = xi * 7f
-            val y = yi * 5f
-            if (sin(x * 0.31f + y * 0.77f + seed) > 0.62f) {
-                drawRect(
-                    color = Color(0x08000000),
-                    topLeft = Offset(x, y),
-                    size =
-                        androidx.compose.ui.geometry
-                            .Size(2f, 2f),
-                )
-            }
+    // ── Ticket number ─────────────────────────────────────────────────────
+    val numResult = textMeasurer.measure(
+        text = "No. 一番賞",
+        style = TextStyle(
+            color = Color(0xFF999080),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
+    drawText(
+        textLayoutResult = numResult,
+        topLeft = Offset(
+            x = (W - numResult.size.width) / 2f,
+            y = coverH + 16f,
+        ),
+    )
+
+    // ── Prize grade badge ─────────────────────────────────────────────────
+    if (prizeGrade != null) {
+        val colors = GRADE_COLORS[prizeGrade] ?: DEFAULT_GRADE_COLOR
+        val badgeResult = textMeasurer.measure(
+            text = prizeGrade,
+            style = TextStyle(
+                color = colors.text,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        val badgeW = badgeResult.size.width + 28f
+        val badgeH = badgeResult.size.height + 10f
+        val badgeX = (W - badgeW) / 2f
+        val badgeY = H - badgeH - (if (prizeName != null) 42f else 20f)
+
+        val badgePath = Path().apply {
+            addRoundRect(RoundRect(
+                rect = Rect(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH),
+                cornerRadius = CornerRadius(6f, 6f),
+            ))
         }
+        drawPath(path = badgePath, color = colors.bg)
+        drawText(
+            textLayoutResult = badgeResult,
+            topLeft = Offset(
+                x = (W - badgeResult.size.width) / 2f,
+                y = badgeY + 5f,
+            ),
+        )
+    }
+
+    // ── Prize name ────────────────────────────────────────────────────────
+    if (prizeName != null) {
+        val nameResult = textMeasurer.measure(
+            text = prizeName,
+            style = TextStyle(
+                color = Color(0xFF5C4A30),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+            ),
+        )
+        val nameY = H - nameResult.size.height - 12f
+        drawText(
+            textLayoutResult = nameResult,
+            topLeft = Offset(
+                x = (W - nameResult.size.width) / 2f,
+                y = nameY,
+            ),
+        )
     }
 }
 
 /**
- * Draws the fold-edge shadow (into the covered region) and highlight (into the peeled region)
- * to give a 3D curl effect.
+ * Draws the metallic silver/gold cover strip from [clipStartX] to [clipEndX].
+ * Horizontal clipping controls the un-torn portion of the cover.
+ *
+ * @param shimmerPhase Sweeping highlight phase [0f..1f], used for the idle shimmer.
  */
-private fun DrawScope.drawFoldShadow(
-    foldPoint: Offset,
-    dragUnit: Offset,
-    foldDir: Offset,
-    W: Float,
-    H: Float,
+private fun DrawScope.drawCoverStrip(
+    coverH: Float,
+    clipStartX: Float,
+    clipEndX: Float,
+    shimmerPhase: Float,
+    textMeasurer: androidx.compose.ui.text.TextMeasurer,
 ) {
-    val intersections = foldLineIntersections(foldPoint, foldDir, W, H)
-    if (intersections.size < 2) return
+    val W = size.width
+    if (clipEndX <= clipStartX) return
 
-    val p0 = intersections[0]
-    val p1 = intersections[1]
-
-    // Shadow goes in the -drag direction (into still-covered area)
-    val shadowDir = Offset(-dragUnit.x, -dragUnit.y)
-
-    // Draw shadow on covered side
-    val coveredPath = buildHalfPlaneClipPath(foldPoint, dragUnit, foldDir, W, H, false)
-    clipPath(coveredPath) {
-        val shadowPath =
-            Path().apply {
-                moveTo(p0.x, p0.y)
-                lineTo(p1.x, p1.y)
-                lineTo(p1.x + shadowDir.x * CURL_WIDTH, p1.y + shadowDir.y * CURL_WIDTH)
-                lineTo(p0.x + shadowDir.x * CURL_WIDTH, p0.y + shadowDir.y * CURL_WIDTH)
-                close()
-            }
-        drawPath(
-            path = shadowPath,
-            brush =
-                Brush.linearGradient(
-                    colors = listOf(SHADOW_NEAR, SHADOW_FAR),
-                    start = foldPoint,
-                    end =
-                        Offset(
-                            foldPoint.x + shadowDir.x * CURL_WIDTH,
-                            foldPoint.y + shadowDir.y * CURL_WIDTH,
-                        ),
-                ),
-        )
+    // Clip to the un-torn portion
+    val clipPath = Path().apply {
+        addRect(Rect(clipStartX, 0f, clipEndX, coverH))
     }
-
-    // Highlight crease on peeled side
-    val peeledPath = buildHalfPlaneClipPath(foldPoint, dragUnit, foldDir, W, H, true)
-    clipPath(peeledPath) {
-        val highlightPath =
-            Path().apply {
-                moveTo(p0.x, p0.y)
-                lineTo(p1.x, p1.y)
-                lineTo(p1.x + dragUnit.x * 6f, p1.y + dragUnit.y * 6f)
-                lineTo(p0.x + dragUnit.x * 6f, p0.y + dragUnit.y * 6f)
-                close()
-            }
-        drawPath(
-            path = highlightPath,
-            brush =
-                Brush.linearGradient(
-                    colors = listOf(HIGHLIGHT_NEAR, HIGHLIGHT_FAR),
-                    start = foldPoint,
-                    end = Offset(foldPoint.x + dragUnit.x * 6f, foldPoint.y + dragUnit.y * 6f),
+    clipPath(clipPath) {
+        // ── Base metallic gradient (horizontal) ──────────────────────────
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colorStops = arrayOf(
+                    0.00f to COVER_C1,
+                    0.20f to COVER_C2,
+                    0.45f to COVER_C3,
+                    0.70f to COVER_C4,
+                    1.00f to COVER_C5,
                 ),
+                startX = 0f,
+                endX = W,
+            ),
+            size = Size(W, coverH),
+        )
+
+        // ── Vertical sheen ────────────────────────────────────────────────
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x59FFFFFF),  // top highlight
+                    Color(0x14FFFFFF),  // mid
+                    Color(0x26000000),  // bottom shadow
+                ),
+                startY = 0f,
+                endY = coverH,
+            ),
+            size = Size(W, coverH),
+        )
+
+        // ── Shimmer sweep ─────────────────────────────────────────────────
+        val shimX = shimmerPhase * (W + 80f) - 40f
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color(0x8CFFFFFF),
+                    Color.Transparent,
+                ),
+                startX = shimX - 40f,
+                endX = shimX + 40f,
+            ),
+            size = Size(W, coverH),
+        )
+
+        // ── Cover text ────────────────────────────────────────────────────
+        val textResult = textMeasurer.measure(
+            text = "一番賞　封條",
+            style = TextStyle(
+                color = Color(0xB3504030),
+                fontSize = min(coverH * 0.35f, 14f).sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        drawText(
+            textLayoutResult = textResult,
+            topLeft = Offset(
+                x = (W - textResult.size.width) / 2f,
+                y = (coverH - textResult.size.height) / 2f,
+            ),
+        )
+
+        // ── Top border highlight ──────────────────────────────────────────
+        drawRect(
+            color = Color(0x8CFFFFFF),
+            topLeft = Offset(0f, 0f),
+            size = Size(W, 2f),
+        )
+
+        // ── Bottom border shadow ──────────────────────────────────────────
+        drawRect(
+            color = Color(0x33000000),
+            topLeft = Offset(0f, coverH - 2f),
+            size = Size(W, 2f),
         )
     }
 }
 
 /**
- * Renders the full peel state onto the canvas:
- * 1. Un-peeled paper on the covered side.
- * 2. Semi-transparent mirrored paper ghost on the peeled side (simulates paper back).
- * 3. Shadow/highlight along the fold crease.
+ * Draws the curl/peel effect at the tear edge.
+ *
+ * The torn portion of the cover strip appears to lift up and away from the
+ * ticket, showing the underside (lighter colour). A drop-shadow below the
+ * curl reinforces the 3D lifting effect.
  */
-private fun DrawScope.drawPeelState(
-    startPoint: Offset,
-    currentPoint: Offset,
+private fun DrawScope.drawCurlEffect(
+    tearX: Float,
+    coverH: Float,
+    direction: TearDirection,
     progress: Float,
 ) {
-    if (progress <= 0f) {
-        drawPaper()
-        return
+    if (progress < 0.01f) return
+
+    val curlSign = if (direction == TearDirection.LEFT) -1f else 1f
+    val curlExtent = min(progress * 60f + 20f, 80f)
+    val alpha = min(progress * 2f, 1f)
+
+    // ── Drop shadow below the curl ────────────────────────────────────────
+    drawRect(
+        brush = Brush.linearGradient(
+            colors = listOf(Color(0x33000000), Color.Transparent),
+            start = Offset(tearX, coverH),
+            end = Offset(tearX - curlSign * 18f, coverH + 14f),
+        ),
+        topLeft = Offset(
+            x = if (direction == TearDirection.LEFT) tearX - 20f else tearX,
+            y = coverH - 4f,
+        ),
+        size = Size(20f, 18f),
+        alpha = 0.22f * alpha,
+    )
+
+    // ── Back-of-cover colour ──────────────────────────────────────────────
+    val backBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFD8D8D8),
+            Color(0xFFEFEFEF),
+            Color(0x4CF0F0F0),
+        ),
+        start = Offset(tearX, coverH),
+        end = Offset(tearX - curlSign * curlExtent, coverH - CURL_HEIGHT),
+    )
+
+    // Control point and end point for the quadratic bezier curl shape
+    val cp1x = tearX - curlSign * curlExtent * 0.4f
+    val cp1y = coverH - CURL_HEIGHT * 0.6f
+    val endX = tearX - curlSign * curlExtent
+    val endY = coverH - CURL_HEIGHT * 0.8f
+    val stripW = coverH * 0.85f
+
+    val curlPath = Path().apply {
+        moveTo(tearX, coverH)
+        quadraticTo(cp1x, cp1y, endX, endY)
+        lineTo(endX, endY - stripW * 0.25f)
+        quadraticTo(cp1x, cp1y - stripW * 0.3f, tearX, coverH - stripW * 0.15f)
+        close()
     }
 
-    val drag = currentPoint - startPoint
-    val dragLen = drag.getDistance()
-    if (dragLen < 1f) {
-        drawPaper()
-        return
+    drawPath(path = curlPath, brush = backBrush, alpha = alpha * 0.88f)
+
+    // ── Edge highlight on the curl ────────────────────────────────────────
+    val curlEdgePath = Path().apply {
+        moveTo(tearX, coverH)
+        quadraticTo(cp1x, cp1y, endX, endY)
     }
-
-    val dragUnit = drag / dragLen
-    val foldDir = foldDirection(dragUnit)
-    val foldPoint = currentPoint
-
-    val canvasW = size.width
-    val canvasH = size.height
-
-    // 1. Covered (un-peeled) region — full paper
-    val coveredPath = buildHalfPlaneClipPath(foldPoint, dragUnit, foldDir, canvasW, canvasH, false)
-    clipPath(coveredPath) {
-        drawPaper()
-    }
-
-    // 2. Peeled region — ghost (mirrored paper back, semi-transparent)
-    //    We simulate the reflection by drawing a paper fill into the peeled clip
-    //    with reduced opacity. A proper 2D reflection would require a save-layer
-    //    with matrix transforms; here we approximate it with a slightly different
-    //    gradient direction to hint at the flip.
-    val peeledPath = buildHalfPlaneClipPath(foldPoint, dragUnit, foldDir, canvasW, canvasH, true)
-    clipPath(peeledPath) {
-        drawRect(
-            brush =
-                Brush.linearGradient(
-                    colorStops =
-                        arrayOf(
-                            0.00f to PAPER_COLOR_DARK.copy(alpha = 0.28f),
-                            0.50f to PAPER_COLOR_MID2.copy(alpha = 0.22f),
-                            1.00f to PAPER_COLOR_LIGHT.copy(alpha = 0.18f),
-                        ),
-                    start = Offset(canvasW, canvasH),
-                    end = Offset(0f, 0f),
-                ),
-        )
-    }
-
-    // 3. Fold-edge shadow and highlight
-    drawFoldShadow(foldPoint, dragUnit, foldDir, canvasW, canvasH)
+    drawPath(
+        path = curlEdgePath,
+        color = Color(0xB3FFFFFF),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = 1.5f,
+            cap = StrokeCap.Round,
+        ),
+        alpha = 0.4f * alpha,
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -376,51 +439,92 @@ private fun DrawScope.drawPeelState(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Physics-based reversible paper-peel reveal animation.
+ * Ichiban Kuji (一番賞) horizontal cover-strip tear reveal animation.
  *
- * The paper peels from wherever the user starts dragging, following the finger
- * in real time. Releasing below 70% snaps the paper back with spring physics.
- * Releasing above 70% tears the paper off with a fly-away animation and calls [onRevealed].
+ * The ticket has a metallic silver cover strip across the top ~32% of its
+ * height. The user grabs either the left or right edge of the strip and drags
+ * horizontally to tear the cover away, progressively revealing the prize info.
  *
- * The folded-back portion is rendered as a semi-transparent ghost with a shadow/
- * highlight along the fold crease to simulate the 3D curl of a sticker peeling off.
+ * Physics:
+ * - Releasing before [REVEAL_THRESHOLD] (70%): cover snaps back with spring.
+ * - Releasing at or past 70%: remaining strip flies off the screen, then
+ *   [onRevealed] is invoked.
  *
- * @param prizePhotoUrl CDN URL of the prize image to reveal.
- * @param onRevealed Callback invoked once the full reveal animation completes.
- * @param onProgress Optional progress callback (0.0–1.0) for spectator sync.
- * @param modifier Modifier applied to the root [Box].
+ * Visual layers (bottom to top):
+ * 1. [AsyncImage] — prize photo, always rendered underneath the canvas.
+ * 2. [Canvas] — ticket body chrome, cover strip, and curl effect.
+ *
+ * @param prizePhotoUrl  CDN URL of the prize photo to reveal.
+ * @param prizeGrade     Optional grade label, e.g. "A賞" — shown as a coloured badge.
+ * @param prizeName      Optional prize display name.
+ * @param onRevealed     Callback invoked once the tear-off animation completes.
+ * @param onProgress     Optional real-time progress callback [0f..1f].
+ * @param modifier       Modifier applied to the root [Box].
  */
 @Composable
 public fun TearAnimation(
     prizePhotoUrl: String,
     onRevealed: () -> Unit,
+    prizeGrade: String? = null,
+    prizeName: String? = null,
     onProgress: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    // ── State ────────────────────────────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
-    var startOffset by remember { mutableStateOf(Offset.Zero) }
-    var currentOffset by remember { mutableStateOf(Offset.Zero) }
+
+    /** X coordinate (in canvas px) where the drag gesture started. */
+    var startX by remember { mutableFloatStateOf(0f) }
+
+    /** Current X coordinate of the dragging finger. */
+    var currentX by remember { mutableFloatStateOf(0f) }
+
+    /** Which edge was grabbed to start the tear. */
+    var tearDirection by remember { mutableStateOf(TearDirection.LEFT) }
+
+    /** Width of the canvas — captured during the first draw. */
+    var canvasWidth by remember { mutableFloatStateOf(0f) }
 
     // Phase flags
     var revealed by remember { mutableStateOf(false) }
     var tearingOff by remember { mutableStateOf(false) }
     var snappingBack by remember { mutableStateOf(false) }
 
-    // Spring-back: we animate progress back to 0 with spring physics
+    /** Whether the user has touched the cover at least once. */
+    var hasInteracted by remember { mutableStateOf(false) }
+
+    /** Shimmer phase [0f..1f] — drives the idle highlight sweep. */
+    var shimmerPhase by remember { mutableFloatStateOf(0f) }
+
+    // Animatables for spring-back
     val springProgress = remember { Animatable(0f) }
 
-    // Tear-off transform animatables
-    val tearRotation = remember { Animatable(0f) }
-    val tearTx = remember { Animatable(0f) }
-    val tearTy = remember { Animatable(0f) }
-    val tearAlpha = remember { Animatable(1f) }
+    // Animatables for tear-off fly
+    val tearOffTransX = remember { Animatable(0f) }
+    val tearOffAlpha = remember { Animatable(1f) }
 
     val textMeasurer = rememberTextMeasurer()
 
-    // ── Spring-back launch ───────────────────────────────────────────────────
+    // ── Shimmer idle animation ─────────────────────────────────────────────
+
+    // Continuously sweep a shimmer highlight across the cover strip until the
+    // user first touches it. Each sweep takes ~2 s; the loop restarts from 0.
+    LaunchedEffect(hasInteracted, revealed) {
+        if (hasInteracted || revealed) return@LaunchedEffect
+        while (!hasInteracted && !revealed) {
+            val anim = Animatable(0f)
+            anim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 2000),
+                block = { shimmerPhase = value },
+            )
+            shimmerPhase = 0f
+        }
+    }
+
+    // ── Spring-back ────────────────────────────────────────────────────────
 
     LaunchedEffect(snappingBack) {
         if (!snappingBack) return@LaunchedEffect
@@ -430,42 +534,33 @@ public fun TearAnimation(
             animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
         )
         progress = 0f
-        // Ease current offset back to start so geometry resets
-        currentOffset = startOffset
         snappingBack = false
         onProgress?.invoke(0f)
     }
 
-    // ── Tear-off launch ──────────────────────────────────────────────────────
+    // ── Tear-off fly animation ─────────────────────────────────────────────
 
     LaunchedEffect(tearingOff) {
         if (!tearingOff) return@LaunchedEffect
 
-        // Fly paper off screen: rotate + translate + fade simultaneously
+        tearOffTransX.snapTo(0f)
+        tearOffAlpha.snapTo(1f)
+
+        val targetX = if (tearDirection == TearDirection.LEFT) -canvasWidth * 1.2f
+                      else canvasWidth * 1.2f
+
         coroutineScope {
             listOf(
                 async {
-                    tearRotation.animateTo(
-                        targetValue = 35f,
-                        animationSpec = tween(durationMillis = 420),
+                    tearOffTransX.animateTo(
+                        targetValue = targetX,
+                        animationSpec = tween(durationMillis = 360),
                     )
                 },
                 async {
-                    tearTx.animateTo(
-                        targetValue = 380f,
-                        animationSpec = tween(durationMillis = 420),
-                    )
-                },
-                async {
-                    tearTy.animateTo(
-                        targetValue = -260f,
-                        animationSpec = tween(durationMillis = 420),
-                    )
-                },
-                async {
-                    tearAlpha.animateTo(
+                    tearOffAlpha.animateTo(
                         targetValue = 0f,
-                        animationSpec = tween(durationMillis = 420),
+                        animationSpec = tween(durationMillis = 360),
                     )
                 },
             ).forEach { it.await() }
@@ -475,10 +570,10 @@ public fun TearAnimation(
         onRevealed()
     }
 
-    // ── Layout ───────────────────────────────────────────────────────────────
+    // ── Layout ─────────────────────────────────────────────────────────────
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Bottom layer: prize image always visible
+        // Bottom layer: prize image — always visible underneath
         AsyncImage(
             model = prizePhotoUrl,
             contentDescription = "Prize",
@@ -487,100 +582,133 @@ public fun TearAnimation(
         )
 
         if (!revealed) {
-            // Effective progress: use spring value when snapping back
-            val effectiveProgress =
-                when {
-                    snappingBack -> springProgress.value
-                    else -> progress
-                }
-            // Effective offset: lerp currentOffset toward startOffset during snap-back
-            val effectiveCurrent =
-                when {
-                    snappingBack -> {
-                        val t = 1f - springProgress.value.coerceIn(0f, 1f)
-                        Offset(
-                            x = startOffset.x + (currentOffset.x - startOffset.x) * (1f - t),
-                            y = startOffset.y + (currentOffset.y - startOffset.y) * (1f - t),
-                        )
-                    }
-                    else -> currentOffset
-                }
+            // Effective values (spring-back overrides live drag values)
+            val effectiveProgress = when {
+                snappingBack -> springProgress.value
+                else         -> progress
+            }
 
             Canvas(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (tearingOff) {
-                                // Apply fly-away transform to the canvas
-                                Modifier.graphicsLayer {
-                                    rotationZ = tearRotation.value
-                                    translationX = tearTx.value
-                                    translationY = tearTy.value
-                                    alpha = tearAlpha.value
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(tearingOff, snappingBack) {
+                        if (tearingOff || snappingBack) return@pointerInput
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                val W = size.width.toFloat()
+                                val edgeZone = W * EDGE_ZONE_RATIO
+                                // Only begin a tear when touching near the left or right edge
+                                val side = when {
+                                    offset.x <= edgeZone      -> TearDirection.LEFT
+                                    offset.x >= W - edgeZone  -> TearDirection.RIGHT
+                                    else                       -> null
                                 }
-                            } else {
-                                Modifier
+                                if (side == null) return@detectDragGestures
+                                isDragging = true
+                                tearDirection = side
+                                startX = offset.x
+                                currentX = offset.x
+                                progress = 0f
+                                canvasWidth = W
+                                hasInteracted = true
+                                onProgress?.invoke(0f)
                             },
-                        ).pointerInput(tearingOff, snappingBack) {
-                            if (tearingOff || snappingBack) return@pointerInput
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    isDragging = true
-                                    startOffset = offset
-                                    currentOffset = offset
-                                    progress = 0f
-                                },
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    if (!isDragging) return@detectDragGestures
-                                    currentOffset = change.position
-                                    val p =
-                                        computeProgress(
-                                            startOffset,
-                                            currentOffset,
-                                            size.width.toFloat(),
-                                            size.height.toFloat(),
-                                        )
-                                    progress = p
-                                    onProgress?.invoke(p)
-                                },
-                                onDragEnd = {
-                                    isDragging = false
-                                    if (progress >= REVEAL_THRESHOLD) {
-                                        tearingOff = true
-                                    } else {
-                                        snappingBack = true
-                                    }
-                                },
-                                onDragCancel = {
-                                    isDragging = false
+                            onDrag = { change, _ ->
+                                change.consume()
+                                if (!isDragging) return@detectDragGestures
+                                currentX = change.position.x
+                                val p = computeTearProgress(
+                                    startX = startX,
+                                    currentX = currentX,
+                                    direction = tearDirection,
+                                    canvasW = canvasWidth,
+                                )
+                                progress = p
+                                onProgress?.invoke(p)
+                            },
+                            onDragEnd = {
+                                isDragging = false
+                                if (progress >= REVEAL_THRESHOLD) {
+                                    tearingOff = true
+                                } else {
                                     snappingBack = true
-                                },
-                            )
-                        },
-            ) {
-                drawPeelState(startOffset, effectiveCurrent, effectiveProgress)
-
-                // Hint text — shown before any drag starts
-                if (effectiveProgress < 0.04f && !isDragging) {
-                    val result =
-                        textMeasurer.measure(
-                            text = "撕開紙張揭曉",
-                            style =
-                                TextStyle(
-                                    color = Color(0xFF5A3A10),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                ),
+                                }
+                            },
+                            onDragCancel = {
+                                isDragging = false
+                                snappingBack = true
+                            },
                         )
+                    },
+            ) {
+                val W = size.width
+                val H = size.height
+                val coverH = H * COVER_RATIO
+
+                if (canvasWidth == 0f) canvasWidth = W
+
+                // ── 1. Ticket body ─────────────────────────────────────────
+                drawTicketBody(
+                    coverH = coverH,
+                    prizeGrade = prizeGrade,
+                    prizeName = prizeName,
+                    textMeasurer = textMeasurer,
+                )
+
+                if (effectiveProgress < 1f) {
+                    // ── 2. Cover strip (un-torn portion) ──────────────────
+                    val tearX = tearXFromProgress(effectiveProgress, tearDirection, W)
+
+                    val (coverStartX, coverEndX) = when (tearDirection) {
+                        TearDirection.LEFT  -> tearX to W
+                        TearDirection.RIGHT -> 0f to tearX
+                    }
+
+                    withTransform(
+                        transformBlock = {
+                            if (tearingOff) {
+                                translate(left = tearOffTransX.value)
+                            }
+                        },
+                    ) {
+                        drawCoverStrip(
+                            coverH = coverH,
+                            clipStartX = coverStartX,
+                            clipEndX = coverEndX,
+                            shimmerPhase = shimmerPhase,
+                            textMeasurer = textMeasurer,
+                        )
+                    }
+
+                    // ── 3. Curl at the tear edge ───────────────────────────
+                    if (!tearingOff && effectiveProgress > 0f) {
+                        drawCurlEffect(
+                            tearX = tearX,
+                            coverH = coverH,
+                            direction = tearDirection,
+                            progress = effectiveProgress,
+                        )
+                    }
+                }
+
+                // ── Hint text ─────────────────────────────────────────────
+                if (!hasInteracted && effectiveProgress < 0.03f) {
+                    val hintResult = textMeasurer.measure(
+                        text = "← 從邊緣撕開封條 →",
+                        style = TextStyle(
+                            color = Color(0xFF5A3A10),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            background = Color(0xCCFFEBB4),
+                        ),
+                    )
                     drawText(
-                        textLayoutResult = result,
-                        topLeft =
-                            Offset(
-                                x = (size.width - result.size.width) / 2f,
-                                y = (size.height - result.size.height) / 2f,
-                            ),
+                        textLayoutResult = hintResult,
+                        topLeft = Offset(
+                            x = (W - hintResult.size.width) / 2f,
+                            y = coverH + 8f,
+                        ),
+                        alpha = 0.9f,
                     )
                 }
             }
