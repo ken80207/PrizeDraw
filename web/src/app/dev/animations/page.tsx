@@ -47,6 +47,16 @@ const PrizeDrawRoom3D = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="3D 房間" height={560} /> },
 );
 
+const PrizeRoomCSS3D = dynamic(
+  () => import("@/games/css3d/PrizeRoom_CSS3D").then((m) => ({ default: m.PrizeRoomCSS3D })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 房間" height={500} /> },
+);
+
+const SlotMachineCSS3D = dynamic(
+  () => import("@/games/css3d/SlotMachine_CSS3D").then((m) => ({ default: m.SlotMachineCSS3D })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 拉霸機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -65,6 +75,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
 type MiniGameId = "slot" | "claw" | "gacha";
+type StyleMode = "2d" | "css3d" | "webgl";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase1", label: "動畫效果", icon: "🎬" },
@@ -198,9 +209,11 @@ export default function AnimationsShowcasePage() {
   const [miniGameLogs, dispatchMiniLog] = useReducer(logReducer, []);
   const miniLogRef = useRef<HTMLDivElement>(null);
 
-  // ── 3D toggle state ────────────────────────────────────────────────────────
-  const [miniGame3D, setMiniGame3D] = useState(false);
-  const [room3D, setRoom3D] = useState(false);
+  // ── Style toggle state (2d | css3d | webgl) ───────────────────────────────
+  const [miniGameStyle, setMiniGameStyle] = useState<StyleMode>("2d");
+  const [roomStyle, setRoomStyle] = useState<StyleMode>("2d");
+  // Legacy alias used in arcade cabinet overflow class
+  const room3D = roomStyle === "webgl";
 
   // ── Phase 3 state ──────────────────────────────────────────────────────────
   const [npcCount, setNpcCount] = useState(3);
@@ -688,27 +701,24 @@ export default function AnimationsShowcasePage() {
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D 或 React Three Fiber 3D 模式可切換比較。
+                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D 或 React Three Fiber WebGL 三種渲染模式可切換比較。
                 </p>
-                {/* 2D / 3D toggle */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={["text-xs font-bold transition-colors", !miniGame3D ? "text-white" : "text-gray-500"].join(" ")}>2D</span>
-                  <button
-                    onClick={() => { setMiniGame3D((v) => !v); handleMiniGameReset(); }}
-                    className={[
-                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
-                      miniGame3D ? "bg-purple-600" : "bg-gray-700",
-                    ].join(" ")}
-                    aria-label="Toggle 2D/3D mode"
-                  >
-                    <span
+                {/* Three-way style toggle */}
+                <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
+                  {(["2d", "css3d", "webgl"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
                       className={[
-                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                        miniGame3D ? "translate-x-6" : "translate-x-1",
+                        "px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                        miniGameStyle === mode
+                          ? "bg-purple-600 text-white shadow"
+                          : "text-gray-400 hover:text-white",
                       ].join(" ")}
-                    />
-                  </button>
-                  <span className={["text-xs font-bold transition-colors", miniGame3D ? "text-purple-300" : "text-gray-500"].join(" ")}>3D</span>
+                    >
+                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : "WebGL 3D"}
+                    </button>
+                  ))}
                 </div>
               </div>
             </section>
@@ -744,8 +754,8 @@ export default function AnimationsShowcasePage() {
                   {/* Arcade cabinet frame */}
                   <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
                     <div className="bg-gray-950 rounded-xl overflow-hidden">
-                      {miniGame3D ? (
-                        /* 3D versions */
+                      {miniGameStyle === "webgl" ? (
+                        /* WebGL 3D versions */
                         <>
                           {activeMiniGame === "slot" && (
                             <SlotMachine3D
@@ -775,8 +785,39 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                         </>
+                      ) : miniGameStyle === "css3d" ? (
+                        /* CSS 3D versions */
+                        <>
+                          {activeMiniGame === "slot" && (
+                            <SlotMachineCSS3D
+                              key={`css3d-slot-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "claw" && (
+                            <div
+                              key={`css3d-claw-${miniGameKey}`}
+                              className="flex items-center justify-center bg-gray-900 text-gray-500 text-sm"
+                              style={{ height: 480 }}
+                            >
+                              CSS 3D 夾娃娃 — 開發中
+                            </div>
+                          )}
+                          {activeMiniGame === "gacha" && (
+                            <div
+                              key={`css3d-gacha-${miniGameKey}`}
+                              className="flex items-center justify-center bg-gray-900 text-gray-500 text-sm"
+                              style={{ height: 480 }}
+                            >
+                              CSS 3D 扭蛋機 — 開發中
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        /* 2D canvas versions */
+                        /* 2D Canvas versions */
                         <>
                           {activeMiniGame === "slot" && (
                             <SlotMachine
@@ -812,7 +853,8 @@ export default function AnimationsShowcasePage() {
                   {/* Game title plate */}
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
-                      {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}{miniGame3D ? " (3D)" : " (2D)"}
+                      {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
+                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : " (2D Canvas)"}
                     </span>
                   </div>
                 </div>
@@ -936,27 +978,29 @@ export default function AnimationsShowcasePage() {
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 3 房間</span> — {room3D ? "React Three Fiber 真3D 空間，OrbitControls 自由旋轉視角，點擊地板移動角色。" : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
+                  <span className="text-purple-300 font-semibold">Phase 3 房間</span> —{" "}
+                  {roomStyle === "webgl"
+                    ? "React Three Fiber 真3D 空間，OrbitControls 自由旋轉視角，點擊地板移動角色。"
+                    : roomStyle === "css3d"
+                    ? "純 CSS 3D Transform 房間，無 WebGL，適合低階裝置。NPC 自動走動並定期抽獎。"
+                    : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* 2D / 3D toggle */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={["text-xs font-bold transition-colors", !room3D ? "text-white" : "text-gray-500"].join(" ")}>2.5D</span>
-                  <button
-                    onClick={() => setRoom3D((v) => !v)}
-                    className={[
-                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
-                      room3D ? "bg-purple-600" : "bg-gray-700",
-                    ].join(" ")}
-                    aria-label="Toggle 2.5D/3D mode"
-                  >
-                    <span
+                {/* Three-way style toggle */}
+                <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
+                  {(["2d", "css3d", "webgl"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setRoomStyle(mode)}
                       className={[
-                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                        room3D ? "translate-x-6" : "translate-x-1",
+                        "px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                        roomStyle === mode
+                          ? "bg-purple-600 text-white shadow"
+                          : "text-gray-400 hover:text-white",
                       ].join(" ")}
-                    />
-                  </button>
-                  <span className={["text-xs font-bold transition-colors", room3D ? "text-purple-300" : "text-gray-500"].join(" ")}>3D</span>
+                    >
+                      {mode === "2d" ? "2D Canvas" : mode === "css3d" ? "CSS 3D" : "WebGL 3D"}
+                    </button>
+                  ))}
                 </div>
               </div>
             </section>
@@ -968,11 +1012,21 @@ export default function AnimationsShowcasePage() {
                 <div className="relative">
                   <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
                     <div className={["bg-gray-950 rounded-xl", room3D ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
-                      {room3D ? (
+                      {roomStyle === "webgl" ? (
                         <PrizeDrawRoom3D
                           key={`3d-room-${npcCount}`}
                           npcCount={npcCount}
                           onStateChange={(info) => setRoom3DInfo(info)}
+                        />
+                      ) : roomStyle === "css3d" ? (
+                        <PrizeRoomCSS3D
+                          key={`css3d-room-${npcCount}`}
+                          npcCount={npcCount}
+                          onStateChange={(info) => setRoom3DInfo({
+                            yourPos: info.yourPos,
+                            queue: info.queue,
+                            activeDrawer: info.activeDrawer,
+                          })}
                         />
                       ) : (
                         <IsometricRoom
@@ -984,7 +1038,11 @@ export default function AnimationsShowcasePage() {
                   </div>
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
-                      {room3D ? "真 3D 房間 — 拖曳旋轉視角，點擊地板移動" : "2.5D 等距房間"}
+                      {roomStyle === "webgl"
+                        ? "真 3D 房間 — 拖曳旋轉視角，點擊地板移動"
+                        : roomStyle === "css3d"
+                        ? "CSS 3D 房間 — 純 CSS Transform，無 WebGL"
+                        : "2.5D 等距房間"}
                     </span>
                   </div>
                 </div>
@@ -1021,7 +1079,7 @@ export default function AnimationsShowcasePage() {
 
                 {/* Info cells */}
                 <div className="grid grid-cols-2 gap-2">
-                  {room3D ? (
+                  {roomStyle === "webgl" ? (
                     <>
                       <DebugCell label="你的位置" value={`(${room3DInfo.yourPos.x.toFixed(1)}, ${room3DInfo.yourPos.z.toFixed(1)})`} />
                       <DebugCell label="排隊人數" value={room3DInfo.queue.length > 0 ? `${room3DInfo.queue.length} 人` : "無排隊"} />
@@ -1030,7 +1088,18 @@ export default function AnimationsShowcasePage() {
                         value={room3DInfo.activeDrawer ?? "—"}
                         highlight={room3DInfo.activeDrawer !== null}
                       />
-                      <DebugCell label="模式" value="3D" highlight />
+                      <DebugCell label="模式" value="WebGL 3D" highlight />
+                    </>
+                  ) : roomStyle === "css3d" ? (
+                    <>
+                      <DebugCell label="你的位置" value={`(${room3DInfo.yourPos.x.toFixed(1)}, ${room3DInfo.yourPos.z.toFixed(1)})`} />
+                      <DebugCell label="排隊人數" value={room3DInfo.queue.length > 0 ? `${room3DInfo.queue.length} 人` : "無排隊"} />
+                      <DebugCell
+                        label="目前抽獎者"
+                        value={room3DInfo.activeDrawer ?? "—"}
+                        highlight={room3DInfo.activeDrawer !== null}
+                      />
+                      <DebugCell label="模式" value="CSS 3D" highlight />
                     </>
                   ) : (
                     <>
@@ -1041,7 +1110,7 @@ export default function AnimationsShowcasePage() {
                         value={roomInfo.activeDrawer ?? "—"}
                         highlight={roomInfo.activeDrawer !== null}
                       />
-                      <DebugCell label="模式" value="2.5D" />
+                      <DebugCell label="模式" value="2.5D Canvas" />
                     </>
                   )}
                   <DebugCell label="NPC 數量" value={`${npcCount} 人`} />
