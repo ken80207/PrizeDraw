@@ -22,6 +22,13 @@ const MAX_TILT = 12;
  * The user taps/clicks to trigger the flip. While hovering (before click)
  * a subtle parallax tilt tracks the mouse position for a 3D feel.
  * `onRevealed` is called once the flip animation completes.
+ *
+ * Key implementation notes:
+ * - The PERSPECTIVE must be on a PARENT element, not the card itself.
+ * - Both faces need backfaceVisibility + WebkitBackfaceVisibility: "hidden"
+ *   so Safari (which requires the vendor prefix) hides the correct face.
+ * - The back face is pre-rotated 180deg so it is hidden initially and
+ *   becomes visible when the container rotates 180deg.
  */
 export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }: FlipRevealProps) {
   const [flipped, setFlipped] = useState(false);
@@ -80,7 +87,19 @@ export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }:
   // Dynamic shadow while flipping
   const shadowOpacity = flipped ? 0.15 : 0.3 + Math.abs(tiltY) / MAX_TILT * 0.15;
 
+  // Shared style applied to BOTH faces to ensure Safari hides the rear face.
+  // WebkitBackfaceVisibility is required for Safari — the un-prefixed property
+  // alone is not honoured by WebKit-based browsers.
+  const faceBaseStyle: React.CSSProperties = {
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+    position: "absolute",
+    inset: 0,
+  };
+
   return (
+    // Perspective lives on a PARENT of the card so that the 3D space is
+    // established before the card's own transform is applied.
     <div
       className="flex items-center justify-center w-full h-full"
       style={{ perspective: `${PERSPECTIVE_PX}px` }}
@@ -108,9 +127,12 @@ export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }:
         }}
       >
         {/* ── Front face (card back pattern) ──────────────────────────── */}
+        {/* Visible when the card has NOT been flipped (transform = 0deg).  */}
+        {/* backfaceVisibility:hidden hides this face once the card rotates  */}
+        {/* past 90deg, so the back face (below) becomes visible.            */}
         <div
-          className="absolute inset-0 rounded-2xl overflow-hidden"
-          style={{ backfaceVisibility: "hidden" }}
+          className="rounded-2xl overflow-hidden"
+          style={faceBaseStyle}
         >
           {/* Background gradient */}
           <div
@@ -180,10 +202,15 @@ export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }:
         </div>
 
         {/* ── Back face (prize reveal) ─────────────────────────────────── */}
+        {/* Pre-rotated 180deg so it faces away initially (hidden by          */}
+        {/* backfaceVisibility). When the container flips 180deg this face    */}
+        {/* ends up at 360deg = 0deg (front-facing) and the front face is now */}
+        {/* at 180deg (rear-facing, hidden). Net result: correct reveal.      */}
         <div
-          className="absolute inset-0 rounded-2xl overflow-hidden bg-white dark:bg-gray-900"
+          className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900"
           style={{
-            backfaceVisibility: "hidden",
+            ...faceBaseStyle,
+            // Pre-rotate so this face starts hidden and becomes visible on flip
             transform: "rotateY(180deg)",
           }}
         >

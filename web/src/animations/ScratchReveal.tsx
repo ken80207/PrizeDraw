@@ -34,13 +34,28 @@ interface Sparkle {
  *
  * A metallic silver overlay sits on top of the prize image. The player
  * scratches with mouse or touch to erase the overlay using the
- * `destination-out` composite operation. Sparkle particles appear at the
- * scratch point. When >= 50% of the surface is cleared the overlay fades
- * out and onRevealed() is called.
+ * `destination-out` composite operation.
+ *
+ * Flickering-free architecture (three separate canvas elements):
+ * 1. `canvasRef`   — the scratch surface (metallic overlay, erased by pointer).
+ *                    Written only by `scratchAt` (destination-out). Never
+ *                    cleared or redrawn after the initial paint.
+ * 2. `sparkleRef`  — transparent canvas above the scratch surface. Used
+ *                    exclusively for sparkle particles so they never interfere
+ *                    with the destination-out scratch layer.
+ * 3. Fade-out      — handled by animating the CSS `opacity` property on
+ *                    `canvasRef` directly via `requestAnimationFrame`, with no
+ *                    React state updates per frame to avoid re-render flicker.
+ *
+ * The `revealed` React state is only set once (when the fade completes) to
+ * unmount both canvas elements.
  */
 export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // The scratch overlay canvas (destination-out erasing)
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Separate canvas for sparkle particles — never mixed with destination-out
+  const sparkleRef = useRef<HTMLCanvasElement>(null);
 
   const isDrawingRef = useRef(false);
   const lastSampleRef = useRef(0);
@@ -51,18 +66,24 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
 
   const [revealed, setRevealed] = useState(false);
   const [hintVisible, setHintVisible] = useState(true);
-  const [overlayAlpha, setOverlayAlpha] = useState(1);
-  const [canvasSupported, setCanvasSupported] = useState(true);
+  // Detect canvas support once using a lazy initializer so we never need to
+  // call setState inside a useEffect body (which triggers cascading renders).
+  const [canvasSupported] = useState<boolean>(() => {
+    if (typeof document === "undefined") return true; // SSR — assume supported
+    const probe = document.createElement("canvas");
+    return typeof probe.getContext === "function";
+  });
 
-  // ── Initialise canvas with silver metallic gradient ─────────────────────
+  // ── Initialise the scratch canvas (called once on mount + on resize) ──────
+  //
+  // IMPORTANT: this is the ONLY place that draws the silver overlay.
+  // After this point only `destination-out` operations are applied — no full
+  // redraws — so the scratched holes are never accidentally filled back in.
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-    if (!canvas.getContext) {
-      setCanvasSupported(false);
-      return;
-    }
+
     const { width, height } = container.getBoundingClientRect();
     canvas.width = Math.round(width);
     canvas.height = Math.round(height);
@@ -82,7 +103,7 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // Subtle sheen stripe
+    // Subtle sheen stripe — drawn ONCE here, never redrawn
     const sheenGrad = ctx.createLinearGradient(0, 0, width * 0.6, height * 0.6);
     sheenGrad.addColorStop(0, "rgba(255,255,255,0)");
     sheenGrad.addColorStop(0.4, "rgba(255,255,255,0.18)");
@@ -91,11 +112,26 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     ctx.fillRect(0, 0, width, height);
   }, []);
 
+  // ── Initialise the sparkle canvas dimensions to match the scratch canvas ──
+  const syncSparkleCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const sparkle = sparkleRef.current;
+    if (!canvas || !sparkle) return;
+    sparkle.width = canvas.width;
+    sparkle.height = canvas.height;
+  }, []);
+
   useEffect(() => {
     initCanvas();
+    syncSparkleCanvas();
 
     const resizeObserver = new ResizeObserver(() => {
-      if (!revealedRef.current) initCanvas();
+      // On resize, only reinitialise if not yet revealed (to avoid redrawing
+      // a fully-erased canvas back to silver).
+      if (!revealedRef.current) {
+        initCanvas();
+        syncSparkleCanvas();
+      }
     });
     if (containerRef.current) resizeObserver.observe(containerRef.current);
 
@@ -103,9 +139,9 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
       resizeObserver.disconnect();
       if (sparkleRafRef.current !== null) cancelAnimationFrame(sparkleRafRef.current);
     };
-  }, [initCanvas]);
+  }, [initCanvas, syncSparkleCanvas]);
 
-  // ── Sparkle particle system ─────────────────────────────────────────────
+  // ── Sparkle particle system — runs on the SEPARATE sparkle canvas ─────────
   const spawnSparkles = useCallback((x: number, y: number) => {
     for (let i = 0; i < SPARKLE_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -121,44 +157,57 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     }
   }, []);
 
+  // Hold the latest animateSparkles implementation in a ref so the RAF
+  // reschedule never needs to reference the callback before it's declared.
+  const animateSparklesRef = useRef<() => void>(() => { /* initialised below */ });
+
   const animateSparkles = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Sparkles are drawn on an offscreen layer then composited — but since
-    // we're using destination-out on the main canvas we instead draw sparkles
-    // via a separate overlay div trick. We render them to the canvas in
-    // source-over mode AFTER the scratch layer; they'll appear on the grey.
-    sparklesRef.current = sparklesRef.current
-      .map((s) => ({
-        ...s,
-        x: s.x + s.vx,
-        y: s.y + s.vy,
-        vy: s.vy + 0.15, // gravity
-        alpha: s.alpha - 0.06,
-      }))
-      .filter((s) => s.alpha > 0);
-
-    ctx.save();
-    ctx.globalCompositeOperation = "source-over";
-    for (const s of sparklesRef.current) {
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-      ctx.fill();
-    }
-    ctx.restore();
-
-    if (sparklesRef.current.length > 0) {
-      sparkleRafRef.current = requestAnimationFrame(animateSparkles);
-    } else {
-      sparkleRafRef.current = null;
-    }
+    animateSparklesRef.current();
   }, []);
 
-  // ── Scratch stroke renderer ─────────────────────────────────────────────
+  useEffect(() => {
+    animateSparklesRef.current = () => {
+      const sparkle = sparkleRef.current;
+      if (!sparkle) return;
+      const ctx = sparkle.getContext("2d");
+      if (!ctx) return;
+
+      // Clear the sparkle canvas entirely each frame — it is transparent by
+      // default and has no persistent content, so this never affects the
+      // scratch layer below.
+      ctx.clearRect(0, 0, sparkle.width, sparkle.height);
+
+      sparklesRef.current = sparklesRef.current
+        .map((s) => ({
+          ...s,
+          x: s.x + s.vx,
+          y: s.y + s.vy,
+          vy: s.vy + 0.15, // gravity
+          alpha: s.alpha - 0.06,
+        }))
+        .filter((s) => s.alpha > 0);
+
+      ctx.save();
+      for (const s of sparklesRef.current) {
+        ctx.globalAlpha = s.alpha;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,1)";
+        ctx.fill();
+      }
+      ctx.restore();
+
+      if (sparklesRef.current.length > 0) {
+        sparkleRafRef.current = requestAnimationFrame(animateSparklesRef.current);
+      } else {
+        sparkleRafRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── Scratch stroke renderer ───────────────────────────────────────────────
+  //
+  // Operates ONLY on `canvasRef` with destination-out. No full redraws.
   const scratchAt = useCallback(
     (canvas: HTMLCanvasElement, x: number, y: number) => {
       const ctx = canvas.getContext("2d");
@@ -198,6 +247,7 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
 
       ctx.restore();
 
+      // Spawn sparkles on the SEPARATE sparkle canvas
       spawnSparkles(x, y);
       if (sparkleRafRef.current === null) {
         sparkleRafRef.current = requestAnimationFrame(animateSparkles);
@@ -206,7 +256,7 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     [spawnSparkles, animateSparkles],
   );
 
-  // ── Coverage check ──────────────────────────────────────────────────────
+  // ── Coverage check ────────────────────────────────────────────────────────
   const checkCoverage = useCallback((canvas: HTMLCanvasElement): number => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return 0;
@@ -220,18 +270,36 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     return cleared / total;
   }, []);
 
-  // ── Auto-reveal with fade-out ───────────────────────────────────────────
+  // ── Auto-reveal with CSS-driven fade-out ──────────────────────────────────
+  //
+  // We animate the canvas element's `style.opacity` directly via RAF instead
+  // of using React state, which would trigger re-renders every frame and cause
+  // visible flicker as the component re-paints while also fading.
   const triggerReveal = useCallback(() => {
     if (revealedRef.current) return;
     revealedRef.current = true;
 
+    const scratchCanvas = canvasRef.current;
+    const sparkleCanvas = sparkleRef.current;
+
+    // Kill any ongoing sparkle animation
+    if (sparkleRafRef.current !== null) {
+      cancelAnimationFrame(sparkleRafRef.current);
+      sparkleRafRef.current = null;
+    }
+
     const start = performance.now();
     const fade = (now: number) => {
       const t = Math.min((now - start) / FADE_OUT_MS, 1);
-      setOverlayAlpha(1 - t);
+      const opacity = String(1 - t);
+      if (scratchCanvas) scratchCanvas.style.opacity = opacity;
+      if (sparkleCanvas) sparkleCanvas.style.opacity = opacity;
+
       if (t < 1) {
         requestAnimationFrame(fade);
       } else {
+        // Only set React state ONCE when the fade is fully complete.
+        // This unmounts both canvas elements cleanly.
         setRevealed(true);
         onRevealed();
       }
@@ -239,7 +307,7 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     requestAnimationFrame(fade);
   }, [onRevealed]);
 
-  // ── Pointer event helpers ───────────────────────────────────────────────
+  // ── Pointer event helpers ─────────────────────────────────────────────────
   const toCanvasCoords = (
     e: React.PointerEvent<HTMLCanvasElement>,
     canvas: HTMLCanvasElement,
@@ -300,7 +368,7 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
 
   return (
     <div ref={containerRef} className="relative select-none overflow-hidden rounded-xl touch-none">
-      {/* Prize image underneath */}
+      {/* Prize image underneath — always rendered */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={prizePhotoUrl}
@@ -309,21 +377,29 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
         draggable={false}
       />
 
-      {/* Canvas scratch overlay */}
+      {/* Scratch overlay canvas — receives pointer events and is erased by
+          destination-out. Opacity is animated directly (not via React state)
+          during the fade-out to prevent re-render flicker. */}
       {!revealed && (
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full touch-none"
-          style={{
-            cursor: "crosshair",
-            opacity: overlayAlpha,
-            transition: overlayAlpha < 1 ? "none" : undefined,
-          }}
+          style={{ cursor: "crosshair" }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onPointerLeave={handlePointerUp}
+        />
+      )}
+
+      {/* Sparkle canvas — separate layer, never mixed with destination-out.
+          pointer-events:none so it doesn't intercept scratch events. */}
+      {!revealed && (
+        <canvas
+          ref={sparkleRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ pointerEvents: "none" }}
         />
       )}
 
