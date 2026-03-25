@@ -7,6 +7,9 @@ import { apiClient } from "@/services/apiClient";
 import { GradeBadge } from "@/components/GradeBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/LoadingSkeleton";
+import { ChatPanel } from "@/components/ChatPanel";
+import { SpectatorBar } from "@/components/SpectatorBar";
+import { useDrawSync } from "@/hooks/useDrawSync";
 
 interface KujiCampaignDto {
   id: string;
@@ -60,6 +63,9 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { activeDrawSession, lastRevealed, clearRevealed } = useDrawSync(id);
+  const chatRoomId = id ? `kuji:${id}` : "";
+
   useEffect(() => {
     if (!id) return;
     apiClient
@@ -96,6 +102,14 @@ export default function CampaignDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+
+      {/* ── Spectator bar (shown while another player is drawing) ──────────── */}
+      <SpectatorBar
+        activeSession={activeDrawSession}
+        lastRevealed={lastRevealed}
+        onRevealDismissed={clearRevealed}
+      />
+
       {/* ── Campaign Header ──────────────────────────────── */}
       <section className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -116,9 +130,15 @@ export default function CampaignDetailPage() {
 
             {/* Info */}
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <StatusBadge status={statusLabel} />
                 <StatusBadge status="一番賞" />
+                {/* Spectator count badge — shown when someone is drawing */}
+                {activeDrawSession && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full">
+                    👀 正在觀戰
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                 {campaign.title}
@@ -235,6 +255,9 @@ export default function CampaignDetailPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── Chat panel (slide-in from right / bottom sheet on mobile) ─────── */}
+      {chatRoomId && <ChatPanel roomId={chatRoomId} />}
 
     </div>
   );
