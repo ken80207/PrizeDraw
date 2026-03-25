@@ -14,10 +14,32 @@ import { ScratchReveal } from "@/animations/ScratchReveal";
 import { FlipReveal } from "@/animations/FlipReveal";
 import { InstantReveal } from "@/animations/InstantReveal";
 import { SpectatorAnimation } from "@/components/SpectatorAnimation";
+import { SlotMachine } from "@/games/SlotMachine";
+import type { GameState as SlotGameState } from "@/games/SlotMachine";
+import { ClawMachine } from "@/games/ClawMachine";
+import type { ClawGameState } from "@/games/ClawMachine";
+import { GachaMachine } from "@/games/GachaMachine";
+import type { GachaGameState } from "@/games/GachaMachine";
+import { IsometricRoom } from "@/games/IsometricRoom";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & constants
 // ─────────────────────────────────────────────────────────────────────────────
+
+type PhaseTab = "phase1" | "phase2" | "phase3";
+type MiniGameId = "slot" | "claw" | "gacha";
+
+const PHASE_TABS: { id: PhaseTab; label: string; sub: string }[] = [
+  { id: "phase1", label: "Phase 1", sub: "動畫" },
+  { id: "phase2", label: "Phase 2", sub: "迷你遊戲" },
+  { id: "phase3", label: "Phase 3", sub: "2.5D 房間" },
+];
+
+const MINI_GAMES: { id: MiniGameId; label: string; desc: string }[] = [
+  { id: "slot",  label: "拉霸機", desc: "Slot Machine" },
+  { id: "claw",  label: "夾娃娃", desc: "Claw Machine" },
+  { id: "gacha", label: "扭蛋機", desc: "Gacha Machine" },
+];
 
 const MODES: { id: AnimationMode; label: string; hint: string }[] = [
   { id: "TEAR", label: "撕籤", hint: "拖拉紙張以撕開" },
@@ -27,6 +49,7 @@ const MODES: { id: AnimationMode; label: string; hint: string }[] = [
 ];
 
 const GRADES = ["A賞", "B賞", "C賞", "D賞", "最後賞"];
+const MINI_GAME_GRADES = ["A賞", "B賞", "C賞", "D賞"];
 
 const GRADE_COLOURS: Record<string, string> = {
   A賞: "from-amber-400 to-yellow-300",
@@ -40,7 +63,7 @@ const DEFAULT_PRIZE_NAME = "限定公仔";
 const DEFAULT_IMAGE_URL = "";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Placeholder image component (gradient box shown when no URL is set)
+// Placeholder image component
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PlaceholderImage({
@@ -91,7 +114,6 @@ function logReducer(
     ts: Date.now(),
     event: action.event,
   };
-  // Keep last 30 entries
   return [entry, ...state].slice(0, 30);
 }
 
@@ -100,39 +122,51 @@ function logReducer(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AnimationsShowcasePage() {
-  // ── Settings state ─────────────────────────────────────────────────────────
+  // ── Phase tab ──────────────────────────────────────────────────────────────
+  const [activePhase, setActivePhase] = useState<PhaseTab>("phase1");
+
+  // ── Phase 1 state ──────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AnimationMode>("TEAR");
   const [grade, setGrade] = useState("A賞");
   const [prizeName, setPrizeName] = useState(DEFAULT_PRIZE_NAME);
   const [imageUrl, setImageUrl] = useState(DEFAULT_IMAGE_URL);
   const [speedMultiplier, setSpeedMultiplier] = useState<0.5 | 1 | 2>(1);
-
-  // ── Animation state ────────────────────────────────────────────────────────
   const [progress, setProgress] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  // Key used to fully remount the animation component on reset
   const [animationKey, setAnimationKey] = useState(0);
-
-  // ── Event log ──────────────────────────────────────────────────────────────
   const [logs, dispatchLog] = useReducer(logReducer, []);
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // ── Phase 2 state ──────────────────────────────────────────────────────────
+  const [activeMiniGame, setActiveMiniGame] = useState<MiniGameId>("slot");
+  const [miniGrade, setMiniGrade] = useState("A賞");
+  const [miniPrizeName, setMiniPrizeName] = useState("限定公仔");
+  const [miniGameKey, setMiniGameKey] = useState(0);
+  const [miniGameState, setMiniGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
+  const [miniGameResult, setMiniGameResult] = useState<string | null>(null);
+  const [miniGameLogs, dispatchMiniLog] = useReducer(logReducer, []);
+  const miniLogRef = useRef<HTMLDivElement>(null);
+
+  // ── Phase 3 state ──────────────────────────────────────────────────────────
+  const [npcCount, setNpcCount] = useState(3);
+  const [roomInfo, setRoomInfo] = useState<{
+    yourPos: { isoX: number; isoY: number };
+    queue: string[];
+    activeDrawer: string | null;
+  }>({ yourPos: { isoX: 5, isoY: 9 }, queue: [], activeDrawer: null });
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const effectiveImageUrl = imageUrl.trim() || null;
 
-  // ── Callbacks ──────────────────────────────────────────────────────────────
-  const handleProgress = useCallback(
-    (p: number) => {
-      setProgress(p);
-      // Throttle log entries — only push when progress crosses 10% milestones
-      const pct = Math.round(p * 100);
-      if (pct % 10 === 0 && pct > 0) {
-        dispatchLog({ type: "push", event: `DRAW_PROGRESS(${p.toFixed(2)})` });
-      }
-    },
-    [],
-  );
+  // ── Phase 1 callbacks ──────────────────────────────────────────────────────
+  const handleProgress = useCallback((p: number) => {
+    setProgress(p);
+    const pct = Math.round(p * 100);
+    if (pct % 10 === 0 && pct > 0) {
+      dispatchLog({ type: "push", event: `DRAW_PROGRESS(${p.toFixed(2)})` });
+    }
+  }, []);
 
   const handleRevealed = useCallback(() => {
     setIsRevealed(true);
@@ -143,7 +177,6 @@ export default function AnimationsShowcasePage() {
 
   const handlePlay = useCallback(() => {
     if (isPlaying && !isRevealed) return;
-    // Remount to get a fresh animation instance
     setAnimationKey((k) => k + 1);
     setProgress(0);
     setIsRevealed(false);
@@ -159,26 +192,23 @@ export default function AnimationsShowcasePage() {
     dispatchLog({ type: "push", event: "RESET" });
   }, []);
 
-  const handleModeChange = useCallback(
-    (newMode: AnimationMode) => {
-      setMode(newMode);
-      setAnimationKey((k) => k + 1);
-      setProgress(0);
-      setIsRevealed(false);
-      setIsPlaying(false);
-      dispatchLog({ type: "push", event: `MODE_CHANGED → ${newMode}` });
-    },
-    [],
-  );
+  const handleModeChange = useCallback((newMode: AnimationMode) => {
+    setMode(newMode);
+    setAnimationKey((k) => k + 1);
+    setProgress(0);
+    setIsRevealed(false);
+    setIsPlaying(false);
+    dispatchLog({ type: "push", event: `MODE_CHANGED → ${newMode}` });
+  }, []);
 
-  // Scroll log container to top when new entries arrive
   useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = 0;
-    }
+    if (logContainerRef.current) logContainerRef.current.scrollTop = 0;
   }, [logs]);
 
-  // ── Animation phase label ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (miniLogRef.current) miniLogRef.current.scrollTop = 0;
+  }, [miniGameLogs]);
+
   const phaseLabel = (() => {
     if (isRevealed) return "revealed";
     if (!isPlaying) return "idle";
@@ -191,8 +221,36 @@ export default function AnimationsShowcasePage() {
     return "animating";
   })();
 
-  // ── Prize image URL with fallback ─────────────────────────────────────────
   const prizePhotoUrl = effectiveImageUrl ?? makePlaceholderDataUrl(grade, prizeName);
+
+  // ── Phase 2 callbacks ──────────────────────────────────────────────────────
+  const handleMiniGameResult = useCallback((g: string) => {
+    setMiniGameResult(g);
+    dispatchMiniLog({ type: "push", event: `RESULT: ${g}` });
+  }, []);
+
+  const handleMiniGameStateChange = useCallback(
+    (s: SlotGameState | ClawGameState | GachaGameState) => {
+      setMiniGameState(s);
+      dispatchMiniLog({ type: "push", event: `STATE → ${s}` });
+    },
+    [],
+  );
+
+  const handleMiniGameReset = useCallback(() => {
+    setMiniGameKey((k) => k + 1);
+    setMiniGameResult(null);
+    setMiniGameState("IDLE");
+    dispatchMiniLog({ type: "push", event: "RESET" });
+  }, []);
+
+  const handleSwitchMiniGame = useCallback((id: MiniGameId) => {
+    setActiveMiniGame(id);
+    setMiniGameKey((k) => k + 1);
+    setMiniGameResult(null);
+    setMiniGameState("IDLE");
+    dispatchMiniLog({ type: "push", event: `GAME_CHANGED → ${id}` });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -223,356 +281,634 @@ export default function AnimationsShowcasePage() {
         </div>
       </div>
 
-      {/* ── Main layout ─────────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-        {/* ── Mode tabs ───────────────────────────────────────────────────── */}
-        <section>
-          <SectionLabel>Mode</SectionLabel>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {MODES.map((m) => (
+      {/* ── Phase tabs ──────────────────────────────────────────────────────── */}
+      <div className="border-b border-gray-800 bg-gray-900/60">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex gap-1 pt-3">
+            {PHASE_TABS.map((tab) => (
               <button
-                key={m.id}
-                onClick={() => handleModeChange(m.id)}
+                key={tab.id}
+                onClick={() => setActivePhase(tab.id)}
                 className={[
-                  "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 border",
-                  mode === m.id
-                    ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-                    : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white",
+                  "flex flex-col items-center px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all border-b-2 -mb-px",
+                  activePhase === tab.id
+                    ? "bg-gray-800 border-indigo-500 text-white"
+                    : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-800/50",
                 ].join(" ")}
               >
-                {m.label}
+                <span>{tab.label}</span>
                 <span
                   className={[
-                    "ml-2 text-xs font-normal",
-                    mode === m.id ? "text-indigo-200" : "text-gray-500",
+                    "text-xs font-normal mt-0.5",
+                    activePhase === tab.id ? "text-indigo-400" : "text-gray-600",
                   ].join(" ")}
                 >
-                  {m.id}
+                  {tab.sub}
                 </span>
               </button>
             ))}
           </div>
-          {/* Hint text for current mode */}
-          <p className="mt-2 text-xs text-gray-500">
-            {MODES.find((m) => m.id === mode)?.hint}
-          </p>
-        </section>
+        </div>
+      </div>
 
-        {/* ── Two-column: animation + controls ───────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+      {/* ── Content area ────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-          {/* LEFT: Animation canvas */}
-          <div className="space-y-4">
-            <SectionLabel>Animation Canvas</SectionLabel>
-
-            {/* Canvas frame */}
-            <div
-              className="mx-auto rounded-2xl overflow-hidden border border-gray-700 bg-gray-800 shadow-2xl relative"
-              style={{ width: 340, height: 480 }}
-            >
-              {/* Checkerboard background to show transparency */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "repeating-conic-gradient(#1f2937 0% 25%, #111827 0% 50%)",
-                  backgroundSize: "20px 20px",
-                }}
-              />
-
-              {/* Animation component — remounts on key change */}
-              <div className="absolute inset-0">
-                {isPlaying || isRevealed ? (
-                  <AnimationCanvas
-                    key={animationKey}
-                    mode={mode}
-                    prizePhotoUrl={prizePhotoUrl}
-                    grade={grade}
-                    prizeName={prizeName}
-                    onProgress={handleProgress}
-                    onRevealed={handleRevealed}
-                    speedMultiplier={speedMultiplier}
-                  />
-                ) : (
-                  /* Idle placeholder */
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
-                    <div className="text-gray-600 text-center px-6">
-                      <div className="text-4xl mb-3">🎮</div>
-                      <p className="text-sm font-medium text-gray-400">
-                        按下「開始」預覽 <span className="text-indigo-400 font-bold">{MODES.find((m) => m.id === mode)?.label}</span> 動畫
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Play / Reset buttons */}
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={handlePlay}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/20"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                開始
-              </button>
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-95 text-white font-semibold text-sm transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-                重置
-              </button>
-            </div>
-          </div>
-
-          {/* RIGHT: Settings panel */}
-          <div className="space-y-5">
-            <SectionLabel>Settings</SectionLabel>
-
-            {/* Prize grade */}
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">
-                Prize Grade — 賞品等級
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {GRADES.map((g) => (
+        {/* ════════════════════════════════════════════════════════════════════
+            PHASE 1: Animations
+            ════════════════════════════════════════════════════════════════════ */}
+        {activePhase === "phase1" && (
+          <>
+            {/* Mode tabs */}
+            <section>
+              <SectionLabel>Mode</SectionLabel>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {MODES.map((m) => (
                   <button
-                    key={g}
-                    onClick={() => setGrade(g)}
+                    key={m.id}
+                    onClick={() => handleModeChange(m.id)}
                     className={[
-                      "px-3 py-1 rounded-lg text-xs font-semibold border transition-all",
-                      grade === g
-                        ? "bg-amber-500 border-amber-400 text-white"
-                        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                      "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 border",
+                      mode === m.id
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                        : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white",
                     ].join(" ")}
                   >
-                    {g}
+                    {m.label}
+                    <span
+                      className={[
+                        "ml-2 text-xs font-normal",
+                        mode === m.id ? "text-indigo-200" : "text-gray-500",
+                      ].join(" ")}
+                    >
+                      {m.id}
+                    </span>
                   </button>
                 ))}
               </div>
-            </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {MODES.find((m) => m.id === mode)?.hint}
+              </p>
+            </section>
 
-            {/* Prize name */}
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">
-                Prize Name — 賞品名稱
-              </label>
-              <input
-                type="text"
-                value={prizeName}
-                onChange={(e) => setPrizeName(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                placeholder={DEFAULT_PRIZE_NAME}
-              />
-            </div>
-
-            {/* Image URL */}
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">
-                Image URL — 圖片網址
-              </label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-                placeholder="留空使用預設漸層佔位圖"
-              />
-              {!effectiveImageUrl && (
-                <p className="mt-1 text-xs text-gray-600">
-                  Using gradient placeholder based on grade colour.
-                </p>
-              )}
-            </div>
-
-            {/* Speed multiplier */}
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">
-                Animation Speed
-              </label>
-              <div className="flex gap-1.5">
-                {([0.5, 1, 2] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSpeedMultiplier(s)}
-                    className={[
-                      "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                      speedMultiplier === s
-                        ? "bg-indigo-600 border-indigo-500 text-white"
-                        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
-                    ].join(" ")}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-              {speedMultiplier !== 1 && (
-                <p className="mt-1 text-xs text-amber-500/80">
-                  Note: speed multiplier affects CSS transitions. Canvas-based animations (TEAR / SCRATCH) are pointer-driven.
-                </p>
-              )}
-            </div>
-
-            {/* Placeholder preview */}
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1.5">
-                Prize Image Preview
-              </label>
-              <div className="rounded-xl overflow-hidden border border-gray-700 shadow-inner" style={{ height: 120 }}>
-                {effectiveImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={effectiveImageUrl}
-                    alt="Prize preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
+            {/* Two-column: animation + controls */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+              {/* LEFT: Animation canvas */}
+              <div className="space-y-4">
+                <SectionLabel>Animation Canvas</SectionLabel>
+                <div
+                  className="mx-auto rounded-2xl overflow-hidden border border-gray-700 bg-gray-800 shadow-2xl relative"
+                  style={{ width: 340, height: 480 }}
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage:
+                        "repeating-conic-gradient(#1f2937 0% 25%, #111827 0% 50%)",
+                      backgroundSize: "20px 20px",
                     }}
                   />
-                ) : (
-                  <PlaceholderImage grade={grade} prizeName={prizeName} />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Spectator section ────────────────────────────────────────────── */}
-        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-base">👁</span>
-            <SectionLabel className="mb-0">觀戰者視角 — Spectator View</SectionLabel>
-          </div>
-          <p className="text-xs text-gray-500">
-            This is what other players watching the draw would see — a read-only miniature synced to the current progress.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            {/* Spectator animation */}
-            <div className="shrink-0">
-              <SpectatorAnimation
-                animationMode={mode}
-                progress={progress}
-                prizePhotoUrl={effectiveImageUrl ?? undefined}
-                revealed={isRevealed}
-              />
-            </div>
-
-            {/* Progress + status */}
-            <div className="flex-1 space-y-3 min-w-0">
-              {/* Progress bar */}
-              <div>
-                <div className="flex justify-between text-xs text-gray-400 mb-1">
-                  <span>Progress</span>
-                  <span className="font-mono">{(progress * 100).toFixed(0)}%</span>
+                  <div className="absolute inset-0">
+                    {isPlaying || isRevealed ? (
+                      <AnimationCanvas
+                        key={animationKey}
+                        mode={mode}
+                        prizePhotoUrl={prizePhotoUrl}
+                        grade={grade}
+                        prizeName={prizeName}
+                        onProgress={handleProgress}
+                        onRevealed={handleRevealed}
+                        speedMultiplier={speedMultiplier}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
+                        <div className="text-gray-600 text-center px-6">
+                          <div className="text-4xl mb-3">🎮</div>
+                          <p className="text-sm font-medium text-gray-400">
+                            按下「開始」預覽{" "}
+                            <span className="text-indigo-400 font-bold">
+                              {MODES.find((m) => m.id === mode)?.label}
+                            </span>{" "}
+                            動畫
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-75"
-                    style={{ width: `${progress * 100}%` }}
+
+                {/* Play / Reset buttons */}
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={handlePlay}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/20"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    開始
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-95 text-white font-semibold text-sm transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    重置
+                  </button>
+                </div>
+              </div>
+
+              {/* RIGHT: Settings panel */}
+              <div className="space-y-5">
+                <SectionLabel>Settings</SectionLabel>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Prize Grade — 賞品等級
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {GRADES.map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setGrade(g)}
+                        className={[
+                          "px-3 py-1 rounded-lg text-xs font-semibold border transition-all",
+                          grade === g
+                            ? "bg-amber-500 border-amber-400 text-white"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                        ].join(" ")}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Prize Name — 賞品名稱
+                  </label>
+                  <input
+                    type="text"
+                    value={prizeName}
+                    onChange={(e) => setPrizeName(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder={DEFAULT_PRIZE_NAME}
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Image URL — 圖片網址
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="留空使用預設漸層佔位圖"
+                  />
+                  {!effectiveImageUrl && (
+                    <p className="mt-1 text-xs text-gray-600">
+                      Using gradient placeholder based on grade colour.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Animation Speed
+                  </label>
+                  <div className="flex gap-1.5">
+                    {([0.5, 1, 2] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSpeedMultiplier(s)}
+                        className={[
+                          "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                          speedMultiplier === s
+                            ? "bg-indigo-600 border-indigo-500 text-white"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                        ].join(" ")}
+                      >
+                        {s}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Prize Image Preview
+                  </label>
+                  <div className="rounded-xl overflow-hidden border border-gray-700 shadow-inner" style={{ height: 120 }}>
+                    {effectiveImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={effectiveImageUrl}
+                        alt="Prize preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <PlaceholderImage grade={grade} prizeName={prizeName} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Spectator section */}
+            <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👁</span>
+                <SectionLabel className="mb-0">觀戰者視角 — Spectator View</SectionLabel>
+              </div>
+              <p className="text-xs text-gray-500">
+                This is what other players watching the draw would see — a read-only miniature synced to the current progress.
+              </p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <div className="shrink-0">
+                  <SpectatorAnimation
+                    animationMode={mode}
+                    progress={progress}
+                    prizePhotoUrl={effectiveImageUrl ?? undefined}
+                    revealed={isRevealed}
+                  />
+                </div>
+                <div className="flex-1 space-y-3 min-w-0">
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Progress</span>
+                      <span className="font-mono">{(progress * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-75"
+                        style={{ width: `${progress * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <StatusChip label="Status" value={isRevealed ? "已揭曉" : isPlaying ? "進行中..." : "等待中"} />
+                    <StatusChip label="Mode" value={mode} mono />
+                    <StatusChip label="Phase" value={phaseLabel} mono highlight={isRevealed} />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Debug panel */}
+            <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔍</span>
+                  <SectionLabel className="mb-0">狀態資訊 — Debug Panel</SectionLabel>
+                </div>
+                <button
+                  onClick={() => dispatchLog({ type: "clear" })}
+                  className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                >
+                  Clear log
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <DebugCell label="Animation Mode" value={mode} />
+                <DebugCell label="Progress" value={progress.toFixed(3)} />
+                <DebugCell label="Phase" value={phaseLabel} />
+                <DebugCell label="Revealed" value={String(isRevealed)} highlight={isRevealed} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <DebugCell label="Grade" value={grade} />
+                <DebugCell label="Prize Name" value={prizeName || "(empty)"} />
+                <DebugCell label="Image Source" value={effectiveImageUrl ? "URL" : "placeholder"} />
+                <DebugCell label="Speed" value={`${speedMultiplier}x`} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-2 font-medium">Event Log</p>
+                <div
+                  ref={logContainerRef}
+                  className="h-32 overflow-y-auto rounded-lg bg-gray-950 border border-gray-800 p-2 space-y-1 font-mono text-xs"
+                >
+                  {logs.length === 0 ? (
+                    <p className="text-gray-700 p-1">No events yet — press Play to start.</p>
+                  ) : (
+                    logs.map((entry) => (
+                      <div key={entry.id} className="flex gap-3 items-baseline">
+                        <span className="text-gray-700 shrink-0">
+                          {new Date(entry.ts).toLocaleTimeString("zh-TW", {
+                            hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+                          })}
+                        </span>
+                        <span className={
+                          entry.event.startsWith("DRAW_REVEALED") ? "text-emerald-400"
+                          : entry.event.startsWith("RESET") ? "text-amber-400"
+                          : entry.event.startsWith("MODE_CHANGED") ? "text-sky-400"
+                          : entry.event.startsWith("DRAW_STARTED") ? "text-indigo-400"
+                          : "text-gray-400"
+                        }>
+                          {entry.event}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════
+            PHASE 2: Mini-Games
+            ════════════════════════════════════════════════════════════════════ */}
+        {activePhase === "phase2" && (
+          <>
+            {/* Description */}
+            <section className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+              <p className="text-sm text-gray-400">
+                <span className="text-indigo-400 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。下方三款遊戲均使用純 Canvas API 實作，無外部遊戲引擎。
+              </p>
+            </section>
+
+            {/* Game selector */}
+            <section>
+              <SectionLabel>遊戲選擇</SectionLabel>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {MINI_GAMES.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleSwitchMiniGame(g.id)}
+                    className={[
+                      "px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border",
+                      activeMiniGame === g.id
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                        : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white",
+                    ].join(" ")}
+                  >
+                    {g.label}
+                    <span className={["ml-2 text-xs font-normal", activeMiniGame === g.id ? "text-indigo-200" : "text-gray-500"].join(" ")}>
+                      {g.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Two-column: game + settings */}
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_280px] gap-6 items-start">
+              {/* LEFT: Game canvas */}
+              <div className="flex justify-center">
+                {activeMiniGame === "slot" && (
+                  <SlotMachine
+                    key={miniGameKey}
+                    resultGrade={miniGrade}
+                    prizeName={miniPrizeName}
+                    onResult={handleMiniGameResult}
+                    onStateChange={(s) => handleMiniGameStateChange(s)}
+                  />
+                )}
+                {activeMiniGame === "claw" && (
+                  <ClawMachine
+                    key={miniGameKey}
+                    resultGrade={miniGrade}
+                    prizeName={miniPrizeName}
+                    onResult={handleMiniGameResult}
+                    onStateChange={(s) => handleMiniGameStateChange(s)}
+                  />
+                )}
+                {activeMiniGame === "gacha" && (
+                  <GachaMachine
+                    key={miniGameKey}
+                    resultGrade={miniGrade}
+                    prizeName={miniPrizeName}
+                    onResult={handleMiniGameResult}
+                    onStateChange={(s) => handleMiniGameStateChange(s)}
+                  />
+                )}
               </div>
 
-              {/* Status chip */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <StatusChip label="Status" value={isRevealed ? "已揭曉" : isPlaying ? "進行中..." : "等待中"} />
-                <StatusChip label="Mode" value={mode} mono />
-                <StatusChip
-                  label="Phase"
-                  value={phaseLabel}
-                  mono
-                  highlight={isRevealed}
+              {/* RIGHT: Settings + Debug */}
+              <div className="space-y-5">
+                <SectionLabel>Settings</SectionLabel>
+
+                {/* Result grade */}
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Result Grade — 預決結果
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MINI_GAME_GRADES.map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => {
+                          setMiniGrade(g);
+                          handleMiniGameReset();
+                        }}
+                        className={[
+                          "px-3 py-1 rounded-lg text-xs font-semibold border transition-all",
+                          miniGrade === g
+                            ? "bg-amber-500 border-amber-400 text-white"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                        ].join(" ")}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Prize name */}
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    Prize Name — 賞品名稱
+                  </label>
+                  <input
+                    type="text"
+                    value={miniPrizeName}
+                    onChange={(e) => setMiniPrizeName(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="限定公仔"
+                  />
+                </div>
+
+                {/* Reset */}
+                <button
+                  onClick={handleMiniGameReset}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-95 text-white font-semibold text-sm transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  重置遊戲
+                </button>
+
+                {/* Debug panel */}
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <SectionLabel className="mb-0">Debug</SectionLabel>
+                    <button
+                      onClick={() => dispatchMiniLog({ type: "clear" })}
+                      className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <DebugCell label="Game" value={activeMiniGame} />
+                    <DebugCell label="State" value={miniGameState} />
+                    <DebugCell label="Result Grade" value={miniGrade} />
+                    <DebugCell label="Actual Result" value={miniGameResult ?? "—"} highlight={miniGameResult !== null} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5">State: IDLE → PLAYING → RESULT</p>
+                    <div
+                      ref={miniLogRef}
+                      className="h-28 overflow-y-auto rounded-lg bg-gray-950 border border-gray-800 p-2 space-y-1 font-mono text-xs"
+                    >
+                      {miniGameLogs.length === 0 ? (
+                        <p className="text-gray-700 p-1">No events yet.</p>
+                      ) : (
+                        miniGameLogs.map((entry) => (
+                          <div key={entry.id} className="flex gap-3 items-baseline">
+                            <span className="text-gray-700 shrink-0">
+                              {new Date(entry.ts).toLocaleTimeString("zh-TW", {
+                                hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+                              })}
+                            </span>
+                            <span className={
+                              entry.event.startsWith("RESULT") ? "text-amber-400"
+                              : entry.event.startsWith("RESET") ? "text-rose-400"
+                              : entry.event.startsWith("STATE") ? "text-sky-400"
+                              : "text-gray-400"
+                            }>
+                              {entry.event}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════
+            PHASE 3: 2.5D Room
+            ════════════════════════════════════════════════════════════════════ */}
+        {activePhase === "phase3" && (
+          <>
+            {/* Description */}
+            <section className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+              <p className="text-sm text-gray-400">
+                <span className="text-indigo-400 font-semibold">Phase 3 2.5D 房間</span> — 等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。
+              </p>
+            </section>
+
+            {/* Two-column: room + controls */}
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_260px] gap-6 items-start">
+              {/* LEFT: Isometric room */}
+              <div className="w-full overflow-x-auto">
+                <IsometricRoom
+                  npcCount={npcCount}
+                  onStateChange={setRoomInfo}
                 />
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ── Debug panel ──────────────────────────────────────────────────── */}
-        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🔍</span>
-              <SectionLabel className="mb-0">狀態資訊 — Debug Panel</SectionLabel>
-            </div>
-            <button
-              onClick={() => dispatchLog({ type: "clear" })}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              Clear log
-            </button>
-          </div>
+              {/* RIGHT: Controls + Info */}
+              <div className="space-y-5">
+                <SectionLabel>Controls</SectionLabel>
 
-          {/* State grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <DebugCell label="Animation Mode" value={mode} />
-            <DebugCell label="Progress" value={progress.toFixed(3)} />
-            <DebugCell label="Phase" value={phaseLabel} />
-            <DebugCell label="Revealed" value={String(isRevealed)} highlight={isRevealed} />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <DebugCell label="Grade" value={grade} />
-            <DebugCell label="Prize Name" value={prizeName || "(empty)"} />
-            <DebugCell label="Image Source" value={effectiveImageUrl ? "URL" : "placeholder"} />
-            <DebugCell label="Speed" value={`${speedMultiplier}x`} />
-          </div>
-
-          {/* Event log */}
-          <div>
-            <p className="text-xs text-gray-500 mb-2 font-medium">Event Log</p>
-            <div
-              ref={logContainerRef}
-              className="h-32 overflow-y-auto rounded-lg bg-gray-950 border border-gray-800 p-2 space-y-1 font-mono text-xs"
-            >
-              {logs.length === 0 ? (
-                <p className="text-gray-700 p-1">No events yet — press Play to start.</p>
-              ) : (
-                logs.map((entry) => (
-                  <div key={entry.id} className="flex gap-3 items-baseline">
-                    <span className="text-gray-700 shrink-0">
-                      {new Date(entry.ts).toLocaleTimeString("zh-TW", {
-                        hour12: false,
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </span>
-                    <span
-                      className={
-                        entry.event.startsWith("DRAW_REVEALED")
-                          ? "text-emerald-400"
-                          : entry.event.startsWith("RESET")
-                          ? "text-amber-400"
-                          : entry.event.startsWith("MODE_CHANGED")
-                          ? "text-sky-400"
-                          : entry.event.startsWith("DRAW_STARTED")
-                          ? "text-indigo-400"
-                          : "text-gray-400"
-                      }
-                    >
-                      {entry.event}
-                    </span>
+                {/* NPC count */}
+                <div>
+                  <label className="block text-xs text-gray-400 font-medium mb-1.5">
+                    NPC 數量
+                  </label>
+                  <div className="flex gap-1.5">
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setNpcCount(n)}
+                        className={[
+                          "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                          npcCount === n
+                            ? "bg-indigo-600 border-indigo-500 text-white"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                        ].join(" ")}
+                      >
+                        {n}
+                      </button>
+                    ))}
                   </div>
-                ))
-              )}
+                </div>
+
+                {/* Info panel */}
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-3">
+                  <SectionLabel className="mb-0">Info</SectionLabel>
+                  <div className="space-y-2">
+                    <DebugCell label="你的位置" value={`(${roomInfo.yourPos.isoX}, ${roomInfo.yourPos.isoY})`} />
+                    <DebugCell label="排隊人數" value={roomInfo.queue.length > 0 ? `${roomInfo.queue.length} 人` : "無排隊"} />
+                    <DebugCell
+                      label="目前抽獎者"
+                      value={roomInfo.activeDrawer ?? "—"}
+                      highlight={roomInfo.activeDrawer !== null}
+                    />
+                    <DebugCell label="NPC 數量" value={`${npcCount} 人`} />
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-2">
+                  <SectionLabel className="mb-0">圖例</SectionLabel>
+                  <div className="space-y-1.5 text-xs">
+                    {[
+                      { color: "#fbbf24", label: "你的角色" },
+                      { color: "#6366f1", label: "NPC 角色" },
+                      { color: "#22c55e", label: "移動中" },
+                      { color: "#f59e0b", label: "排隊中" },
+                      { color: "#ec4899", label: "抽獎中" },
+                      { color: "#fbbf24", label: "慶祝中" },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: item.color }} />
+                        <span className="text-gray-400">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-2 border-t border-gray-800 space-y-1 text-xs text-gray-500">
+                    <p>展架 = 陳列賞品</p>
+                    <p>櫃台 = 抽獎區域</p>
+                    <p>紫色地毯 = 等候區</p>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4 space-y-1.5 text-xs text-gray-500">
+                  <p className="font-semibold text-gray-400">操作說明</p>
+                  <p>點擊地板 — 移動角色</p>
+                  <p>觸發 NPC 抽獎 — 在遊戲內隨機選 NPC 至櫃台抽獎</p>
+                  <p>發送訊息 — 角色頭頂出現聊天氣泡</p>
+                  <p>添加獎品氣泡 — 角色頭頂顯示獲獎</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+          </>
+        )}
+
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Animation canvas dispatcher
+// Animation canvas dispatcher (Phase 1)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AnimationCanvasProps {
@@ -594,12 +930,10 @@ function AnimationCanvas({
   onRevealed,
   speedMultiplier,
 }: AnimationCanvasProps) {
-  // CSS speed variable injected for FLIP/INSTANT which use CSS transitions
   const speedStyle: React.CSSProperties = {
     // @ts-expect-error -- custom CSS var
     "--animation-speed-multiplier": speedMultiplier,
   };
-
   const wrapperClass = "w-full h-full";
 
   switch (mode) {
@@ -615,11 +949,9 @@ function AnimationCanvas({
           />
         </div>
       );
-
     case "SCRATCH":
       return (
         <div className={wrapperClass} style={speedStyle}>
-          {/* ScratchReveal doesn't expose onProgress — we simulate 0/1 */}
           <ScratchReveal
             prizePhotoUrl={prizePhotoUrl}
             onRevealed={() => {
@@ -629,7 +961,6 @@ function AnimationCanvas({
           />
         </div>
       );
-
     case "FLIP":
       return (
         <div className={wrapperClass} style={speedStyle}>
@@ -643,7 +974,6 @@ function AnimationCanvas({
           />
         </div>
       );
-
     case "INSTANT":
     default:
       return (
@@ -662,7 +992,7 @@ function AnimationCanvas({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wrappers that inject progress ticking for FLIP and INSTANT
+// Wrappers (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FlipRevealWithProgress({
@@ -683,7 +1013,6 @@ function FlipRevealWithProgress({
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const [flipping, setFlipping] = useState(false);
-
   const FLIP_DURATION_MS = 650 / speedMultiplier;
 
   const handleInternalRevealed = useCallback(() => {
@@ -692,27 +1021,21 @@ function FlipRevealWithProgress({
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, [onProgress, onRevealed]);
 
-  // When the card is clicked, start progress ticker
   const handleClick = useCallback(() => {
     if (flipping) return;
     setFlipping(true);
     startRef.current = performance.now();
-
     const tick = (now: number) => {
       const elapsed = now - (startRef.current ?? now);
       const p = Math.min(elapsed / FLIP_DURATION_MS, 1);
       onProgress(p);
-      if (p < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
   }, [flipping, FLIP_DURATION_MS, onProgress]);
 
   useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
   }, []);
 
   return (
@@ -752,16 +1075,11 @@ function InstantRevealWithProgress({
       const elapsed = now - (startRef.current ?? now);
       const p = Math.min(elapsed / DURATION_MS, 1);
       onProgress(p);
-      if (p < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInternalRevealed = useCallback(() => {
@@ -850,11 +1168,9 @@ function DebugCell({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Placeholder data URL generator
-// Generates a stable base64 SVG based on grade+name when no image URL given
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makePlaceholderDataUrl(grade: string, prizeName: string): string {
-  // Pick gradient colours based on grade
   const gradients: Record<string, [string, string]> = {
     A賞: ["#fbbf24", "#fde68a"],
     B賞: ["#38bdf8", "#bae6fd"],
@@ -863,7 +1179,6 @@ function makePlaceholderDataUrl(grade: string, prizeName: string): string {
     最後賞: ["#f43f5e", "#fda4af"],
   };
   const [c1, c2] = gradients[grade] ?? ["#6b7280", "#d1d5db"];
-
   const svgContent = `
 <svg xmlns="http://www.w3.org/2000/svg" width="340" height="480" viewBox="0 0 340 480">
   <defs>
@@ -877,6 +1192,5 @@ function makePlaceholderDataUrl(grade: string, prizeName: string): string {
   <text x="170" y="280" text-anchor="middle" font-family="system-ui,sans-serif" font-size="36" font-weight="900" fill="white">${grade}</text>
   <text x="170" y="320" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="white" opacity="0.8">${prizeName.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
 </svg>`.trim();
-
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
 }
