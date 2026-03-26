@@ -232,9 +232,10 @@ export function SpectatorDemo({
           isDown: false,
           timestamp: Date.now(),
         });
-        setIsDrawing(false);
+        // === RESULT PHASE: keep showing for 6 seconds so spectators can see ===
+        // Don't setIsDrawing(false) yet — keep the animation visible with result
 
-        // Add win and queue for next draw
+        // Add win to feed immediately
         const prize = pickRandom(FAKE_PRIZES);
         const winId = `w-${Date.now()}`;
         const now2 = Date.now();
@@ -242,11 +243,21 @@ export function SpectatorDemo({
         setRecentWins((prev) =>
           [{ id: winId, ...prize, nickname, timeAgo: "剛才" }, ...prev].slice(0, 8),
         );
-        setQueueLength((v) => Math.max(0, v - 1));
 
         rafRef.current = null;
-        const IDLE_MS = (2_500 + randomBetween(0, 1_000)) / speed;
-        idleTimerRef.current = setTimeout(startDraw, IDLE_MS);
+
+        // Show result for 6 seconds (÷ speed), then transition
+        const RESULT_DISPLAY_MS = 6_000 / speed;
+        idleTimerRef.current = setTimeout(() => {
+          // NOW hide the draw
+          setIsDrawing(false);
+          setCurrentFrame(null);
+          setQueueLength((v) => Math.max(0, v - 1));
+
+          // Wait another 2 seconds before next draw starts
+          const NEXT_DRAW_MS = (2_000 + randomBetween(0, 1_000)) / speed;
+          idleTimerRef.current = setTimeout(startDraw, NEXT_DRAW_MS);
+        }, RESULT_DISPLAY_MS);
         return;
       }
 
