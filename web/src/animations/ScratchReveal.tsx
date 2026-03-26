@@ -433,13 +433,13 @@ export function ScratchReveal({
   }
 
   return (
-    <div ref={containerRef} className="relative select-none overflow-hidden rounded-xl touch-none">
+    <div ref={containerRef} className="relative select-none overflow-hidden rounded-xl touch-none w-full h-full" style={{ minHeight: "200px" }}>
       {/* Prize image underneath — always rendered */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={prizePhotoUrl}
+        src={prizePhotoUrl || undefined}
         alt="Prize"
-        className="block w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
         draggable={false}
       />
 

@@ -236,6 +236,18 @@ function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
+function makePrizePlaceholder(grade: string, name: string): string {
+  const colors: Record<string, [string, string]> = {
+    A: ["#f59e0b", "#fbbf24"], B: ["#3b82f6", "#60a5fa"],
+    C: ["#10b981", "#34d399"], D: ["#a855f7", "#c084fc"],
+  };
+  const key = grade.charAt(0);
+  const [c1, c2] = colors[key] ?? ["#6366f1", "#818cf8"];
+  const icon = key === "A" ? "👑" : key === "B" ? "💎" : key === "C" ? "🌟" : "🎁";
+  const safe = (name || "獎品").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="340" height="480" viewBox="0 0 340 480"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="340" height="480" rx="16" fill="url(#g)"/><text x="170" y="180" text-anchor="middle" font-size="72">${icon}</text><text x="170" y="260" text-anchor="middle" font-family="system-ui" font-size="36" font-weight="900" fill="white">${grade}</text><text x="170" y="310" text-anchor="middle" font-family="system-ui" font-size="18" fill="white" opacity="0.85">${safe}</text></svg>`)}`;
+}
+
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -1130,7 +1142,7 @@ export default function CampaignDetailPage() {
       {isDrawing && currentDrawTicket && (
         <AnimatedReveal
           mode={animMode}
-          prizePhotoUrl={currentDrawTicket.prizePhotoUrl || ""}
+          prizePhotoUrl={currentDrawTicket.prizePhotoUrl || makePrizePlaceholder(currentDrawTicket.grade, currentDrawTicket.prizeName)}
           prizeGrade={currentDrawTicket.grade}
           prizeName={currentDrawTicket.prizeName}
           onRevealed={() => {
