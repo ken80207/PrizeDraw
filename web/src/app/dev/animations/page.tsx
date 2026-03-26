@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { RefObject } from "react";
 import type { AnimationMode } from "@/animations/AnimatedReveal";
 import { TearReveal } from "@/animations/TearReveal";
 import { ScratchReveal } from "@/animations/ScratchReveal";
@@ -289,6 +290,117 @@ function logReducer(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Style Recommendation Panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDetailsElement | null> }) {
+  return (
+    <details ref={detailsRef} className="mb-6 bg-gray-800/50 border border-gray-700 rounded-xl">
+      <summary className="px-5 py-3 cursor-pointer text-sm font-bold text-gray-300 hover:text-white flex items-center gap-2">
+        💡 哪種風格最適合？— 風格推薦指南
+      </summary>
+      <div className="px-5 pb-5 pt-2">
+        <table className="w-full text-xs text-gray-300">
+          <thead>
+            <tr className="text-left text-gray-500 border-b border-gray-700">
+              <th className="py-2 pr-3">風格</th>
+              <th className="py-2 pr-3">效能需求</th>
+              <th className="py-2 pr-3">視覺品質</th>
+              <th className="py-2 pr-3">互動感</th>
+              <th className="py-2 pr-3">載入速度</th>
+              <th className="py-2 pr-3">最適合場景</th>
+              <th className="py-2">推薦度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">🌸 Anime</td>
+              <td>低</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>快</td>
+              <td>一番賞主題 — 最搭配</td>
+              <td><span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">推薦</span></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">🎮 WebGL 3D</td>
+              <td>高</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>慢（需載入 Three.js）</td>
+              <td>高端裝置、沉浸式體驗</td>
+              <td><span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">進階</span></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">🧊 CSS 3D</td>
+              <td>低</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>最快（無額外載入）</td>
+              <td>手機、低端裝置、快速載入</td>
+              <td><span className="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">輕量</span></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">🎨 2D Canvas</td>
+              <td>中</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>快</td>
+              <td>通用、穩定、跨平台一致</td>
+              <td><span className="bg-gray-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">穩定</span></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">👾 Pixel Art</td>
+              <td>最低</td>
+              <td>⭐⭐⭐</td>
+              <td>⭐⭐⭐</td>
+              <td>最快</td>
+              <td>復古主題活動、懷舊風格</td>
+              <td></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">💜 Neon</td>
+              <td>中</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐</td>
+              <td>快</td>
+              <td>夜間模式、科幻主題活動</td>
+              <td></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">✏️ Sketch</td>
+              <td>低</td>
+              <td>⭐⭐⭐</td>
+              <td>⭐⭐⭐</td>
+              <td>快</td>
+              <td>特殊活動、藝術風格</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td className="py-2.5 font-bold">⬜ Flat</td>
+              <td>最低</td>
+              <td>⭐⭐⭐</td>
+              <td>⭐⭐⭐</td>
+              <td>最快</td>
+              <td>企業風、簡報展示用</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="mt-4 p-3 bg-amber-900/20 border border-amber-700/30 rounded-lg text-xs text-amber-200">
+          <strong>💡 建議策略：</strong>
+          <br/>• <strong>預設使用 Anime 風格</strong> — 最搭配一番賞主題，效能要求低
+          <br/>• <strong>進階用戶可選 WebGL 3D</strong> — 最沉浸但需要好的 GPU
+          <br/>• <strong>手機用戶自動降級到 CSS 3D</strong> — 零額外載入，最快
+          <br/>• <strong>特殊活動可切換主題</strong> — 例如萬聖節用 Neon，聖誕節用 Sketch
+        </div>
+      </div>
+    </details>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -322,6 +434,10 @@ export default function AnimationsShowcasePage() {
   // ── Style toggle state (2d | css3d | webgl) ───────────────────────────────
   const [miniGameStyle, setMiniGameStyle] = useState<StyleMode>("2d");
   const [roomStyle, setRoomStyle] = useState<StyleMode>("2d");
+
+  // ── Style recommendation panel refs (one per phase) ────────────────────────
+  const phase2RecommendRef = useRef<HTMLDetailsElement | null>(null);
+  const phase3RecommendRef = useRef<HTMLDetailsElement | null>(null);
 
   // ── Compare mode state ─────────────────────────────────────────────────────
   const [compareMode, setCompareMode] = useState(false);
@@ -843,6 +959,9 @@ export default function AnimationsShowcasePage() {
             ════════════════════════════════════════════════════════════════════ */}
         {activePhase === "phase2" && (
           <>
+            {/* Style Recommendation Panel */}
+            <StyleRecommendationPanel detailsRef={phase2RecommendRef} />
+
             {/* Description */}
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -872,6 +991,21 @@ export default function AnimationsShowcasePage() {
                         )}
                       </button>
                     ))}
+                    {/* Info button — toggles recommendation panel */}
+                    <button
+                      onClick={() => {
+                        const el = phase2RecommendRef.current;
+                        if (!el) return;
+                        if (el.open) el.removeAttribute("open");
+                        else el.setAttribute("open", "");
+                        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }}
+                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+                      title="風格推薦指南"
+                      aria-label="開啟風格推薦指南"
+                    >
+                      ℹ️
+                    </button>
                   </div>
                 )}
               </div>
@@ -1493,6 +1627,9 @@ export default function AnimationsShowcasePage() {
             ════════════════════════════════════════════════════════════════════ */}
         {activePhase === "phase3" && (
           <>
+            {/* Style Recommendation Panel */}
+            <StyleRecommendationPanel detailsRef={phase3RecommendRef} />
+
             {/* Description */}
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1537,6 +1674,21 @@ export default function AnimationsShowcasePage() {
                         )}
                       </button>
                     ))}
+                    {/* Info button — toggles recommendation panel */}
+                    <button
+                      onClick={() => {
+                        const el = phase3RecommendRef.current;
+                        if (!el) return;
+                        if (el.open) el.removeAttribute("open");
+                        else el.setAttribute("open", "");
+                        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }}
+                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+                      title="風格推薦指南"
+                      aria-label="開啟風格推薦指南"
+                    >
+                      ℹ️
+                    </button>
                   </div>
                 )}
               </div>
