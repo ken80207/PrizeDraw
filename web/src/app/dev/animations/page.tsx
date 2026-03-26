@@ -39,6 +39,7 @@ import { AchievementToast } from "@/components/AchievementToast";
 import { AchievementPanel } from "@/components/AchievementPanel";
 import { ComboDisplay } from "@/components/ComboDisplay";
 import { SeasonalOverlay } from "@/components/SeasonalOverlay";
+import { SpectatorDemo } from "@/components/SpectatorDemo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3D components — dynamically imported (Three.js is SSR-incompatible)
@@ -202,7 +203,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 // Types & constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-type PhaseTab = "phase1" | "phase2" | "phase3";
+type PhaseTab = "phase1" | "phase2" | "phase3" | "phase4";
 type MiniGameId = "slot" | "gacha" | "roulette" | "pachinko" | "scratch";
 type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime" | "maple" | "ro";
 
@@ -210,6 +211,7 @@ const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase1", label: "動畫效果", icon: "🎬" },
   { id: "phase2", label: "迷你遊戲", icon: "🕹️" },
   { id: "phase3", label: "2.5D 房間", icon: "🏠" },
+  { id: "phase4", label: "觀戰體驗", icon: "👀" },
 ];
 
 const MINI_GAMES: { id: MiniGameId; label: string; desc: string; isBonus?: boolean }[] = [
@@ -530,6 +532,13 @@ export default function AnimationsShowcasePage() {
     queue: string[];
     activeDrawer: string | null;
   }>({ yourPos: { x: 0, z: 2.5 }, queue: [], activeDrawer: null });
+
+  // ── Phase 4 state ──────────────────────────────────────────────────────────
+  const [spectatorAnimMode, setSpectatorAnimMode] = useState<"TEAR" | "SCRATCH" | "FLIP">("SCRATCH");
+  const [spectatorSpeed, setSpectatorSpeed] = useState<1 | 2 | 5>(1);
+  const [spectatorSimChat, setSpectatorSimChat] = useState(true);
+  // Bump this key to force SpectatorDemo to remount (reset state) when settings change
+  const [spectatorKey, setSpectatorKey] = useState(0);
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const effectiveImageUrl = imageUrl.trim() || null;
@@ -2478,6 +2487,91 @@ export default function AnimationsShowcasePage() {
             </div>
             </> /* end !compareMode single-view */
             )}
+          </>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════
+            PHASE 4: 觀戰體驗 (Live Spectator Room)
+            ════════════════════════════════════════════════════════════════════ */}
+        {activePhase === "phase4" && (
+          <>
+            {/* Controls bar */}
+            <div className="flex flex-wrap items-center gap-3 mb-4 px-1">
+              {/* Animation mode */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 font-semibold">抽獎方式</span>
+                {(["SCRATCH", "TEAR", "FLIP"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setSpectatorAnimMode(m);
+                      setSpectatorKey((k) => k + 1);
+                    }}
+                    className={[
+                      "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                      spectatorAnimMode === m
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700",
+                    ].join(" ")}
+                  >
+                    {m === "SCRATCH" ? "刮刮樂" : m === "TEAR" ? "撕籤" : "翻牌"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Speed */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 font-semibold">速度</span>
+                {([1, 2, 5] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setSpectatorSpeed(s);
+                      setSpectatorKey((k) => k + 1);
+                    }}
+                    className={[
+                      "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                      spectatorSpeed === s
+                        ? "bg-amber-500 border-amber-400 text-white shadow-md"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700",
+                    ].join(" ")}
+                  >
+                    {s}×
+                  </button>
+                ))}
+              </div>
+
+              {/* Simulate chat toggle */}
+              <button
+                onClick={() => setSpectatorSimChat((v) => !v)}
+                className={[
+                  "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                  spectatorSimChat
+                    ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
+                    : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+                ].join(" ")}
+              >
+                💬 {spectatorSimChat ? "模擬聊天 ON" : "模擬聊天 OFF"}
+              </button>
+
+              {/* Reset */}
+              <button
+                onClick={() => setSpectatorKey((k) => k + 1)}
+                className="px-3 py-1 rounded-full text-xs font-bold transition-all border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 ml-auto"
+              >
+                重置
+              </button>
+            </div>
+
+            {/* The full-page spectator room — rendered in a contained box */}
+            <div className="rounded-2xl overflow-hidden border border-gray-700/60 shadow-2xl" style={{ minHeight: 620 }}>
+              <SpectatorDemo
+                key={spectatorKey}
+                animationMode={spectatorAnimMode}
+                speed={spectatorSpeed}
+                simulateChat={spectatorSimChat}
+              />
+            </div>
           </>
         )}
 
