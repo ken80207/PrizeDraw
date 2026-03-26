@@ -157,6 +157,16 @@ const PrizeRoomAnime = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 房間" height={500} /> },
 );
 
+const ClawMachineAnime = dynamic(
+  () => import("@/games/anime/ClawMachine_Anime").then((m) => ({ default: m.ClawMachine_Anime })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 夾娃娃機" /> },
+);
+
+const GachaMachineAnime = dynamic(
+  () => import("@/games/anime/GachaMachine_Anime").then((m) => ({ default: m.GachaMachine_Anime })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 扭蛋機" /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -1053,22 +1063,22 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                           {activeMiniGame === "claw" && (
-                            <div key={`anime-claw-${miniGameKey}`} className="w-full flex items-center justify-center bg-gradient-to-b from-pink-100 to-blue-100" style={{ height: 480 }}>
-                              <div className="text-center space-y-3 px-8">
-                                <div className="text-4xl">🌸</div>
-                                <p className="text-2xl font-black text-pink-500" style={{ textShadow: "2px 2px 0 #222" }}>開發中</p>
-                                <p className="text-sm text-gray-500">Anime 夾娃娃機 Coming Soon</p>
-                              </div>
-                            </div>
+                            <ClawMachineAnime
+                              key={`anime-claw-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
+                            />
                           )}
                           {activeMiniGame === "gacha" && (
-                            <div key={`anime-gacha-${miniGameKey}`} className="w-full flex items-center justify-center bg-gradient-to-b from-pink-100 to-blue-100" style={{ height: 480 }}>
-                              <div className="text-center space-y-3 px-8">
-                                <div className="text-4xl">🌸</div>
-                                <p className="text-2xl font-black text-pink-500" style={{ textShadow: "2px 2px 0 #222" }}>開發中</p>
-                                <p className="text-sm text-gray-500">Anime 扭蛋機 Coming Soon</p>
-                              </div>
-                            </div>
+                            <GachaMachineAnime
+                              key={`anime-gacha-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as GachaGameState)}
+                            />
                           )}
                         </>
                       ) : (
