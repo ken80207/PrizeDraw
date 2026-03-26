@@ -410,12 +410,32 @@ function QueuePanel({
         <span>🎫</span> 排隊狀態
       </h3>
 
-      {queuePosition !== undefined && queuePosition > 0 ? (
+      {queuePosition !== undefined && queuePosition === 1 ? (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 rounded-lg p-3 mb-3 border-2 border-amber-400 dark:border-amber-500/50 animate-pulse">
+          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">
+            🎉 輪到你了！
+          </div>
+          <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            準備開始抽獎
+          </div>
+          <button
+            className="mt-2.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-colors shadow"
+          >
+            🎰 開始抽獎
+          </button>
+          <button
+            onClick={onLeaveQueue}
+            className="mt-1.5 w-full text-xs text-gray-400 hover:text-rose-500 transition-colors"
+          >
+            放棄排隊
+          </button>
+        </div>
+      ) : queuePosition !== undefined && queuePosition > 1 ? (
         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 mb-3 border border-indigo-100 dark:border-indigo-800/30">
           <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none">
             #{queuePosition}
           </div>
-          <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">你的位置</div>
+          <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">你的位置 — 前面還有 {queuePosition - 1} 人</div>
           <button
             onClick={onLeaveQueue}
             className="mt-2.5 text-xs text-rose-500 hover:text-rose-600 hover:underline transition-colors"

@@ -362,6 +362,20 @@ export function SpectatorDemo({
     setQueuePosition(undefined);
   }, []);
 
+  // Advance your queue position when each draw finishes
+  useEffect(() => {
+    if (queuePosition === undefined) return;
+    if (!isDrawing) {
+      // A draw just ended — advance our position
+      setQueuePosition((prev) => {
+        if (prev === undefined) return undefined;
+        if (prev <= 1) return 1; // already at front, stay
+        return prev - 1;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDrawing]);
+
   // ── User-sent messages ────────────────────────────────────────────────────
   const handleSendMessage = useCallback((message: string) => {
     const msg: ChatMessage = {
