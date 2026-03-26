@@ -13,6 +13,83 @@ import { InstantReveal } from "@/animations/InstantReveal";
 import { ReactionOverlay, useReactionQueue } from "@/components/ReactionOverlay";
 import type { TouchFrame } from "@/hooks/useDrawInputSync";
 
+/**
+ * Spectator version of FlipReveal — auto-flips based on remote progress signal.
+ * Shows the prize face (not "?") after flip.
+ */
+function SpectatorFlipReveal({
+  prizePhotoUrl,
+  prizeGrade,
+  prizeName,
+  progress,
+  onRevealed,
+}: {
+  prizePhotoUrl: string;
+  prizeGrade: string;
+  prizeName: string;
+  progress: number;
+  onRevealed: () => void;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const revealedRef = useRef(false);
+
+  // Auto-flip when we get a progress signal (drawer clicked the card)
+  useEffect(() => {
+    if (progress > 0 && !flipped) {
+      setFlipped(true);
+      setTimeout(() => {
+        if (!revealedRef.current) {
+          revealedRef.current = true;
+          onRevealed();
+        }
+      }, 700);
+    }
+  }, [progress, flipped, onRevealed]);
+
+  return (
+    <div className="flex items-center justify-center w-full h-full" style={{ perspective: "900px" }}>
+      <div
+        className="relative"
+        style={{
+          width: "min(280px, 80vw)",
+          height: "min(400px, 70vh)",
+          transformStyle: "preserve-3d",
+          transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+          transition: "transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* Front face — card back */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden"
+          style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
+        >
+          <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 40%, #9333EA 70%, #A855F7 100%)" }}>
+            <div className="text-6xl text-white/80 font-black">?</div>
+          </div>
+        </div>
+
+        {/* Back face — prize */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden bg-white"
+          style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={prizePhotoUrl} alt={prizeName} className="w-full h-3/5 object-cover" draggable={false} />
+          <div className="h-2/5 flex flex-col items-center justify-center p-4 gap-2">
+            <span
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide text-white"
+              style={{ background: "linear-gradient(90deg, #f59e0b, #f97316)" }}
+            >
+              {prizeGrade}
+            </span>
+            <p className="text-center font-bold text-gray-900 text-sm">{prizeName}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,16 +221,20 @@ function AnimationStage({ animationMode, currentFrame, prizeGrade, prizeName, is
       return (
         <TearReveal
           prizePhotoUrl={prizeUrl}
+          prizeGrade={prizeGrade}
+          prizeName={prizeName}
           onRevealed={onRevealed}
+          onProgress={() => {}} // spectator receives progress via touch sync
         />
       );
 
     case "FLIP":
       return (
-        <FlipReveal
+        <SpectatorFlipReveal
           prizePhotoUrl={prizeUrl}
-          prizeGrade="?"
-          prizeName="等待揭曉"
+          prizeGrade={prizeGrade}
+          prizeName={prizeName}
+          progress={currentFrame ? 1 : 0}
           onRevealed={onRevealed}
         />
       );
@@ -163,8 +244,8 @@ function AnimationStage({ animationMode, currentFrame, prizeGrade, prizeName, is
       return (
         <InstantReveal
           prizePhotoUrl={prizeUrl}
-          prizeGrade="?"
-          prizeName="等待揭曉"
+          prizeGrade={prizeGrade}
+          prizeName={prizeName}
           onRevealed={onRevealed}
         />
       );
