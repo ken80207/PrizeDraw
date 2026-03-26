@@ -114,6 +114,33 @@ function buildScratchPath(): PathPoint[] {
   return points;
 }
 
+/**
+ * Build a TEAR path — horizontal pull from left edge to right.
+ * Simulates someone grabbing the left edge of the cover and pulling across.
+ */
+function buildTearPath(): PathPoint[] {
+  const points: PathPoint[] = [];
+  const STEPS = 80;
+  const startY = 0.5; // start from middle height, left edge
+
+  for (let i = 0; i <= STEPS; i++) {
+    const t = i / STEPS;
+    const x = 0.02 + t * 0.96; // left to right across the ticket
+    // Slight vertical wobble to look natural
+    const wobble = Math.sin(t * Math.PI * 3) * 0.02;
+    points.push({ x, y: startY + wobble });
+  }
+  return points;
+}
+
+/**
+ * Build a FLIP path — single tap in the center of the card.
+ * Just one point to trigger the flip.
+ */
+function buildFlipPath(): PathPoint[] {
+  return [{ x: 0.5, y: 0.5 }];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,10 +233,19 @@ export function SpectatorDemo({
   // ── Touch path simulator — runs at 60fps using requestAnimationFrame ─────
   const startDraw = useCallback(() => {
     // Build a fresh scratch path for this session
-    scratchPathRef.current = buildScratchPath();
+    // Build mode-appropriate path
+    scratchPathRef.current = animationMode === "TEAR" ? buildTearPath()
+      : animationMode === "FLIP" ? buildFlipPath()
+      : buildScratchPath();
     pathIndexRef.current = 0;
-    // Randomize scratch speed — each person scratches at different pace
-    scratchSpeedRef.current = 0.08 + Math.random() * 0.18; // 0.08 (slow ~15s) to 0.26 (fast ~5s)
+    // Randomize speed per mode
+    if (animationMode === "TEAR") {
+      scratchSpeedRef.current = 0.06 + Math.random() * 0.08; // tear: slow steady pull, 8~15s
+    } else if (animationMode === "FLIP") {
+      scratchSpeedRef.current = 1.0; // flip: instant (1 point path, triggers immediately)
+    } else {
+      scratchSpeedRef.current = 0.08 + Math.random() * 0.18; // scratch: random 5~15s
+    }
 
     const nickname = pickRandom(FAKE_NICKNAMES);
     const playerId = `demo-player-${++playerIdCounterRef.current}`;

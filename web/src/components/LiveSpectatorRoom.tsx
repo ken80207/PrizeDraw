@@ -14,6 +14,82 @@ import { ReactionOverlay, useReactionQueue } from "@/components/ReactionOverlay"
 import type { TouchFrame } from "@/hooks/useDrawInputSync";
 
 /**
+ * Spectator version of TearReveal — dispatches synthetic pointer events from remote touch frames
+ * so the TearReveal canvas responds exactly as if a local finger were dragging.
+ */
+function SpectatorTearReveal({
+  prizePhotoUrl,
+  prizeGrade,
+  prizeName,
+  currentFrame,
+  onRevealed,
+}: {
+  prizePhotoUrl: string;
+  prizeGrade: string;
+  prizeName: string;
+  currentFrame: TouchFrame | null;
+  onRevealed: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const wasDownRef = useRef(false);
+
+  // Dispatch synthetic pointer events on the TearReveal's canvas
+  useEffect(() => {
+    if (!containerRef.current || !currentFrame) return;
+    const canvas = containerRef.current.querySelector("canvas");
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = rect.left + currentFrame.x * rect.width;
+    const clientY = rect.top + currentFrame.y * rect.height;
+
+    if (currentFrame.isDown && !wasDownRef.current) {
+      // Finger just went down
+      canvas.dispatchEvent(new PointerEvent("pointerdown", {
+        clientX, clientY, bubbles: true, pointerId: 1,
+      }));
+      wasDownRef.current = true;
+    } else if (currentFrame.isDown && wasDownRef.current) {
+      // Finger moving
+      canvas.dispatchEvent(new PointerEvent("pointermove", {
+        clientX, clientY, bubbles: true, pointerId: 1, buttons: 1,
+      }));
+    } else if (!currentFrame.isDown && wasDownRef.current) {
+      // Finger lifted
+      canvas.dispatchEvent(new PointerEvent("pointerup", {
+        clientX, clientY, bubbles: true, pointerId: 1,
+      }));
+      wasDownRef.current = false;
+    }
+  }, [currentFrame]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (wasDownRef.current && containerRef.current) {
+        const canvas = containerRef.current.querySelector("canvas");
+        if (canvas) {
+          canvas.dispatchEvent(new PointerEvent("pointerup", {
+            clientX: 0, clientY: 0, bubbles: true, pointerId: 1,
+          }));
+        }
+      }
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full h-full">
+      <TearReveal
+        prizePhotoUrl={prizePhotoUrl}
+        prizeGrade={prizeGrade}
+        prizeName={prizeName}
+        onRevealed={onRevealed}
+      />
+    </div>
+  );
+}
+
+/**
  * Spectator version of FlipReveal — auto-flips based on remote progress signal.
  * Shows the prize face (not "?") after flip.
  */
@@ -219,12 +295,12 @@ function AnimationStage({ animationMode, currentFrame, prizeGrade, prizeName, is
 
     case "TEAR":
       return (
-        <TearReveal
+        <SpectatorTearReveal
           prizePhotoUrl={prizeUrl}
           prizeGrade={prizeGrade}
           prizeName={prizeName}
+          currentFrame={currentFrame}
           onRevealed={onRevealed}
-          onProgress={() => {}} // spectator receives progress via touch sync
         />
       );
 
