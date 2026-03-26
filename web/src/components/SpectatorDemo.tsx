@@ -70,10 +70,10 @@ interface PathPoint {
 function buildScratchPath(): PathPoint[] {
   const points: PathPoint[] = [];
 
-  // Number of horizontal rows (strokes)
-  const ROWS = 8;
+  // Number of horizontal rows (strokes) — more rows = more realistic coverage
+  const ROWS = 12;
   // Horizontal margin
-  const MARGIN = 0.08;
+  const MARGIN = 0.06;
 
   for (let row = 0; row < ROWS; row++) {
     const y = MARGIN + (row / (ROWS - 1)) * (1 - MARGIN * 2);
@@ -83,18 +83,20 @@ function buildScratchPath(): PathPoint[] {
     const x1 = goRight ? 1 - MARGIN : MARGIN;
 
     // Add slight vertical wobble for realism
-    const wobble = (Math.sin(row * 2.7) * 0.03);
+    const wobble = (Math.sin(row * 2.7) * 0.025);
 
     // Start of stroke
     points.push({ x: x0, y: y + wobble });
 
-    // Mid-stroke points with small natural jitter
-    const MID_POINTS = 4;
+    // More mid-stroke points for smoother, denser scratch path
+    const MID_POINTS = 8;
     for (let m = 1; m <= MID_POINTS; m++) {
       const t = m / (MID_POINTS + 1);
       const mx = x0 + (x1 - x0) * t;
-      const jitterY = Math.sin(m * 1.9 + row * 3.1) * 0.015;
-      points.push({ x: mx, y: y + wobble + jitterY });
+      // Natural hand jitter — slight Y wobble and occasional X drift
+      const jitterY = Math.sin(m * 1.9 + row * 3.1) * 0.012;
+      const jitterX = Math.cos(m * 2.3 + row * 1.7) * 0.008;
+      points.push({ x: mx + jitterX, y: y + wobble + jitterY });
     }
 
     // End of stroke
@@ -174,9 +176,9 @@ export function SpectatorDemo({
   const rafRef = useRef<number | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Target: advance ~5-6 path points per frame at 60fps for natural scratch speed.
-  // At speed=1: covers the whole path in ~3 seconds (realistic scratch card speed).
-  const POINTS_PER_FRAME = speed * 0.8;
+  // Target: realistic scratching speed — a real person takes 10-15 seconds.
+  // Path has ~120 points. At 0.15 points/frame × 60fps = 9 points/sec → ~13 seconds.
+  const POINTS_PER_FRAME = speed * 0.15;
 
   // ── Live timeAgo updates (every 10s) ────────────────────────────────────
   useEffect(() => {
