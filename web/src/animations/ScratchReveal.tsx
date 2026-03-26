@@ -2,9 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { TouchFrame } from "@/hooks/useDrawInputSync";
+
 interface ScratchRevealProps {
   prizePhotoUrl: string;
   onRevealed: () => void;
+  /**
+   * When set, the component operates in spectator mode:
+   * - Local pointer events are disabled.
+   * - The scratch surface is driven by the supplied remote touch frames.
+   */
+  remoteTouchInput?: TouchFrame | null;
+  /** Set true to disable local pointer interaction (used in spectator mode). */
+  isSpectatorMode?: boolean;
 }
 
 // Scratch brush radius in canvas pixels
@@ -50,7 +60,12 @@ interface Sparkle {
  * The `revealed` React state is only set once (when the fade completes) to
  * unmount both canvas elements.
  */
-export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps) {
+export function ScratchReveal({
+  prizePhotoUrl,
+  onRevealed,
+  remoteTouchInput = null,
+  isSpectatorMode = false,
+}: ScratchRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The scratch overlay canvas (destination-out erasing)
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,6 +75,9 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
   const isDrawingRef = useRef(false);
   const lastSampleRef = useRef(0);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Ref to the hint overlay element so we can hide it imperatively (avoids
+  // calling setState inside a useEffect for the spectator remote-touch path).
+  const hintRef = useRef<HTMLDivElement>(null);
   const sparklesRef = useRef<Sparkle[]>([]);
   const sparkleRafRef = useRef<number | null>(null);
   const revealedRef = useRef(false);
@@ -307,6 +325,54 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
     requestAnimationFrame(fade);
   }, [onRevealed]);
 
+  // ── Remote touch input (spectator mode) ──────────────────────────────────
+  //
+  // When isSpectatorMode=true we drive scratchAt directly from the remote
+  // TouchFrame stream instead of local pointer events. This keeps the exact
+  // same scratch rendering path so spectators see an identical visual result.
+  const remotePosRef = useRef<{ x: number; y: number } | null>(null);
+  const remoteDownRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSpectatorMode || !remoteTouchInput) return;
+    if (revealedRef.current) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Scale normalised coords to canvas pixel space
+    const cx = remoteTouchInput.x * canvas.width;
+    const cy = remoteTouchInput.y * canvas.height;
+
+    if (remoteTouchInput.isDown) {
+      if (!remoteDownRef.current) {
+        // Finger just pressed — start a new stroke
+        remoteDownRef.current = true;
+        remotePosRef.current = { x: cx, y: cy };
+        // Hide the hint imperatively (avoids setState-in-effect lint error).
+        if (hintRef.current) hintRef.current.style.display = "none";
+      }
+      // Set last position so scratchAt can interpolate a continuous stroke
+      lastPosRef.current = remotePosRef.current;
+      remotePosRef.current = { x: cx, y: cy };
+      scratchAt(canvas, cx, cy);
+
+      // Coverage check at 150ms intervals (same as local scratch)
+      const now = Date.now();
+      if (now - lastSampleRef.current > SAMPLE_INTERVAL_MS) {
+        lastSampleRef.current = now;
+        if (checkCoverage(canvas) >= REVEAL_THRESHOLD) triggerReveal();
+      }
+    } else {
+      if (remoteDownRef.current) {
+        // Finger lifted — end stroke
+        remoteDownRef.current = false;
+        remotePosRef.current = null;
+        lastPosRef.current = null;
+      }
+    }
+  }, [remoteTouchInput, isSpectatorMode, scratchAt, checkCoverage, triggerReveal]);
+
   // ── Pointer event helpers ─────────────────────────────────────────────────
   const toCanvasCoords = (
     e: React.PointerEvent<HTMLCanvasElement>,
@@ -379,17 +445,22 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
 
       {/* Scratch overlay canvas — receives pointer events and is erased by
           destination-out. Opacity is animated directly (not via React state)
-          during the fade-out to prevent re-render flicker. */}
+          during the fade-out to prevent re-render flicker.
+          In spectator mode pointer events are disabled — input comes from
+          the remoteTouchInput prop instead. */}
       {!revealed && (
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full touch-none"
-          style={{ cursor: "crosshair" }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          style={{
+            cursor: isSpectatorMode ? "none" : "crosshair",
+            pointerEvents: isSpectatorMode ? "none" : undefined,
+          }}
+          onPointerDown={isSpectatorMode ? undefined : handlePointerDown}
+          onPointerMove={isSpectatorMode ? undefined : handlePointerMove}
+          onPointerUp={isSpectatorMode ? undefined : handlePointerUp}
+          onPointerCancel={isSpectatorMode ? undefined : handlePointerUp}
+          onPointerLeave={isSpectatorMode ? undefined : handlePointerUp}
         />
       )}
 
@@ -403,9 +474,11 @@ export function ScratchReveal({ prizePhotoUrl, onRevealed }: ScratchRevealProps)
         />
       )}
 
-      {/* Hint text */}
+      {/* Hint text — hidden via hintRef.style.display imperatively when the
+          remote touch adapter starts scratching (avoids setState-in-effect). */}
       {!revealed && hintVisible && (
         <div
+          ref={hintRef}
           className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
           style={{
             opacity: hintVisible ? 1 : 0,

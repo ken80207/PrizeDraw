@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LiveSpectatorRoom } from "@/components/LiveSpectatorRoom";
 import type { LiveSpectatorRoomProps } from "@/components/LiveSpectatorRoom";
+import type { TouchFrame } from "@/hooks/useDrawInputSync";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -50,6 +51,71 @@ const FAKE_CHAT: Array<{ nickname: string; message: string; isReaction: boolean 
   { nickname: "小萱", message: "加油加油加油", isReaction: false },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Scratch path generation — a realistic zigzag finger path across the canvas
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PathPoint {
+  x: number; // normalised 0-1
+  y: number; // normalised 0-1
+}
+
+/**
+ * Generates a realistic scratch path that covers the card with overlapping
+ * horizontal strokes — mimics how someone would actually scratch a card.
+ *
+ * Returns an array of {x, y} waypoints (normalised 0-1). The simulator will
+ * interpolate between them at 60fps to produce continuous touch frames.
+ */
+function buildScratchPath(): PathPoint[] {
+  const points: PathPoint[] = [];
+
+  // Number of horizontal rows (strokes)
+  const ROWS = 8;
+  // Horizontal margin
+  const MARGIN = 0.08;
+
+  for (let row = 0; row < ROWS; row++) {
+    const y = MARGIN + (row / (ROWS - 1)) * (1 - MARGIN * 2);
+    // Alternate left-to-right and right-to-left
+    const goRight = row % 2 === 0;
+    const x0 = goRight ? MARGIN : 1 - MARGIN;
+    const x1 = goRight ? 1 - MARGIN : MARGIN;
+
+    // Add slight vertical wobble for realism
+    const wobble = (Math.sin(row * 2.7) * 0.03);
+
+    // Start of stroke
+    points.push({ x: x0, y: y + wobble });
+
+    // Mid-stroke points with small natural jitter
+    const MID_POINTS = 4;
+    for (let m = 1; m <= MID_POINTS; m++) {
+      const t = m / (MID_POINTS + 1);
+      const mx = x0 + (x1 - x0) * t;
+      const jitterY = Math.sin(m * 1.9 + row * 3.1) * 0.015;
+      points.push({ x: mx, y: y + wobble + jitterY });
+    }
+
+    // End of stroke
+    points.push({ x: x1, y: y + wobble });
+
+    // Brief lift between rows (represented as a gap — handled by isDown=false)
+    // We'll insert a "lift" marker as a special point with isDown=false
+    if (row < ROWS - 1) {
+      const nextY = MARGIN + ((row + 1) / (ROWS - 1)) * (1 - MARGIN * 2);
+      const nextX = goRight ? 1 - MARGIN : MARGIN; // stay at current end
+      points.push({ x: nextX, y: (y + nextY) / 2 }); // lift marker
+    }
+  }
+
+  return points;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 function randomBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -80,34 +146,39 @@ export function SpectatorDemo({
   speed = 1,
   simulateChat = true,
 }: SpectatorDemoProps) {
-  // ── Simulation state ────────────────────────────────────────────────────────
-  const [progress, setProgress] = useState(0);
-  const [currentDrawerNickname, setCurrentDrawerNickname] = useState(pickRandom(FAKE_NICKNAMES));
+  const [currentFrame, setCurrentFrame] = useState<TouchFrame | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [currentDrawerNickname, setCurrentDrawerNickname] = useState(pickRandom(FAKE_NICKNAMES));
+  const [currentPlayerId, setCurrentPlayerId] = useState("demo-player-1");
   const [queuePosition, setQueuePosition] = useState<number | undefined>(undefined);
   const [queueLength, setQueueLength] = useState(randomBetween(3, 8));
   const [viewerCount, setViewerCount] = useState(randomBetween(12, 30));
-  const [recentWins, setRecentWins] = useState<Win[]>(() => {
-    return [
-      { ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "5分前" },
-      { ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "12分前" },
-      { ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "20分前" },
-    ];
-  });
+  const [recentWins, setRecentWins] = useState<Win[]>(() => [
+    { id: "w0", ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "5分前" },
+    { id: "w1", ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "12分前" },
+    { id: "w2", ...pickRandom(FAKE_PRIZES), nickname: pickRandom(FAKE_NICKNAMES), timeAgo: "20分前" },
+  ]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
-  // Track when wins were recorded (for live timeAgo updates)
-  const winTimesRef = useRef<number[]>([Date.now() - 300000, Date.now() - 720000, Date.now() - 1200000]);
+  const winTimesRef = useRef<number[]>([
+    Date.now() - 300_000,
+    Date.now() - 720_000,
+    Date.now() - 1_200_000,
+  ]);
   const chatIndexRef = useRef(0);
-  const progressRef = useRef(0);
+  const playerIdCounterRef = useRef(1);
+
+  // Scratch path simulation state
+  const scratchPathRef = useRef<PathPoint[]>([]);
+  const pathIndexRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Draw duration: 10 seconds at 1× speed
-  const DRAW_DURATION_MS = 10_000 / speed;
-  const IDLE_DURATION_MS = 2_500 / speed;
+  // Target: advance ~5-6 path points per frame at 60fps for natural scratch speed.
+  // At speed=1: covers the whole path in ~3 seconds (realistic scratch card speed).
+  const POINTS_PER_FRAME = speed * 0.8;
 
-  // ── Live timeAgo updates (every 10s) ─────────────────────────────────────
+  // ── Live timeAgo updates (every 10s) ────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
@@ -121,7 +192,7 @@ export function SpectatorDemo({
     return () => clearInterval(id);
   }, []);
 
-  // ── Viewer count drift (every 3s) ─────────────────────────────────────────
+  // ── Viewer count drift ───────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => {
       setViewerCount((v) => Math.max(5, v + randomBetween(-2, 3)));
@@ -129,51 +200,89 @@ export function SpectatorDemo({
     return () => clearInterval(id);
   }, []);
 
-  // ── Auto-play loop ─────────────────────────────────────────────────────────
+  // ── Touch path simulator — runs at 60fps using requestAnimationFrame ─────
   const startDraw = useCallback(() => {
-    progressRef.current = 0;
-    setProgress(0);
+    // Build a fresh scratch path for this session
+    scratchPathRef.current = buildScratchPath();
+    pathIndexRef.current = 0;
+
+    const nickname = pickRandom(FAKE_NICKNAMES);
+    const playerId = `demo-player-${++playerIdCounterRef.current}`;
+
+    setCurrentDrawerNickname(nickname);
+    setCurrentPlayerId(playerId);
     setIsDrawing(true);
-    setCurrentDrawerNickname(pickRandom(FAKE_NICKNAMES));
-    startTimeRef.current = performance.now();
+    setCurrentFrame(null);
 
-    const tick = (now: number) => {
-      const elapsed = now - (startTimeRef.current ?? now);
-      const p = Math.min(elapsed / DRAW_DURATION_MS, 1);
-      progressRef.current = p;
-      setProgress(p);
+    let floatIndex = 0;
 
-      if (p < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      } else {
-        // Reveal — add a win and start idle
+    const tick = () => {
+      const path = scratchPathRef.current;
+
+      // Advance by POINTS_PER_FRAME (can be fractional — use float accumulation)
+      floatIndex += POINTS_PER_FRAME;
+      const intIndex = Math.min(Math.floor(floatIndex), path.length - 1);
+
+      if (intIndex >= path.length - 1) {
+        // Path completed — emit a "lift" frame then end
+        const last = path[path.length - 1]!;
+        setCurrentFrame({
+          x: last.x,
+          y: last.y,
+          isDown: false,
+          timestamp: Date.now(),
+        });
+        setIsDrawing(false);
+
+        // Add win and queue for next draw
         const prize = pickRandom(FAKE_PRIZES);
-        const winner = currentDrawerNickname;
+        const winId = `w-${Date.now()}`;
         const now2 = Date.now();
         winTimesRef.current = [now2, ...winTimesRef.current].slice(0, 8);
-        setRecentWins((prev) => [
-          { ...prize, nickname: winner, timeAgo: "剛才" },
-          ...prev,
-        ].slice(0, 8));
+        setRecentWins((prev) =>
+          [{ id: winId, ...prize, nickname, timeAgo: "剛才" }, ...prev].slice(0, 8),
+        );
         setQueueLength((v) => Math.max(0, v - 1));
 
-        // Short idle, then next draw
-        setIsDrawing(false);
         rafRef.current = null;
-        setTimeout(startDraw, IDLE_DURATION_MS);
+        const IDLE_MS = (2_500 + randomBetween(0, 1_000)) / speed;
+        idleTimerRef.current = setTimeout(startDraw, IDLE_MS);
+        return;
       }
+
+      const point = path[intIndex]!;
+
+      // Determine isDown: we treat every point as "down" EXCEPT the "lift"
+      // markers we inserted between rows. A lift marker is detected by checking
+      // if the previous and next points are on different rows (y jump > 0.06).
+      const prevPoint = intIndex > 0 ? path[intIndex - 1] : null;
+      const nextPoint = intIndex < path.length - 1 ? path[intIndex + 1] : null;
+      const isLift =
+        prevPoint !== null &&
+        nextPoint !== null &&
+        Math.abs(point.y - prevPoint.y) > 0.05 &&
+        Math.abs(nextPoint.y - point.y) > 0.05;
+
+      setCurrentFrame({
+        x: point.x,
+        y: point.y,
+        isDown: !isLift,
+        timestamp: Date.now(),
+      });
+
+      rafRef.current = requestAnimationFrame(tick);
     };
 
     rafRef.current = requestAnimationFrame(tick);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [DRAW_DURATION_MS, IDLE_DURATION_MS]);
+  }, [POINTS_PER_FRAME, speed]);
 
-  // Start auto-play on mount
+  // Start simulation on mount
   useEffect(() => {
-    const firstDelay = setTimeout(startDraw, 800);
+    const t = setTimeout(startDraw, 800);
     return () => {
-      clearTimeout(firstDelay);
+      clearTimeout(t);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -181,14 +290,17 @@ export function SpectatorDemo({
   // Restart when speed or animationMode changes
   useEffect(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
     rafRef.current = null;
+    idleTimerRef.current = null;
     setIsDrawing(false);
+    setCurrentFrame(null);
     const t = setTimeout(startDraw, 600);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speed, animationMode]);
 
-  // ── Simulated chat ─────────────────────────────────────────────────────────
+  // ── Simulated chat ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!simulateChat) return;
 
@@ -205,11 +317,11 @@ export function SpectatorDemo({
       setChatMessages((prev) => [...prev, msg].slice(-60));
     };
 
-    // Push an initial batch for immediate content
+    // Push initial batch
     for (let i = 0; i < 4; i++) pushMessage();
 
     const jitter = () => randomBetween(1200, 3500) / speed;
-    const schedule = () => {
+    const schedule = (): ReturnType<typeof setTimeout> => {
       const id = setTimeout(() => {
         pushMessage();
         schedule();
@@ -221,7 +333,7 @@ export function SpectatorDemo({
     return () => clearTimeout(firstId);
   }, [simulateChat, speed]);
 
-  // ── Queue actions ──────────────────────────────────────────────────────────
+  // ── Queue actions ─────────────────────────────────────────────────────────
   const handleJoinQueue = useCallback(() => {
     setQueueLength((v) => v + 1);
     setQueuePosition(queueLength + 1);
@@ -232,7 +344,7 @@ export function SpectatorDemo({
     setQueuePosition(undefined);
   }, []);
 
-  // ── User-sent messages ─────────────────────────────────────────────────────
+  // ── User-sent messages ────────────────────────────────────────────────────
   const handleSendMessage = useCallback((message: string) => {
     const msg: ChatMessage = {
       id: `user-${++_msgIdCounter}`,
@@ -255,7 +367,7 @@ export function SpectatorDemo({
     setChatMessages((prev) => [...prev, msg].slice(-60));
   }, []);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <LiveSpectatorRoom
       campaignId="demo-campaign"
@@ -263,10 +375,10 @@ export function SpectatorDemo({
       currentDrawer={
         isDrawing
           ? {
-              playerId: "demo-player",
+              playerId: currentPlayerId,
               nickname: currentDrawerNickname,
               animationMode,
-              progress,
+              currentFrame,
             }
           : null
       }
