@@ -23,6 +23,20 @@ import type { ClawGameState } from "@/games/ClawMachine";
 import { GachaMachine } from "@/games/GachaMachine";
 import type { GachaGameState } from "@/games/GachaMachine";
 import { IsometricRoom } from "@/games/IsometricRoom";
+import { sounds } from "@/lib/sounds";
+import { haptics } from "@/lib/haptics";
+import { captureGameScreenshot, shareScreenshot } from "@/lib/screenshot";
+import { FPSCounter } from "@/components/FPSCounter";
+import { achievements } from "@/lib/achievements";
+import { combo } from "@/lib/combo";
+import type { ComboMilestone } from "@/lib/combo";
+import { getSeasonalTheme, SEASONAL_THEMES, THEME_IDS } from "@/lib/seasonal";
+import type { SeasonalTheme } from "@/lib/seasonal";
+import { getTimeAmbient } from "@/lib/timeOfDay";
+import { AchievementToast } from "@/components/AchievementToast";
+import { AchievementPanel } from "@/components/AchievementPanel";
+import { ComboDisplay } from "@/components/ComboDisplay";
+import { SeasonalOverlay } from "@/components/SeasonalOverlay";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3D components — dynamically imported (Three.js is SSR-incompatible)
@@ -454,6 +468,22 @@ export default function AnimationsShowcasePage() {
   // Legacy alias used in arcade cabinet overflow class
   const room3D = roomStyle === "webgl";
 
+  // ── Achievement / combo / seasonal / time-of-day state ────────────────────
+  const [achievementPanelOpen, setAchievementPanelOpen] = useState(false);
+  const [comboStreak, setComboStreak] = useState(0);
+  const [comboMilestone, setComboMilestone] = useState<ComboMilestone>(null);
+  const [seasonalTheme, setSeasonalTheme] = useState<SeasonalTheme>(getSeasonalTheme);
+  const [particlesEnabled, setParticlesEnabled] = useState(true);
+  const [timeAmbient] = useState(getTimeAmbient);
+  // Track which mini-game types the user has tried (for try_all_games achievement)
+  const triedGamesRef = useRef<Set<string>>(new Set());
+  // Track which styles the user has tried (for try_all_styles achievement)
+  const triedStylesRef = useRef<Set<string>>(new Set());
+  // Draw count (for collector achievements)
+  const drawCountRef = useRef(0);
+  // Draw start time (for speed_draw achievement)
+  const drawStartRef = useRef<number | null>(null);
+
   // ── Phase 3 state ──────────────────────────────────────────────────────────
   const [npcCount, setNpcCount] = useState(3);
   const [roomInfo, setRoomInfo] = useState<{
@@ -484,7 +514,44 @@ export default function AnimationsShowcasePage() {
     setProgress(1);
     setIsPlaying(false);
     dispatchLog({ type: "push", event: "DRAW_REVEALED" });
-  }, []);
+    // Win sounds based on current grade
+    if (grade.startsWith("A")) {
+      sounds.playWinBig();
+      haptics.winBig();
+    } else {
+      sounds.playWinSmall();
+      haptics.winSmall();
+    }
+
+    // ── Achievements ───────────────────────────────────────────────────────
+    // First draw
+    achievements.unlock("first_draw");
+    // A-grade win
+    if (grade === "A賞") achievements.unlock("win_a_grade");
+    // Night owl
+    const hour = new Date().getHours();
+    if (hour >= 2 && hour < 5) achievements.unlock("night_owl");
+    // Speed draw — completed within 3 seconds of pressing Play
+    if (drawStartRef.current !== null) {
+      const elapsed = Date.now() - drawStartRef.current;
+      if (elapsed <= 3000) achievements.unlock("speed_draw");
+    }
+    // Collector
+    drawCountRef.current += 1;
+    if (drawCountRef.current >= 10) achievements.unlock("collector_10");
+    if (drawCountRef.current >= 50) achievements.unlock("collector_50");
+
+    // ── Combo ──────────────────────────────────────────────────────────────
+    const result = combo.recordDraw(grade);
+    setComboStreak(result.streak);
+    setComboMilestone(result.milestone);
+    if (result.milestone === "combo3") achievements.unlock("combo_3");
+    if (result.milestone === "combo5") achievements.unlock("combo_5");
+    // Clear milestone indicator after a short delay
+    if (result.milestone) {
+      setTimeout(() => setComboMilestone(null), 100);
+    }
+  }, [grade]);
 
   const handlePlay = useCallback(() => {
     if (isPlaying && !isRevealed) return;
@@ -492,7 +559,13 @@ export default function AnimationsShowcasePage() {
     setProgress(0);
     setIsRevealed(false);
     setIsPlaying(true);
+    drawStartRef.current = Date.now();
     dispatchLog({ type: "push", event: `DRAW_STARTED (mode=${mode})` });
+    // Play mode-appropriate sound effect
+    if (mode === "TEAR") { sounds.playTear(); haptics.tear(); }
+    else if (mode === "SCRATCH") { sounds.playScratch(); haptics.scratch(); }
+    else if (mode === "FLIP") { sounds.playFlip(); haptics.flip(); }
+    else { haptics.click(); }
   }, [isPlaying, isRevealed, mode]);
 
   const handleReset = useCallback(() => {
@@ -538,10 +611,43 @@ export default function AnimationsShowcasePage() {
 
   const prizePhotoUrl = effectiveImageUrl ?? makePlaceholderDataUrl(grade, prizeName);
 
+  // ── Dev toolbar state ───────────────────────────────────────────────────────
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hapticEnabled, setHapticEnabled] = useState(true);
+  const [showFPS, setShowFPS] = useState(false);
+  // Ref to the active game container for screenshot capture
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+
   // ── Phase 2 callbacks ──────────────────────────────────────────────────────
   const handleMiniGameResult = useCallback((g: string) => {
     setMiniGameResult(g);
     dispatchMiniLog({ type: "push", event: `RESULT: ${g}` });
+    // Sound + haptic feedback based on grade
+    if (g.startsWith("A")) {
+      sounds.playJackpot();
+      haptics.jackpot();
+    } else {
+      sounds.playWinSmall();
+      haptics.winSmall();
+    }
+    // ── Achievements ─────────────────────────────────────────────────────────
+    achievements.unlock("first_draw");
+    if (g === "A賞") achievements.unlock("win_a_grade");
+    const h = new Date().getHours();
+    if (h >= 2 && h < 5) achievements.unlock("night_owl");
+    drawCountRef.current += 1;
+    if (drawCountRef.current >= 10) achievements.unlock("collector_10");
+    if (drawCountRef.current >= 50) achievements.unlock("collector_50");
+
+    // ── Combo ─────────────────────────────────────────────────────────────
+    const result = combo.recordDraw(g);
+    setComboStreak(result.streak);
+    setComboMilestone(result.milestone);
+    if (result.milestone === "combo3") achievements.unlock("combo_3");
+    if (result.milestone === "combo5") achievements.unlock("combo_5");
+    if (result.milestone) {
+      setTimeout(() => setComboMilestone(null), 100);
+    }
   }, []);
 
   const handleMiniGameStateChange = useCallback(
@@ -565,10 +671,61 @@ export default function AnimationsShowcasePage() {
     setMiniGameResult(null);
     setMiniGameState("IDLE");
     dispatchMiniLog({ type: "push", event: `GAME_CHANGED → ${id}` });
+    // Track for try_all_games achievement
+    triedGamesRef.current.add(id);
+    if (
+      triedGamesRef.current.has("slot") &&
+      triedGamesRef.current.has("claw") &&
+      triedGamesRef.current.has("gacha")
+    ) {
+      achievements.unlock("try_all_games");
+    }
   }, []);
 
+  // ── Screenshot callback ─────────────────────────────────────────────────────
+  const handleScreenshot = useCallback(async () => {
+    const container = gameContainerRef.current;
+    if (!container) return;
+    try {
+      const currentGrade = activePhase === "phase1" ? grade : miniGrade;
+      const currentPrize = activePhase === "phase1" ? prizeName : miniPrizeName;
+      const currentStyle =
+        activePhase === "phase1"
+          ? mode
+          : miniGameStyle.toUpperCase();
+      const blob = await captureGameScreenshot(
+        container,
+        currentGrade,
+        currentPrize,
+        currentStyle,
+      );
+      const shareText = `我在 PrizeDraw 抽到了 ${currentGrade}！✨ ${currentPrize}`;
+      await shareScreenshot(blob, shareText);
+      sounds.playChat();
+      achievements.unlock("screenshot");
+    } catch (err) {
+      console.error("[screenshot]", err);
+    }
+  }, [activePhase, grade, miniGrade, prizeName, miniPrizeName, mode, miniGameStyle]);
+
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-gray-950 text-gray-100 relative">
+      {/* ── Global overlays (z-index layering: seasonal < content < combo < toast) ── */}
+      <SeasonalOverlay theme={seasonalTheme} enabled={particlesEnabled} />
+
+      {/* Time-of-day colour overlay — very subtle tint on the full page */}
+      <div
+        className="fixed inset-0 z-10 pointer-events-none"
+        style={{ background: timeAmbient.overlay }}
+        aria-hidden="true"
+      />
+
+      {/* Achievement toast — top-right, above everything */}
+      <AchievementToast />
+
+      {/* Combo display — floats in the viewport */}
+      <ComboDisplay streak={comboStreak} milestone={comboMilestone} />
+
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-gradient-to-r from-gray-900 via-purple-950 to-gray-900 border-b border-purple-800/50 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
@@ -593,6 +750,63 @@ export default function AnimationsShowcasePage() {
               /dev/animations
             </span>
           </div>
+
+          {/* ── Game-experience toolbar ────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Achievement panel toggle */}
+            <button
+              onClick={() => setAchievementPanelOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-900/40 border border-amber-700/40 text-amber-300 hover:bg-amber-800/50 transition-colors"
+            >
+              🏆 成就 ({achievements.getStats().unlocked}/{achievements.getStats().total})
+            </button>
+
+            {/* Seasonal theme selector */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={seasonalTheme.id}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSeasonalTheme(id === "auto" ? getSeasonalTheme() : (SEASONAL_THEMES[id] ?? getSeasonalTheme()));
+                }}
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-full px-3 py-1 focus:border-purple-500 outline-none cursor-pointer"
+              >
+                <option value="auto">🔮 自動偵測</option>
+                {THEME_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {SEASONAL_THEMES[id].icon} {SEASONAL_THEMES[id].name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Particle toggle */}
+            <button
+              onClick={() => setParticlesEnabled((v) => !v)}
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                particlesEnabled
+                  ? "bg-indigo-900/40 border-indigo-700/40 text-indigo-300"
+                  : "bg-gray-800/40 border-gray-700/40 text-gray-500"
+              }`}
+            >
+              {particlesEnabled ? "✨ 粒子 ON" : "✨ 粒子 OFF"}
+            </button>
+
+            {/* Time-of-day ambient label */}
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-800/40 border border-gray-700/40 text-gray-400">
+              {timeAmbient.label}
+            </span>
+          </div>
+
+          {/* Achievement panel — collapsible, appears below toolbar */}
+          {achievementPanelOpen && (
+            <div className="mb-3">
+              <AchievementPanel
+                open={achievementPanelOpen}
+                onToggle={() => setAchievementPanelOpen((v) => !v)}
+              />
+            </div>
+          )}
 
           {/* Phase tabs — pill style with numeric badge */}
           <div className="flex gap-2 flex-wrap items-center">
@@ -619,7 +833,10 @@ export default function AnimationsShowcasePage() {
             {/* Compare mode toggle — only relevant for phase2 and phase3 */}
             {(activePhase === "phase2" || activePhase === "phase3") && (
               <button
-                onClick={() => setCompareMode(!compareMode)}
+                onClick={() => {
+                  if (!compareMode) achievements.unlock("compare_mode");
+                  setCompareMode(!compareMode);
+                }}
                 className={`ml-auto px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                   compareMode
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30"
@@ -630,11 +847,70 @@ export default function AnimationsShowcasePage() {
               </button>
             )}
           </div>
+
+          {/* ── Dev toolbar: sound / haptic / screenshot / FPS ───────────────── */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <button
+              onClick={() => {
+                sounds.toggle();
+                setSoundEnabled(sounds.isEnabled());
+              }}
+              className={[
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                soundEnabled
+                  ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
+                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+              ].join(" ")}
+              title={soundEnabled ? "關閉音效" : "開啟音效"}
+            >
+              {soundEnabled ? "🔊" : "🔇"} 音效
+            </button>
+
+            <button
+              onClick={() => {
+                haptics.toggle();
+                setHapticEnabled(haptics.isEnabled());
+              }}
+              className={[
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                hapticEnabled
+                  ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
+                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+              ].join(" ")}
+              title={hapticEnabled ? "關閉震動" : "開啟震動"}
+            >
+              {hapticEnabled ? "📳" : "📴"} 震動
+            </button>
+
+            <button
+              onClick={() => { void handleScreenshot(); }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border bg-indigo-800/60 border-indigo-700/60 text-indigo-200 hover:bg-indigo-700 active:scale-95"
+              title="截圖並分享"
+            >
+              📸 截圖
+            </button>
+
+            <button
+              onClick={() => setShowFPS((v) => !v)}
+              className={[
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                showFPS
+                  ? "bg-cyan-700/60 border-cyan-600/60 text-cyan-200 hover:bg-cyan-700"
+                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+              ].join(" ")}
+              title={showFPS ? "隱藏 FPS" : "顯示 FPS"}
+            >
+              📊 FPS
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* FPS performance monitor — fixed bottom-right overlay */}
+      {showFPS && <FPSCounter />}
+
       {/* ── Content area ────────────────────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div ref={gameContainerRef} className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* ════════════════════════════════════════════════════════════════════
             PHASE 1: Animations
@@ -974,7 +1250,12 @@ export default function AnimationsShowcasePage() {
                     {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
                       <button
                         key={mode}
-                        onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
+                        onClick={() => {
+                          setMiniGameStyle(mode);
+                          handleMiniGameReset();
+                          triedStylesRef.current.add(mode);
+                          if (triedStylesRef.current.size >= 8) achievements.unlock("try_all_styles");
+                        }}
                         className={[
                           "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
                           miniGameStyle === mode
