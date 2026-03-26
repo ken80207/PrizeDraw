@@ -27,6 +27,10 @@ export interface LiveSpectatorRoomProps {
     animationMode: string;
     /** Current remote touch frame (null between touches). */
     currentFrame: TouchFrame | null;
+    /** Prize grade (revealed after draw completes). */
+    prizeGrade?: string;
+    /** Prize name (revealed after draw completes). */
+    prizeName?: string;
   } | null;
   /** Your queue position (1-indexed). Undefined = not in queue. */
   queuePosition?: number;
@@ -58,7 +62,22 @@ export interface LiveSpectatorRoomProps {
 
 const REACTION_EMOJIS = ["🎉", "😱", "👏", "🔥", "💪", "😂", "❤️", "🎊"];
 
-const PLACEHOLDER_PRIZE_URL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='420' viewBox='0 0 300 420'%3E%3Crect width='300' height='420' fill='%234F46E5'/%3E%3Ctext x='150' y='220' text-anchor='middle' fill='white' font-size='80'%3E%3F%3C/text%3E%3C/svg%3E";
+/** Generate a colorful prize image per grade (not a "?" placeholder) */
+function makePrizeImageUrl(grade: string, prizeName: string): string {
+  const gradients: Record<string, [string, string]> = {
+    A: ["#f59e0b", "#fbbf24"],
+    B: ["#3b82f6", "#60a5fa"],
+    C: ["#10b981", "#34d399"],
+    D: ["#a855f7", "#c084fc"],
+  };
+  const key = grade.charAt(0);
+  const [c1, c2] = gradients[key] ?? ["#6366f1", "#818cf8"];
+  const icon = key === "A" ? "👑" : key === "B" ? "💎" : key === "C" ? "🌟" : "🎁";
+  const safeName = (prizeName || "獎品").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="300" height="420" rx="16" fill="url(#g)"/><text x="150" y="160" text-anchor="middle" font-size="72">${icon}</text><text x="150" y="240" text-anchor="middle" font-family="system-ui,sans-serif" font-size="36" font-weight="900" fill="white">${grade}</text><text x="150" y="290" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="white" opacity="0.85">${safeName}</text><text x="150" y="380" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="white" opacity="0.5">PrizeDraw</text></svg>`)}`;
+}
+
+const HIDDEN_PRIZE_URL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='420' viewBox='0 0 300 420'%3E%3Crect width='300' height='420' rx='16' fill='%234F46E5'/%3E%3Ctext x='150' y='200' text-anchor='middle' fill='white' font-size='64'%3E%3F%3C/text%3E%3Ctext x='150' y='260' text-anchor='middle' fill='white' font-size='16' opacity='0.6'%3E%E7%AD%89%E5%BE%85%E6%8F%AD%E6%9B%89%3C/text%3E%3C/svg%3E";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Grade helpers
@@ -95,18 +114,22 @@ function gradeEmoji(grade: string): string {
 interface AnimationStageProps {
   animationMode: string;
   currentFrame: TouchFrame | null;
+  prizeGrade: string;
+  prizeName: string;
+  isRevealed: boolean;
   onRevealed: () => void;
 }
 
-function AnimationStage({ animationMode, currentFrame, onRevealed }: AnimationStageProps) {
-  // Key rotates on each new draw session so the component fully unmounts/remounts.
-  // This is handled by the parent passing a sessionKey prop — see LiveDrawStage.
+function AnimationStage({ animationMode, currentFrame, prizeGrade, prizeName, isRevealed, onRevealed }: AnimationStageProps) {
+  // Before reveal: show hidden "?" image to prevent spoilers
+  // After reveal (or when scratching — the actual image is underneath): show real prize
+  const prizeUrl = makePrizeImageUrl(prizeGrade, prizeName);
 
   switch (animationMode) {
     case "SCRATCH":
       return (
         <ScratchReveal
-          prizePhotoUrl={PLACEHOLDER_PRIZE_URL}
+          prizePhotoUrl={prizeUrl}
           remoteTouchInput={currentFrame}
           isSpectatorMode={true}
           onRevealed={onRevealed}
@@ -116,7 +139,7 @@ function AnimationStage({ animationMode, currentFrame, onRevealed }: AnimationSt
     case "TEAR":
       return (
         <TearReveal
-          prizePhotoUrl={PLACEHOLDER_PRIZE_URL}
+          prizePhotoUrl={prizeUrl}
           onRevealed={onRevealed}
         />
       );
@@ -124,7 +147,7 @@ function AnimationStage({ animationMode, currentFrame, onRevealed }: AnimationSt
     case "FLIP":
       return (
         <FlipReveal
-          prizePhotoUrl={PLACEHOLDER_PRIZE_URL}
+          prizePhotoUrl={prizeUrl}
           prizeGrade="?"
           prizeName="等待揭曉"
           onRevealed={onRevealed}
@@ -135,7 +158,7 @@ function AnimationStage({ animationMode, currentFrame, onRevealed }: AnimationSt
     default:
       return (
         <InstantReveal
-          prizePhotoUrl={PLACEHOLDER_PRIZE_URL}
+          prizePhotoUrl={prizeUrl}
           prizeGrade="?"
           prizeName="等待揭曉"
           onRevealed={onRevealed}
@@ -173,6 +196,9 @@ function DrawerAnimationSlot({ drawer }: DrawerAnimationSlotProps) {
               <AnimationStage
                 animationMode={drawer.animationMode}
                 currentFrame={currentFrame ?? null}
+                prizeGrade={drawer.prizeGrade ?? "A賞"}
+                prizeName={drawer.prizeName ?? "獎品"}
+                isRevealed={revealed}
                 onRevealed={() => setRevealed(true)}
               />
             </div>

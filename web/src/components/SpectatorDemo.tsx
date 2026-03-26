@@ -379,6 +379,8 @@ export function SpectatorDemo({
               nickname: currentDrawerNickname,
               animationMode,
               currentFrame,
+              prizeGrade: "A賞",
+              prizeName: "限定公仔 Re:Zero 雷姆",
             }
           : null
       }
