@@ -508,9 +508,16 @@ export default function AnimationsShowcasePage() {
   const [achievementPanelOpen, setAchievementPanelOpen] = useState(false);
   const [comboStreak, setComboStreak] = useState(0);
   const [comboMilestone, setComboMilestone] = useState<ComboMilestone>(null);
-  const [seasonalTheme, setSeasonalTheme] = useState<SeasonalTheme>(getSeasonalTheme);
+  // Client-only init to avoid SSR hydration mismatch (time/date dependent values)
+  const [seasonalTheme, setSeasonalTheme] = useState<SeasonalTheme>(SEASONAL_THEMES.default);
   const [particlesEnabled, setParticlesEnabled] = useState(true);
-  const [timeAmbient] = useState(getTimeAmbient);
+  const [timeAmbient, setTimeAmbient] = useState(() => ({ overlay: "rgba(0,0,0,0)", lightIntensity: 1, label: "" }));
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setSeasonalTheme(getSeasonalTheme());
+    setTimeAmbient(getTimeAmbient());
+    setMounted(true);
+  }, []);
   // Track which mini-game types the user has tried (for try_all_games achievement)
   const triedGamesRef = useRef<Set<string>>(new Set());
   // Track which styles the user has tried (for try_all_styles achievement)
@@ -759,21 +766,19 @@ export default function AnimationsShowcasePage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 relative">
-      {/* ── Global overlays (z-index layering: seasonal < content < combo < toast) ── */}
-      <SeasonalOverlay theme={seasonalTheme} enabled={particlesEnabled} />
-
-      {/* Time-of-day colour overlay — very subtle tint on the full page */}
-      <div
-        className="fixed inset-0 z-10 pointer-events-none"
-        style={{ background: timeAmbient.overlay }}
-        aria-hidden="true"
-      />
-
-      {/* Achievement toast — top-right, above everything */}
-      <AchievementToast />
-
-      {/* Combo display — floats in the viewport */}
-      <ComboDisplay streak={comboStreak} milestone={comboMilestone} />
+      {/* ── Global overlays — client-only to prevent hydration mismatch ── */}
+      {mounted && (
+        <>
+          <SeasonalOverlay theme={seasonalTheme} enabled={particlesEnabled} />
+          <div
+            className="fixed inset-0 z-10 pointer-events-none"
+            style={{ background: timeAmbient.overlay }}
+            aria-hidden="true"
+          />
+          <AchievementToast />
+          <ComboDisplay streak={comboStreak} milestone={comboMilestone} />
+        </>
+      )}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-gradient-to-r from-gray-900 via-purple-950 to-gray-900 border-b border-purple-800/50 backdrop-blur-md">
