@@ -322,6 +322,19 @@ export default function AnimationsShowcasePage() {
   // ── Style toggle state (2d | css3d | webgl) ───────────────────────────────
   const [miniGameStyle, setMiniGameStyle] = useState<StyleMode>("2d");
   const [roomStyle, setRoomStyle] = useState<StyleMode>("2d");
+
+  // ── Compare mode state ─────────────────────────────────────────────────────
+  const [compareMode, setCompareMode] = useState(false);
+  const [leftStyle, setLeftStyle] = useState<StyleMode>("anime");
+  const [rightStyle, setRightStyle] = useState<StyleMode>("neon");
+  const [leftGameKey, setLeftGameKey] = useState(0);
+  const [rightGameKey, setRightGameKey] = useState(0);
+  const [leftGameState, setLeftGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
+  const [rightGameState, setRightGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
+  const [leftGameResult, setLeftGameResult] = useState<string | null>(null);
+  const [rightGameResult, setRightGameResult] = useState<string | null>(null);
+  const [compareLogs, dispatchCompareLog] = useReducer(logReducer, []);
+  const compareLogRef = useRef<HTMLDivElement>(null);
   // Legacy alias used in arcade cabinet overflow class
   const room3D = roomStyle === "webgl";
 
@@ -390,6 +403,10 @@ export default function AnimationsShowcasePage() {
   useEffect(() => {
     if (miniLogRef.current) miniLogRef.current.scrollTop = 0;
   }, [miniGameLogs]);
+
+  useEffect(() => {
+    if (compareLogRef.current) compareLogRef.current.scrollTop = 0;
+  }, [compareLogs]);
 
   const phaseLabel = (() => {
     if (isRevealed) return "revealed";
@@ -462,7 +479,7 @@ export default function AnimationsShowcasePage() {
           </div>
 
           {/* Phase tabs — pill style with numeric badge */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             {PHASE_TABS.map((tab, idx) => (
               <button
                 key={tab.id}
@@ -483,6 +500,19 @@ export default function AnimationsShowcasePage() {
                 {tab.icon} {tab.label}
               </button>
             ))}
+            {/* Compare mode toggle — only relevant for phase2 and phase3 */}
+            {(activePhase === "phase2" || activePhase === "phase3") && (
+              <button
+                onClick={() => setCompareMode(!compareMode)}
+                className={`ml-auto px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
+                  compareMode
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600"
+                }`}
+              >
+                🔀 {compareMode ? "比較模式 ON" : "比較模式"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -819,29 +849,31 @@ export default function AnimationsShowcasePage() {
                 <p className="text-sm text-gray-400">
                   <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span> 或 <span className="text-pink-300 font-semibold">Anime/Manga</span> 八種渲染模式可切換比較。
                 </p>
-                {/* Eight-way style toggle — wraps on narrow screens */}
-                <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
-                      className={[
-                        "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
-                        miniGameStyle === mode
-                          ? "bg-purple-600 text-white shadow"
-                          : "text-gray-400 hover:text-white",
-                      ].join(" ")}
-                      title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
-                    >
-                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
-                      {mode === "anime" && (
-                        <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
-                          推薦
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {/* Eight-way style toggle — hidden in compare mode */}
+                {!compareMode && (
+                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
+                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
+                        className={[
+                          "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                          miniGameStyle === mode
+                            ? "bg-purple-600 text-white shadow"
+                            : "text-gray-400 hover:text-white",
+                        ].join(" ")}
+                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
+                      >
+                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                        {mode === "anime" && (
+                          <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            推薦
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
 
@@ -868,6 +900,214 @@ export default function AnimationsShowcasePage() {
               </div>
             </section>
 
+            {/* ── Compare mode: two side-by-side game columns ────────────────── */}
+            {compareMode && (
+              <>
+                {/* Shared controls bar */}
+                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4">
+                  <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
+                    ⚙️ 共用設定
+                  </h3>
+                  <div className="flex flex-wrap gap-4 items-start">
+                    {/* Grade selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-gray-400 text-xs font-medium block">獎品等級</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {MINI_GAME_GRADES.map((g) => (
+                          <button
+                            key={g}
+                            onClick={() => {
+                              setMiniGrade(g);
+                              setLeftGameKey((k) => k + 1);
+                              setRightGameKey((k) => k + 1);
+                              setLeftGameResult(null);
+                              setRightGameResult(null);
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                            style={miniGrade === g
+                              ? { background: gradeAccentHex(g), color: "#fff", boxShadow: `0 2px 8px ${gradeAccentHex(g)}66` }
+                              : { background: "#1f2937", color: "#9ca3af" }
+                            }
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Prize name */}
+                    <div className="space-y-1.5 flex-1 min-w-40">
+                      <label className="text-gray-400 text-xs font-medium block">獎品名稱</label>
+                      <input
+                        type="text"
+                        value={miniPrizeName}
+                        onChange={(e) => setMiniPrizeName(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors"
+                        placeholder="限定公仔"
+                      />
+                    </div>
+                    {/* Game selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-gray-400 text-xs font-medium block">遊戲類型</label>
+                      <div className="flex gap-2">
+                        {MINI_GAMES.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => {
+                              setActiveMiniGame(g.id);
+                              setLeftGameKey((k) => k + 1);
+                              setRightGameKey((k) => k + 1);
+                              setLeftGameResult(null);
+                              setRightGameResult(null);
+                            }}
+                            className={[
+                              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                              activeMiniGame === g.id
+                                ? "bg-purple-600 border-purple-500 text-white"
+                                : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                            ].join(" ")}
+                          >
+                            {g.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Two game columns */}
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  {/* LEFT column */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {/* Style dropdown */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">左側風格</span>
+                      <StyleSelector value={leftStyle} onChange={(s) => { setLeftStyle(s); setLeftGameKey((k) => k + 1); setLeftGameResult(null); }} />
+                    </div>
+                    {/* Game */}
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
+                      <div className="bg-gray-950 rounded-xl overflow-hidden">
+                        <MiniGameRenderer
+                          style={leftStyle}
+                          game={activeMiniGame}
+                          gameKey={leftGameKey}
+                          side="left"
+                          resultGrade={miniGrade}
+                          prizeName={miniPrizeName}
+                          onResult={(g) => { setLeftGameResult(g); dispatchCompareLog({ type: "push", event: `LEFT RESULT: ${g}` }); }}
+                          onStateChange={(s) => { setLeftGameState(s); dispatchCompareLog({ type: "push", event: `LEFT STATE → ${s}` }); }}
+                        />
+                      </div>
+                    </div>
+                    {/* Per-column controls */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setLeftGameKey((k) => k + 1); setLeftGameResult(null); setLeftGameState("IDLE"); dispatchCompareLog({ type: "push", event: "LEFT RESET" }); }}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold py-2 rounded-lg transition-colors"
+                      >
+                        ↺ 重置左側
+                      </button>
+                    </div>
+                    {/* Per-column debug */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <DebugCell label="Style" value={leftStyle} />
+                      <DebugCell label="State" value={leftGameState} />
+                      <DebugCell label="Result" value={leftGameResult ?? "—"} highlight={leftGameResult !== null} />
+                      <DebugCell label="Grade" value={miniGrade} />
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="hidden md:flex flex-col items-center self-stretch">
+                    <div className="w-px flex-1 bg-gray-700/50" />
+                    <span className="text-gray-600 text-xs font-bold py-2">VS</span>
+                    <div className="w-px flex-1 bg-gray-700/50" />
+                  </div>
+
+                  {/* RIGHT column */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {/* Style dropdown */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">右側風格</span>
+                      <StyleSelector value={rightStyle} onChange={(s) => { setRightStyle(s); setRightGameKey((k) => k + 1); setRightGameResult(null); }} />
+                    </div>
+                    {/* Game */}
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
+                      <div className="bg-gray-950 rounded-xl overflow-hidden">
+                        <MiniGameRenderer
+                          style={rightStyle}
+                          game={activeMiniGame}
+                          gameKey={rightGameKey}
+                          side="right"
+                          resultGrade={miniGrade}
+                          prizeName={miniPrizeName}
+                          onResult={(g) => { setRightGameResult(g); dispatchCompareLog({ type: "push", event: `RIGHT RESULT: ${g}` }); }}
+                          onStateChange={(s) => { setRightGameState(s); dispatchCompareLog({ type: "push", event: `RIGHT STATE → ${s}` }); }}
+                        />
+                      </div>
+                    </div>
+                    {/* Per-column controls */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setRightGameKey((k) => k + 1); setRightGameResult(null); setRightGameState("IDLE"); dispatchCompareLog({ type: "push", event: "RIGHT RESET" }); }}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold py-2 rounded-lg transition-colors"
+                      >
+                        ↺ 重置右側
+                      </button>
+                    </div>
+                    {/* Per-column debug */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <DebugCell label="Style" value={rightStyle} />
+                      <DebugCell label="State" value={rightGameState} />
+                      <DebugCell label="Result" value={rightGameResult ?? "—"} highlight={rightGameResult !== null} />
+                      <DebugCell label="Grade" value={miniGrade} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shared compare event log */}
+                <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block" />
+                      比較模式 Event Log
+                    </div>
+                    <button
+                      onClick={() => dispatchCompareLog({ type: "clear" })}
+                      className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div ref={compareLogRef} className="space-y-0.5 max-h-32 overflow-y-auto">
+                    {compareLogs.length === 0 ? (
+                      <p className="text-gray-700 p-1">No events yet — play either side.</p>
+                    ) : (
+                      compareLogs.map((entry) => (
+                        <div key={entry.id} className="flex gap-3 items-baseline">
+                          <span className="text-gray-600 shrink-0">
+                            {new Date(entry.ts).toLocaleTimeString("zh-TW", {
+                              hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+                            })}
+                          </span>
+                          <span className={
+                            entry.event.includes("RESULT") ? "text-emerald-400"
+                            : entry.event.includes("RESET") ? "text-amber-400"
+                            : entry.event.includes("STATE") ? "text-cyan-400"
+                            : "text-gray-400"
+                          }>
+                            {entry.event}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── Single-view mode (existing layout) ──────────────────────────── */}
+            {!compareMode && (
+            <>
             {/* Two-column: game + settings */}
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* LEFT: Arcade cabinet frame — 60% */}
@@ -1243,6 +1483,8 @@ export default function AnimationsShowcasePage() {
                 </div>
               </div>
             </div>
+            </> /* end !compareMode single-view */
+            )}
           </>
         )}
 
@@ -1272,32 +1514,164 @@ export default function AnimationsShowcasePage() {
                     ? "動漫/漫畫風格一番賞店。粉藍漸層天空，暖色木地板，條紋雨棚，Chibi 角色（大頭比例），粗黑輪廓，表情隨機應變（^_^ >_< O_O），點擊地板移動，靠近櫃台抽獎。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* Eight-way style toggle — wraps on narrow screens */}
-                <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
-                  {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setRoomStyle(mode)}
-                      className={[
-                        "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
-                        roomStyle === mode
-                          ? "bg-purple-600 text-white shadow"
-                          : "text-gray-400 hover:text-white",
-                      ].join(" ")}
-                      title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
-                    >
-                      {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
-                      {mode === "anime" && (
-                        <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
-                          推薦
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {/* Eight-way style toggle — hidden in compare mode */}
+                {!compareMode && (
+                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
+                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setRoomStyle(mode)}
+                        className={[
+                          "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                          roomStyle === mode
+                            ? "bg-purple-600 text-white shadow"
+                            : "text-gray-400 hover:text-white",
+                        ].join(" ")}
+                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
+                      >
+                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                        {mode === "anime" && (
+                          <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            推薦
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
 
+            {/* ── Compare mode: two side-by-side room columns ─────────────────── */}
+            {compareMode && (
+              <>
+                {/* Shared NPC count control */}
+                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4">
+                  <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
+                    ⚙️ 共用設定
+                  </h3>
+                  <div className="space-y-1.5">
+                    <label className="text-gray-400 text-xs font-medium">NPC 數量</label>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setNpcCount(n)}
+                          className={[
+                            "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                            npcCount === n
+                              ? "bg-purple-600 border-purple-500 text-white"
+                              : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600",
+                          ].join(" ")}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Two room columns */}
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  {/* LEFT room column */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">左側風格</span>
+                      <StyleSelector value={leftStyle} onChange={setLeftStyle} />
+                    </div>
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
+                      <div className={["bg-gray-950 rounded-xl", leftStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
+                        <RoomRenderer
+                          style={leftStyle}
+                          npcCount={npcCount}
+                          side="left"
+                          resultGrade={miniGameResult ?? undefined}
+                          onDrawResult={(g) => dispatchCompareLog({ type: "push", event: `LEFT ROOM_DRAW: ${g}` })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
+                        {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : "2.5D 等距房間"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="hidden md:flex flex-col items-center self-stretch">
+                    <div className="w-px flex-1 bg-gray-700/50" />
+                    <span className="text-gray-600 text-xs font-bold py-2">VS</span>
+                    <div className="w-px flex-1 bg-gray-700/50" />
+                  </div>
+
+                  {/* RIGHT room column */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">右側風格</span>
+                      <StyleSelector value={rightStyle} onChange={setRightStyle} />
+                    </div>
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
+                      <div className={["bg-gray-950 rounded-xl", rightStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
+                        <RoomRenderer
+                          style={rightStyle}
+                          npcCount={npcCount}
+                          side="right"
+                          resultGrade={miniGameResult ?? undefined}
+                          onDrawResult={(g) => dispatchCompareLog({ type: "push", event: `RIGHT ROOM_DRAW: ${g}` })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
+                        {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : "2.5D 等距房間"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shared compare event log */}
+                <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block" />
+                      比較模式 Event Log
+                    </div>
+                    <button
+                      onClick={() => dispatchCompareLog({ type: "clear" })}
+                      className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div ref={compareLogRef} className="space-y-0.5 max-h-32 overflow-y-auto">
+                    {compareLogs.length === 0 ? (
+                      <p className="text-gray-700 p-1">No events yet.</p>
+                    ) : (
+                      compareLogs.map((entry) => (
+                        <div key={entry.id} className="flex gap-3 items-baseline">
+                          <span className="text-gray-600 shrink-0">
+                            {new Date(entry.ts).toLocaleTimeString("zh-TW", {
+                              hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+                            })}
+                          </span>
+                          <span className={
+                            entry.event.includes("RESULT") || entry.event.includes("DRAW") ? "text-emerald-400"
+                            : entry.event.includes("RESET") ? "text-amber-400"
+                            : "text-gray-400"
+                          }>
+                            {entry.event}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── Single-view mode (existing layout) ──────────────────────────── */}
+            {!compareMode && (
+            <>
             {/* Two-column: room + controls */}
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* LEFT: Arcade cabinet frame — 60% */}
@@ -1521,6 +1895,8 @@ export default function AnimationsShowcasePage() {
                 </div>
               </div>
             </div>
+            </> /* end !compareMode single-view */
+            )}
           </>
         )}
 
@@ -1815,4 +2191,193 @@ function makePlaceholderDataUrl(grade: string, prizeName: string): string {
   <text x="170" y="320" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="white" opacity="0.8">${prizeName.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
 </svg>`.trim();
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StyleSelector — compact dropdown for compare mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StyleSelector({
+  value,
+  onChange,
+}: {
+  value: StyleMode;
+  onChange: (s: StyleMode) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as StyleMode)}
+      className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-600 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors cursor-pointer"
+    >
+      <option value="2d">2D Canvas</option>
+      <option value="css3d">CSS 3D</option>
+      <option value="webgl">WebGL 3D</option>
+      <option value="pixel">Pixel Art</option>
+      <option value="neon">Neon</option>
+      <option value="sketch">Sketch</option>
+      <option value="flat">Flat</option>
+      <option value="anime">Anime 🌸 推薦</option>
+    </select>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MiniGameRenderer — renders the correct mini-game component for a given style
+// Used only in compare mode so each pane is fully independent
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface MiniGameRendererProps {
+  style: StyleMode;
+  game: MiniGameId;
+  gameKey: number;
+  side: "left" | "right";
+  resultGrade: string;
+  prizeName: string;
+  onResult: (g: string) => void;
+  onStateChange: (s: SlotGameState | ClawGameState | GachaGameState) => void;
+}
+
+function MiniGameRenderer({
+  style,
+  game,
+  gameKey,
+  side,
+  resultGrade,
+  prizeName,
+  onResult,
+  onStateChange,
+}: MiniGameRendererProps) {
+  const prefix = `compare-${side}`;
+
+  if (style === "webgl") {
+    if (game === "slot") return <SlotMachine3D key={`${prefix}-3d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachine3D key={`${prefix}-3d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachine3D key={`${prefix}-3d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "css3d") {
+    if (game === "slot") return <SlotMachineCSS3D key={`${prefix}-css3d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachineCSS3D key={`${prefix}-css3d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachineCSS3D key={`${prefix}-css3d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "pixel") {
+    if (game === "slot") return <SlotMachinePixel key={`${prefix}-pixel-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachinePixel key={`${prefix}-pixel-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachinePixel key={`${prefix}-pixel-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "neon") {
+    if (game === "slot") return <SlotMachineNeon key={`${prefix}-neon-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachineNeon key={`${prefix}-neon-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachineNeon key={`${prefix}-neon-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "sketch") {
+    if (game === "slot") return <SlotMachineSketch key={`${prefix}-sketch-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachineSketch key={`${prefix}-sketch-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachineSketch key={`${prefix}-sketch-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "flat") {
+    if (game === "slot") return <SlotMachineFlat key={`${prefix}-flat-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachineFlat key={`${prefix}-flat-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachineFlat key={`${prefix}-flat-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "anime") {
+    if (game === "slot") return <SlotMachineAnime key={`${prefix}-anime-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    if (game === "claw") return <ClawMachineAnime key={`${prefix}-anime-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
+    return <GachaMachineAnime key={`${prefix}-anime-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  // 2D Canvas fallback
+  if (game === "slot") return <SlotMachine key={`${prefix}-2d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
+  if (game === "claw") return <ClawMachine key={`${prefix}-2d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
+  return <GachaMachine key={`${prefix}-2d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RoomRenderer — renders the correct room component for a given style
+// Used only in compare mode so each pane is fully independent
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RoomRendererProps {
+  style: StyleMode;
+  npcCount: number;
+  side: "left" | "right";
+  resultGrade?: string;
+  onDrawResult?: (grade: string) => void;
+}
+
+function RoomRenderer({ style, npcCount, side, resultGrade, onDrawResult }: RoomRendererProps) {
+  const prefix = `compare-room-${side}`;
+
+  if (style === "webgl") {
+    return (
+      <PrizeDrawRoom3D
+        key={`${prefix}-3d-${npcCount}`}
+        npcCount={npcCount}
+        onStateChange={() => undefined}
+      />
+    );
+  }
+  if (style === "css3d") {
+    return (
+      <PrizeRoomCSS3D
+        key={`${prefix}-css3d-${npcCount}`}
+        npcCount={npcCount}
+        onStateChange={() => undefined}
+      />
+    );
+  }
+  if (style === "pixel") {
+    return (
+      <PrizeRoomPixel
+        key={`${prefix}-pixel-${npcCount}`}
+        npcCount={npcCount}
+        resultGrade={resultGrade}
+      />
+    );
+  }
+  if (style === "neon") {
+    return (
+      <PrizeRoomNeon
+        key={`${prefix}-neon-${npcCount}`}
+        npcCount={npcCount}
+        resultGrade={resultGrade}
+      />
+    );
+  }
+  if (style === "sketch") {
+    return (
+      <PrizeRoomSketch
+        key={`${prefix}-sketch-${npcCount}`}
+        npcCount={npcCount}
+        resultGrade={resultGrade}
+        onDrawResult={onDrawResult}
+      />
+    );
+  }
+  if (style === "flat") {
+    return (
+      <PrizeRoomFlat
+        key={`${prefix}-flat-${npcCount}`}
+        npcCount={npcCount}
+        resultGrade={resultGrade}
+        onDrawResult={onDrawResult}
+      />
+    );
+  }
+  if (style === "anime") {
+    return (
+      <PrizeRoomAnime
+        key={`${prefix}-anime-${npcCount}`}
+        npcCount={npcCount}
+        onDrawResult={onDrawResult}
+      />
+    );
+  }
+  // 2D isometric fallback
+  return (
+    <IsometricRoom
+      key={`${prefix}-2d-${npcCount}`}
+      npcCount={npcCount}
+      onStateChange={() => undefined}
+    />
+  );
 }
