@@ -240,7 +240,7 @@ export function SpectatorDemo({
 
         // Add win to feed immediately
         const prize = pickRandom(FAKE_PRIZES);
-        const winId = `w-${Date.now()}`;
+        const winId = `w-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const now2 = Date.now();
         winTimesRef.current = [now2, ...winTimesRef.current].slice(0, 8);
         setRecentWins((prev) =>
