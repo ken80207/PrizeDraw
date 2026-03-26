@@ -8,6 +8,7 @@ import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.application.ports.output.ITradeRepository
+import com.prizedraw.application.services.LevelService
 import com.prizedraw.contracts.dto.trade.TradeListingDto
 import com.prizedraw.contracts.enums.DrawPointTxType
 import com.prizedraw.contracts.enums.PrizeState
@@ -15,6 +16,8 @@ import com.prizedraw.contracts.enums.RevenuePointTxType
 import com.prizedraw.contracts.enums.TradeOrderStatus
 import com.prizedraw.domain.entities.DrawPointTransaction
 import com.prizedraw.domain.entities.RevenuePointTransaction
+import com.prizedraw.domain.entities.XpRules
+import com.prizedraw.domain.entities.XpSourceType
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.infrastructure.external.redis.DistributedLock
 import kotlinx.datetime.Clock
@@ -50,6 +53,7 @@ public class PurchaseTradeListingUseCase(
     private val revenuePointTxRepository: IRevenuePointTransactionRepository,
     private val outboxRepository: IOutboxRepository,
     private val distributedLock: DistributedLock,
+    private val levelService: LevelService? = null,
 ) : IPurchaseTradeListingUseCase {
     private val log = LoggerFactory.getLogger(PurchaseTradeListingUseCase::class.java)
 
@@ -69,8 +73,9 @@ public class PurchaseTradeListingUseCase(
         val result =
             distributedLock.withLock("trade:$listingId", ttlSeconds = 30) {
                 executeAtomicPurchase(buyerId, listingId)
-            }
-        return result ?: throw ListingNotAvailableException("Listing $listingId is being processed, try again")
+            } ?: throw ListingNotAvailableException("Listing $listingId is being processed, try again")
+        awardTradeXp(buyerId, listing.listPrice, listingId)
+        return result
     }
 
     @Suppress("LongMethod")
@@ -176,6 +181,27 @@ public class PurchaseTradeListingUseCase(
             com.prizedraw.domain.valueobjects
                 .PrizeInstanceId(instanceIdRaw)
         prizeRepository.transferOwnership(instanceId, newOwnerId, PrizeState.HOLDING)
+    }
+
+    private suspend fun awardTradeXp(
+        buyerId: PlayerId,
+        listPrice: Int,
+        listingId: UUID,
+    ) {
+        val levelService = levelService ?: return
+        val xpAmount = (listPrice * XpRules.TRADE_PURCHASE_XP_RATE).toInt()
+        if (xpAmount <= 0) { return }
+        runCatching {
+            levelService.awardXp(
+                playerId = buyerId,
+                amount = xpAmount,
+                sourceType = XpSourceType.TRADE_PURCHASE,
+                sourceId = listingId,
+                description = "交易購買: listing $listingId",
+            )
+        }.onFailure { ex ->
+            log.warn("Failed to award XP for trade purchase by ${buyerId.value}: ${ex.message}")
+        }
     }
 
     private fun computeFeeAmount(

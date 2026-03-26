@@ -4,10 +4,15 @@ import com.prizedraw.api.plugins.createMeterRegistry
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.IDrawSyncRepository
+import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
+import com.prizedraw.application.ports.output.ITierConfigRepository
+import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.application.services.BroadcastService
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
+import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.StaffTokenService
 import com.prizedraw.application.services.TokenService
@@ -24,9 +29,12 @@ import org.koin.dsl.module
  *
  * - [TokenService] — JWT creation, verification, and refresh token rotation.
  * - [PrometheusMeterRegistry] — Micrometer metrics registry for Prometheus scraping.
+ * - [LevelService] — Player XP/level/tier management (Phase 22).
  */
+@Suppress("LongMethod")
 public fun serviceModule(config: ApplicationConfig) =
     module {
+        includes(levelServiceModule)
         single<PrometheusMeterRegistry> { createMeterRegistry() }
 
         single<TokenService.RefreshTokenFamilyStore> { RefreshTokenFamilyRepositoryImpl() }
@@ -92,6 +100,24 @@ public fun serviceModule(config: ApplicationConfig) =
                 roomInstanceRepository = get<IRoomInstanceRepository>(),
                 redisClient = get<RedisClient>(),
                 redisPubSub = get<RedisPubSub>(),
+            )
+        }
+    }
+
+/**
+ * Koin sub-module for Phase 22 player level/tier services.
+ *
+ * Declared as a top-level val so it can be included in [serviceModule] without
+ * inflating its line count past the detekt [LongMethod] threshold.
+ */
+internal val levelServiceModule =
+    module {
+        single<LevelService> {
+            LevelService(
+                playerRepository = get<IPlayerRepository>(),
+                xpTransactionRepository = get<IXpTransactionRepository>(),
+                tierConfigRepository = get<ITierConfigRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
     }

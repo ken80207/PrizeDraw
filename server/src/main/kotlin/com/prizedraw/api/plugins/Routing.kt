@@ -15,6 +15,7 @@ import com.prizedraw.api.routes.couponRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
+import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
 import com.prizedraw.api.routes.paymentRoutes
 import com.prizedraw.api.routes.playerRoutes
@@ -126,6 +127,9 @@ public fun Application.configureRouting() {
 
         // Phase 17: Leaderboard (public, but optional auth for self-rank)
         leaderboardRoutes()
+
+        // Phase 22: Player level/tier system and XP leaderboard
+        levelRoutes()
 
         // Phase 13: Support tickets + LINE webhook
         supportRoutes()

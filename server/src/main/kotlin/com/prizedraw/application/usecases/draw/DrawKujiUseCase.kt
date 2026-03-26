@@ -11,6 +11,7 @@ import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.application.services.LevelService
 import com.prizedraw.contracts.dto.draw.DrawResultDto
 import com.prizedraw.contracts.dto.draw.DrawnTicketResultDto
 import com.prizedraw.contracts.enums.CampaignStatus
@@ -25,6 +26,8 @@ import com.prizedraw.domain.entities.PrizeAcquisitionMethod
 import com.prizedraw.domain.entities.PrizeInstance
 import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
+import com.prizedraw.domain.entities.XpRules
+import com.prizedraw.domain.entities.XpSourceType
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
@@ -77,6 +80,7 @@ public data class DrawKujiDeps(
     val domainService: KujiDrawDomainService,
     val redisPubSub: RedisPubSub,
     val couponRepository: ICouponRepository? = null,
+    val levelService: LevelService? = null,
 )
 
 /**
@@ -124,6 +128,7 @@ public class DrawKujiUseCase(
         val (totalCost, discountAmount) = resolveCouponDiscount(playerId, playerCouponId, basePrice)
         val results = executeDrawTransaction(playerId, box, resolvedTickets, totalCost, discountAmount, playerCouponId)
         publishDrawEvents(box, results, playerId)
+        awardDrawXp(playerId, totalCost, box)
         return DrawResultDto(tickets = results)
     }
 
@@ -365,6 +370,26 @@ public class DrawKujiUseCase(
         deps.outboxRepository.enqueue(
             DrawCompletedEvent(box.kujiCampaignId.value, box.id, playerId.value),
         )
+    }
+
+    private suspend fun awardDrawXp(
+        playerId: PlayerId,
+        totalCost: Int,
+        box: TicketBox,
+    ) {
+        val levelService = deps.levelService ?: return
+        val xpAmount = totalCost * XpRules.XP_PER_DRAW_POINT
+        runCatching {
+            levelService.awardXp(
+                playerId = playerId,
+                amount = xpAmount,
+                sourceType = XpSourceType.KUJI_DRAW,
+                sourceId = box.id,
+                description = "一番賞抽獎: box ${box.id}",
+            )
+        }.onFailure { ex ->
+            log.warn("Failed to award XP for kuji draw by ${playerId.value}: ${ex.message}")
+        }
     }
 
     private suspend fun publishDrawEvents(

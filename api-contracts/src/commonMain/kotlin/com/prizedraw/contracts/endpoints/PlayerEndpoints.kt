@@ -8,4 +8,6 @@ public object PlayerEndpoints {
     public const val ME_COUPONS: String = "/api/v1/players/me/coupons"
     public const val ME_ANIMATION_PREFERENCE: String = "/api/v1/players/me/preferences/animation"
     public const val PUBLIC_PRIZES: String = "/api/v1/players/{playerId}/prizes/public"
+    public const val ME_LEVEL: String = "/api/v1/players/me/level"
+    public const val ME_XP_HISTORY: String = "/api/v1/players/me/xp-history"
 }

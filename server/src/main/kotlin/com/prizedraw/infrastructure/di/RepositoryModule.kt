@@ -2,6 +2,8 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
+import com.prizedraw.application.ports.output.ITierConfigRepository
+import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IServerAnnouncementRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
@@ -29,6 +31,8 @@ import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.RoomInstanceRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.TierConfigRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.XpTransactionRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.ServerAnnouncementRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
@@ -96,4 +100,8 @@ public val repositoryModule =
 
         // Phase 21: Room Scaling
         single<IRoomInstanceRepository> { RoomInstanceRepositoryImpl() }
+
+        // Phase 22: Player level/tier system
+        single<IXpTransactionRepository> { XpTransactionRepositoryImpl() }
+        single<ITierConfigRepository> { TierConfigRepositoryImpl() }
     }

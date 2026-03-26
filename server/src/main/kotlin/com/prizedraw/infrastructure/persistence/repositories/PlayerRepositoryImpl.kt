@@ -11,6 +11,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
@@ -83,6 +84,9 @@ public class PlayerRepositoryImpl : IPlayerRepository {
                     it[drawPointsBalance] = player.drawPointsBalance
                     it[revenuePointsBalance] = player.revenuePointsBalance
                     it[version] = player.version
+                    it[xp] = player.xp
+                    it[level] = player.level
+                    it[tier] = player.tier
                     it[preferredAnimationMode] = player.preferredAnimationMode.name
                     it[locale] = player.locale
                     it[isActive] = player.isActive
@@ -101,6 +105,9 @@ public class PlayerRepositoryImpl : IPlayerRepository {
                     it[drawPointsBalance] = player.drawPointsBalance
                     it[revenuePointsBalance] = player.revenuePointsBalance
                     it[version] = player.version
+                    it[xp] = player.xp
+                    it[level] = player.level
+                    it[tier] = player.tier
                     it[preferredAnimationMode] = player.preferredAnimationMode.name
                     it[locale] = player.locale
                     it[isActive] = player.isActive
@@ -144,8 +151,39 @@ public class PlayerRepositoryImpl : IPlayerRepository {
             PlayersTable
                 .selectAll()
                 .where { PlayersTable.deletedAt.isNull() }
-                .orderBy(PlayersTable.createdAt, org.jetbrains.exposed.sql.SortOrder.DESC)
+                .orderBy(PlayersTable.createdAt, SortOrder.DESC)
                 .limit(limit, offset.toLong())
+                .map { it.toPlayer() }
+        }
+
+    override suspend fun updateXp(
+        id: PlayerId,
+        xpDelta: Int,
+        newLevel: Int,
+        newTier: String,
+    ): Int =
+        newSuspendedTransaction {
+            PlayersTable.update({ PlayersTable.id eq id.value }) {
+                with(org.jetbrains.exposed.sql.SqlExpressionBuilder) {
+                    it[xp] = PlayersTable.xp + xpDelta
+                }
+                it[level] = newLevel
+                it[tier] = newTier
+            }
+            // Read back the updated XP value
+            PlayersTable
+                .selectAll()
+                .where { PlayersTable.id eq id.value }
+                .single()[PlayersTable.xp]
+        }
+
+    override suspend fun findTopByXp(limit: Int): List<Player> =
+        newSuspendedTransaction {
+            PlayersTable
+                .selectAll()
+                .where { PlayersTable.deletedAt.isNull() }
+                .orderBy(PlayersTable.xp, SortOrder.DESC)
+                .limit(limit)
                 .map { it.toPlayer() }
         }
 
@@ -161,6 +199,9 @@ public class PlayerRepositoryImpl : IPlayerRepository {
             drawPointsBalance = this[PlayersTable.drawPointsBalance],
             revenuePointsBalance = this[PlayersTable.revenuePointsBalance],
             version = this[PlayersTable.version],
+            xp = this[PlayersTable.xp],
+            level = this[PlayersTable.level],
+            tier = this[PlayersTable.tier],
             preferredAnimationMode =
                 DrawAnimationMode.valueOf(
                     this[PlayersTable.preferredAnimationMode],

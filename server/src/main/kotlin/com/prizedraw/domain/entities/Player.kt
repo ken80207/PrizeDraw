@@ -26,6 +26,9 @@ import kotlinx.datetime.Instant
  * @property drawPointsBalance Current spendable draw points (消費點數). Non-negative.
  * @property revenuePointsBalance Current withdrawable revenue points (收益點數). Non-negative.
  * @property version Optimistic lock counter; incremented on every balance mutation.
+ * @property xp Cumulative experience points earned from spending and activity. Non-negative.
+ * @property level Current level derived from [xp] via [com.prizedraw.domain.entities.XpRules.levelFromXp].
+ * @property tier Current membership tier key (e.g. `BRONZE`, `GOLD`) derived from [xp].
  * @property preferredAnimationMode Player's default reveal animation.
  * @property locale BCP-47 locale code for i18n, e.g. `zh-TW`.
  * @property isActive False when the account is frozen/suspended.
@@ -44,6 +47,9 @@ public data class Player(
     val drawPointsBalance: Int,
     val revenuePointsBalance: Int,
     val version: Int,
+    val xp: Int = 0,
+    val level: Int = 1,
+    val tier: String = "BRONZE",
     val preferredAnimationMode: DrawAnimationMode,
     val locale: String,
     val isActive: Boolean,

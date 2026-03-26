@@ -83,4 +83,31 @@ public interface IPlayerRepository {
         offset: Int,
         limit: Int,
     ): List<Player>
+
+    /**
+     * Atomically increments the player's XP and writes the recalculated [level] and [tier].
+     *
+     * Unlike [updateBalance], XP accumulation is monotonically increasing and does not
+     * require optimistic locking — a plain atomic increment is sufficient.
+     *
+     * @param id The player to update.
+     * @param xpDelta Positive XP amount to add.
+     * @param newLevel Recalculated level derived from the new cumulative XP.
+     * @param newTier Recalculated tier key derived from the new cumulative XP.
+     * @return The updated cumulative XP value after the increment.
+     */
+    public suspend fun updateXp(
+        id: PlayerId,
+        xpDelta: Int,
+        newLevel: Int,
+        newTier: String,
+    ): Int
+
+    /**
+     * Returns the top-N players by XP for the XP leaderboard.
+     *
+     * @param limit Maximum number of players to return.
+     * @return Players ordered by [Player.xp] descending.
+     */
+    public suspend fun findTopByXp(limit: Int): List<Player>
 }

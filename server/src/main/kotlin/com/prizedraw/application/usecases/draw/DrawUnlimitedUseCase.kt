@@ -9,6 +9,7 @@ import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.services.LevelService
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.contracts.enums.DrawPointTxType
@@ -19,6 +20,8 @@ import com.prizedraw.domain.entities.DrawPointTransaction
 import com.prizedraw.domain.entities.PlayerCouponStatus
 import com.prizedraw.domain.entities.PrizeAcquisitionMethod
 import com.prizedraw.domain.entities.PrizeInstance
+import com.prizedraw.domain.entities.XpRules
+import com.prizedraw.domain.entities.XpSourceType
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
@@ -71,6 +74,7 @@ public data class DrawUnlimitedDeps(
     val domainService: UnlimitedDrawDomainService,
     val redisClient: RedisClient,
     val couponRepository: ICouponRepository? = null,
+    val levelService: LevelService? = null,
 )
 
 /**
@@ -113,13 +117,36 @@ public class DrawUnlimitedUseCase(
         val wonDefinition = deps.domainService.spin(definitions)
         val (effectivePrice, discountAmount) =
             resolveCouponDiscount(playerId, playerCouponId, campaign.pricePerDraw)
-        return executeDrawTransaction(
-            playerId = playerId,
-            campaignId = campaignId,
-            pricePerDraw = effectivePrice,
-            wonDefinition = wonDefinition,
-            playerCouponId = playerCouponId,
-        )
+        val result =
+            executeDrawTransaction(
+                playerId = playerId,
+                campaignId = campaignId,
+                pricePerDraw = effectivePrice,
+                wonDefinition = wonDefinition,
+                playerCouponId = playerCouponId,
+            )
+        awardDrawXp(playerId, effectivePrice, campaignId)
+        return result
+    }
+
+    private suspend fun awardDrawXp(
+        playerId: PlayerId,
+        pricePerDraw: Int,
+        campaignId: UUID,
+    ) {
+        val levelService = deps.levelService ?: return
+        val xpAmount = pricePerDraw * XpRules.XP_PER_DRAW_POINT
+        runCatching {
+            levelService.awardXp(
+                playerId = playerId,
+                amount = xpAmount,
+                sourceType = XpSourceType.UNLIMITED_DRAW,
+                sourceId = campaignId,
+                description = "轉蛋抽獎: campaign $campaignId",
+            )
+        }.onFailure { ex ->
+            log.warn("Failed to award XP for unlimited draw by ${playerId.value}: ${ex.message}")
+        }
     }
 
     @Suppress("ReturnCount")

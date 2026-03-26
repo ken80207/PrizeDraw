@@ -61,6 +61,7 @@ import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.application.ports.output.ISmsService
 import com.prizedraw.application.ports.output.IWithdrawalGateway
 import com.prizedraw.application.services.KujiQueueService
+import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
@@ -218,6 +219,7 @@ public val useCaseModule =
                         domainService = get<KujiDrawDomainService>(),
                         redisPubSub = get<RedisPubSub>(),
                         couponRepository = get(),
+                        levelService = get<LevelService>(),
                     ),
             )
         }
@@ -235,6 +237,7 @@ public val useCaseModule =
                         domainService = get<UnlimitedDrawDomainService>(),
                         redisClient = get<RedisClient>(),
                         couponRepository = get(),
+                        levelService = get<LevelService>(),
                     ),
             )
         }
@@ -291,6 +294,7 @@ public val useCaseModule =
                 revenuePointTxRepository = get<IRevenuePointTransactionRepository>(),
                 outboxRepository = get(),
                 distributedLock = get<DistributedLock>(),
+                levelService = get<LevelService>(),
             )
         }
 
