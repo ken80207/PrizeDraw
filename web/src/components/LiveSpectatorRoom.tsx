@@ -184,34 +184,35 @@ function DrawerAnimationSlot({ drawer }: DrawerAnimationSlotProps) {
     <>
       {/* Rounded stage frame */}
       <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-indigo-500/30 bg-gray-900 aspect-[4/3] flex items-center justify-center relative">
-        {!revealed ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <div
-              className="relative"
-              style={{
-                width: "min(280px, 80%)",
-                height: "min(400px, 85%)",
-              }}
-            >
-              <AnimationStage
-                animationMode={drawer.animationMode}
-                currentFrame={currentFrame ?? null}
-                prizeGrade={drawer.prizeGrade ?? "A賞"}
-                prizeName={drawer.prizeName ?? "獎品"}
-                isRevealed={revealed}
-                onRevealed={() => setRevealed(true)}
-              />
-            </div>
+        {/* Always show the animation — after reveal, the scratched card with prize stays visible */}
+        <div className="w-full h-full flex items-center justify-center">
+          <div
+            className="relative"
+            style={{
+              width: "min(280px, 80%)",
+              height: "min(400px, 85%)",
+            }}
+          >
+            <AnimationStage
+              animationMode={drawer.animationMode}
+              currentFrame={currentFrame ?? null}
+              prizeGrade={drawer.prizeGrade ?? "A賞"}
+              prizeName={drawer.prizeName ?? "獎品"}
+              isRevealed={revealed}
+              onRevealed={() => setRevealed(true)}
+            />
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-3 text-center p-6">
-            <span className="text-6xl">🎊</span>
-            <span className="text-white font-black text-xl">已揭曉！</span>
+        </div>
+
+        {/* Result overlay badge — shows on top of the scratched card */}
+        {revealed && (
+          <div className="absolute top-3 right-3 z-20 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+            🎊 已揭曉
           </div>
         )}
 
-        {/* Remote finger position indicator */}
-        {isFingerDown && currentFrame && (
+        {/* Remote finger position indicator — hide after reveal */}
+        {!revealed && isFingerDown && currentFrame && (
           <div
             className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 z-20"
             style={{
