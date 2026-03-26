@@ -178,9 +178,11 @@ export function ScratchCard({
 
   const gridRef = useRef<string[]>([]);
   const [gameState, setGameState] = useState<ScratchCardGameState>("IDLE");
-  const [revealedCells, setRevealedCells] = useState<Set<number>>(new Set());
+  // revealedCells is a Set stored in a ref for mutation without re-renders;
+  // we also keep a React state version for triggering re-renders of the result banner.
+  const revealedCellsRef = useRef<Set<number>>(new Set());
+  const [, forceUpdate] = useState(0);
   const isDraggingRef = useRef(false);
-  const rafRef = useRef<number>(0);
   const glowFrameRef = useRef<number>(0);
   const [glowAlpha, setGlowAlpha] = useState(0);
 
@@ -196,7 +198,7 @@ export function ScratchCard({
   useEffect(() => {
     gridRef.current = buildGrid(resultGrade);
     scratchedPxRef.current = Array(CELL_COUNT).fill(0);
-    setRevealedCells(new Set());
+    revealedCellsRef.current = new Set();
 
     // Create per-cell scratch mask (silver layer, destination-out painting)
     const mask = document.createElement("canvas");
@@ -214,7 +216,6 @@ export function ScratchCard({
 
     // Draw
     draw(new Set());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultGrade]);
 
   // Draw composite: base → scratch mask per cell
@@ -242,11 +243,12 @@ export function ScratchCard({
     return () => cancelAnimationFrame(glowFrameRef.current);
   }, [gameState]);
 
-  // Scratch helper
-  function scratch(canvasX: number, canvasY: number, revealed: Set<number>): Set<number> {
+  // Scratch helper — mutates revealedCellsRef directly, returns whether a new cell was revealed
+  function scratchAt(canvasX: number, canvasY: number): boolean {
     const ctx = canvasRef.current?.getContext("2d");
     const mCtx = maskCanvasRef.current?.getContext("2d");
-    if (!ctx || !mCtx) return revealed;
+    const revealed = revealedCellsRef.current;
+    if (!ctx || !mCtx) return false;
 
     // Find which cell this point belongs to
     let hitCellIndex = -1;
@@ -258,7 +260,7 @@ export function ScratchCard({
         break;
       }
     }
-    if (hitCellIndex === -1) return revealed;
+    if (hitCellIndex === -1) return false;
 
     // Erase on mask canvas
     mCtx.globalCompositeOperation = "destination-out";
@@ -273,14 +275,16 @@ export function ScratchCard({
       totalPxRef.current,
     );
 
-    let nextRevealed = revealed;
+    let newCellRevealed = false;
     if (scratchedPxRef.current[hitCellIndex] / totalPxRef.current >= SCRATCH_THRESHOLD) {
-      nextRevealed = new Set(revealed);
-      nextRevealed.add(hitCellIndex);
+      if (!revealed.has(hitCellIndex)) {
+        revealed.add(hitCellIndex);
+        newCellRevealed = true;
+      }
     }
 
-    draw(nextRevealed);
-    return nextRevealed;
+    draw(revealed);
+    return newCellRevealed;
   }
 
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent): { x: number; y: number } {
@@ -309,28 +313,24 @@ export function ScratchCard({
       isDraggingRef.current = true;
       if (gameState === "IDLE") setState("SCRATCHING");
       const pos = getCanvasPos(e);
-      setRevealedCells((prev) => scratch(pos.x, pos.y, prev));
+      scratchAt(pos.x, pos.y);
+      forceUpdate((n) => n + 1);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gameState, setState],
+    [gameState, setState], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handlePointerMove = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       if (!isDraggingRef.current || gameState === "RESULT") return;
       const pos = getCanvasPos(e);
-      setRevealedCells((prev) => {
-        const next = scratch(pos.x, pos.y, prev);
-        // Check if all cells revealed
-        if (next.size === CELL_COUNT) {
-          setState("RESULT");
-          onResult?.(resultGrade);
-        }
-        return next;
-      });
+      scratchAt(pos.x, pos.y);
+      // Check if all cells revealed
+      if (revealedCellsRef.current.size === CELL_COUNT) {
+        setState("RESULT");
+        onResult?.(resultGrade);
+      }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gameState, resultGrade, onResult, setState],
+    [gameState, resultGrade, onResult, setState], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handlePointerUp = useCallback(() => {
@@ -341,11 +341,10 @@ export function ScratchCard({
   const revealAll = useCallback(() => {
     if (gameState === "RESULT") return;
     const all = new Set(Array.from({ length: CELL_COUNT }, (_, i) => i));
-    setRevealedCells(all);
+    revealedCellsRef.current = all;
     draw(all);
     setState("RESULT");
     onResult?.(resultGrade);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, resultGrade, onResult, setState]);
 
   const gradeGlow = GRADE_COLORS[resultGrade]?.glow ?? "#6366f1";

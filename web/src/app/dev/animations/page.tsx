@@ -173,6 +173,16 @@ const SlotMachineAnime = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 拉霸機" /> },
 );
 
+const SlotMachineMaple = dynamic(
+  () => import("@/games/maple/SlotMachine_Maple").then((m) => ({ default: m.SlotMachine_Maple })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Maple 拉霸機" /> },
+);
+
+const PrizeRoomMaple = dynamic(
+  () => import("@/games/maple/PrizeRoom_Maple").then((m) => ({ default: m.PrizeRoom_Maple })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Maple 房間" height={380} /> },
+);
+
 const PrizeRoomAnime = dynamic(
   () => import("@/games/anime/PrizeRoom_Anime").then((m) => ({ default: m.PrizeRoom_Anime })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 房間" height={500} /> },
@@ -186,6 +196,16 @@ const ClawMachineAnime = dynamic(
 const GachaMachineAnime = dynamic(
   () => import("@/games/anime/GachaMachine_Anime").then((m) => ({ default: m.GachaMachine_Anime })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 扭蛋機" /> },
+);
+
+const SlotMachineRO = dynamic(
+  () => import("@/games/ro/SlotMachine_RO").then((m) => ({ default: m.SlotMachine_RO })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="RO 拉霸機" /> },
+);
+
+const PrizeRoomRO = dynamic(
+  () => import("@/games/ro/PrizeRoom_RO").then((m) => ({ default: m.PrizeRoom_RO })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="RO 仙境傳說" height={480} /> },
 );
 
 // ── Bonus mini-games ─────────────────────────────────────────────────────────
@@ -223,7 +243,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
 type MiniGameId = "slot" | "claw" | "gacha" | "roulette" | "pachinko" | "scratch";
-type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime";
+type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime" | "maple" | "ro";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase1", label: "動畫效果", icon: "🎬" },
@@ -421,7 +441,7 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>特殊活動、藝術風格</td>
               <td></td>
             </tr>
-            <tr>
+            <tr className="border-b border-gray-800">
               <td className="py-2.5 font-bold">⬜ Flat</td>
               <td>最低</td>
               <td>⭐⭐⭐</td>
@@ -429,6 +449,24 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>最快</td>
               <td>企業風、簡報展示用</td>
               <td></td>
+            </tr>
+            <tr className="border-b border-gray-800">
+              <td className="py-2.5 font-bold">🍁 Maple</td>
+              <td>低</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>快</td>
+              <td>楓之谷風格、可愛卡通、橫版場景</td>
+              <td><span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
+            </tr>
+            <tr>
+              <td className="py-2.5 font-bold">⚔️ RO 仙境</td>
+              <td>低</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>⭐⭐⭐⭐⭐</td>
+              <td>快</td>
+              <td>仙境傳說 2D 等距、精靈角色、Poring、水彩風</td>
+              <td><span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
             </tr>
           </tbody>
         </table>
@@ -1288,19 +1326,19 @@ export default function AnimationsShowcasePage() {
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span> 或 <span className="text-pink-300 font-semibold">Anime/Manga</span> 八種渲染模式可切換比較。
+                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span>、<span className="text-pink-300 font-semibold">Anime/Manga</span> 、<span className="text-red-400 font-semibold">楓之谷 Maple</span> 或 <span className="text-orange-400 font-semibold">仙境傳說 RO</span> 十種渲染模式可切換比較。
                 </p>
-                {/* Eight-way style toggle — hidden in compare mode */}
-                {!compareMode && (
+                {/* Nine-way style toggle — hidden in compare mode + for bonus games */}
+                {!compareMode && !["roulette", "pachinko", "scratch"].includes(activeMiniGame) && (
                   <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
-                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
+                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime", "maple", "ro"] as const).map((mode) => (
                       <button
                         key={mode}
                         onClick={() => {
                           setMiniGameStyle(mode);
                           handleMiniGameReset();
                           triedStylesRef.current.add(mode);
-                          if (triedStylesRef.current.size >= 8) achievements.unlock("try_all_styles");
+                          if (triedStylesRef.current.size >= 10) achievements.unlock("try_all_styles");
                         }}
                         className={[
                           "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
@@ -1308,12 +1346,17 @@ export default function AnimationsShowcasePage() {
                             ? "bg-purple-600 text-white shadow"
                             : "text-gray-400 hover:text-white",
                         ].join(" ")}
-                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
+                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版" : mode === "ro" ? "仙境傳說 — 2D 等距 RPG 風" : undefined}
                       >
-                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : mode === "anime" ? "Anime" : mode === "maple" ? "Maple" : "RO"}
                         {mode === "anime" && (
                           <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             推薦
+                          </span>
+                        )}
+                        {mode === "maple" && (
+                          <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            新
                           </span>
                         )}
                       </button>
@@ -1881,8 +1924,28 @@ export default function AnimationsShowcasePage() {
                             />
                           )}
                         </>
+                      ) : miniGameStyle === "maple" ? (
+                        /* MapleStory versions — slot only, others show WIP */
+                        <>
+                          {activeMiniGame === "slot" && (
+                            <SlotMachineMaple
+                              key={`maple-slot-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {(activeMiniGame === "claw" || activeMiniGame === "gacha") && (
+                            <div className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-950/40 to-red-950/40 border-2 border-red-800/40" style={{ width: 340, height: 480 }}>
+                              <span className="text-4xl">🍁</span>
+                              <p className="text-red-300 font-bold text-sm">楓之谷 {activeMiniGame === "claw" ? "夾娃娃機" : "扭蛋機"}</p>
+                              <p className="text-gray-500 text-xs">開發中 — Coming Soon</p>
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        /* 2D Canvas versions */
+                        /* 2D Canvas versions + bonus games */
                         <>
                           {activeMiniGame === "slot" && (
                             <SlotMachine
@@ -1911,6 +1974,33 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s)}
                             />
                           )}
+                          {activeMiniGame === "roulette" && (
+                            <RouletteGame
+                              key={miniGameKey}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "pachinko" && (
+                            <PachinkoGame
+                              key={miniGameKey}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "scratch" && (
+                            <ScratchCardGame
+                              key={miniGameKey}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
                         </>
                       )}
                     </div>
@@ -1919,7 +2009,7 @@ export default function AnimationsShowcasePage() {
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
                       {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
-                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : " (2D Canvas)"}
+                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : miniGameStyle === "maple" ? " (楓之谷 Maple)" : " (2D Canvas)"}
                     </span>
                   </div>
                 </div>
@@ -2063,12 +2153,14 @@ export default function AnimationsShowcasePage() {
                     ? "極簡扁平風格商店。純白背景，幾何圓形角色，無陰影無漸層。Notion 風格點陣底紋，點擊地板移動角色，靠近櫃台後點擊「抽獎」。"
                     : roomStyle === "anime"
                     ? "動漫/漫畫風格一番賞店。粉藍漸層天空，暖色木地板，條紋雨棚，Chibi 角色（大頭比例），粗黑輪廓，表情隨機應變（^_^ >_< O_O），點擊地板移動，靠近櫃台抽獎。"
+                    : roomStyle === "maple"
+                    ? "楓之谷 2D 橫版場景。日落視差背景（天空/丘陵/室內三層），可愛 Chibi 角色（超大頭比例），彩色爆炸頭髮，大圓眼雙亮點，名牌標籤，楓葉飄落。點擊地板移動角色，點擊櫃台抽獎，獎品從天而降帶閃光拖尾。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* Eight-way style toggle — hidden in compare mode */}
+                {/* Nine-way style toggle — hidden in compare mode */}
                 {!compareMode && (
                   <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
-                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
+                    {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime", "maple", "ro"] as const).map((mode) => (
                       <button
                         key={mode}
                         onClick={() => setRoomStyle(mode)}
@@ -2078,12 +2170,17 @@ export default function AnimationsShowcasePage() {
                             ? "bg-purple-600 text-white shadow"
                             : "text-gray-400 hover:text-white",
                         ].join(" ")}
-                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
+                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版側視" : undefined}
                       >
-                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                        {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : mode === "anime" ? "Anime" : mode === "maple" ? "Maple" : "RO"}
                         {mode === "anime" && (
                           <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             推薦
+                          </span>
+                        )}
+                        {mode === "maple" && (
+                          <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            新
                           </span>
                         )}
                       </button>
@@ -2158,7 +2255,7 @@ export default function AnimationsShowcasePage() {
                     </div>
                     <div className="flex items-center justify-center">
                       <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
-                        {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : "2.5D 等距房間"}
+                        {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : leftStyle === "maple" ? "楓之谷 Maple 橫版店" : "2.5D 等距房間"}
                       </span>
                     </div>
                   </div>
@@ -2189,7 +2286,7 @@ export default function AnimationsShowcasePage() {
                     </div>
                     <div className="flex items-center justify-center">
                       <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
-                        {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : "2.5D 等距房間"}
+                        {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : rightStyle === "maple" ? "楓之谷 Maple 橫版店" : "2.5D 等距房間"}
                       </span>
                     </div>
                   </div>
@@ -2293,6 +2390,12 @@ export default function AnimationsShowcasePage() {
                           npcCount={npcCount}
                           onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
                         />
+                      ) : roomStyle === "maple" ? (
+                        <PrizeRoomMaple
+                          key={`maple-room-${npcCount}`}
+                          npcCount={npcCount}
+                          onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
+                        />
                       ) : (
                         <IsometricRoom
                           npcCount={npcCount}
@@ -2317,6 +2420,8 @@ export default function AnimationsShowcasePage() {
                         ? "Minimalist Flat — 幾何圓形，純色填充，點擊移動"
                         : roomStyle === "anime"
                         ? "Anime/Manga — Chibi 角色，粗黑輪廓，一番賞店"
+                        : roomStyle === "maple"
+                        ? "楓之谷 Maple — 2D 橫版，視差背景，Chibi 超大頭，楓葉飄落"
                         : "2.5D 等距房間"}
                     </span>
                   </div>
@@ -2410,6 +2515,13 @@ export default function AnimationsShowcasePage() {
                       <DebugCell label="解析度" value="480×380" />
                       <DebugCell label="特效" value="Speed Lines + Chibi + Petals" />
                       <DebugCell label="模式" value="一番賞 Shop" highlight />
+                    </>
+                  ) : roomStyle === "maple" ? (
+                    <>
+                      <DebugCell label="渲染" value="楓之谷 Maple" highlight />
+                      <DebugCell label="解析度" value="520×380" />
+                      <DebugCell label="特效" value="視差背景 + 楓葉 + 道具掉落" />
+                      <DebugCell label="模式" value="2D 橫版側視" highlight />
                     </>
                   ) : (
                     <>
@@ -2784,6 +2896,7 @@ function StyleSelector({
       <option value="sketch">Sketch</option>
       <option value="flat">Flat</option>
       <option value="anime">Anime 🌸 推薦</option>
+      <option value="maple">Maple 🍁 楓之谷</option>
     </select>
   );
 }
@@ -2854,7 +2967,11 @@ function MiniGameRenderer({
   // 2D Canvas fallback
   if (game === "slot") return <SlotMachine key={`${prefix}-2d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
   if (game === "claw") return <ClawMachine key={`${prefix}-2d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
-  return <GachaMachine key={`${prefix}-2d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
+  if (game === "gacha") return <GachaMachine key={`${prefix}-2d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
+  // Bonus games — always 2D, style has no effect
+  if (game === "roulette") return <RouletteGame key={`${prefix}-roulette-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+  if (game === "pachinko") return <PachinkoGame key={`${prefix}-pachinko-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+  return <ScratchCardGame key={`${prefix}-scratch-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

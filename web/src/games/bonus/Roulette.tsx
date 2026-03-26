@@ -269,7 +269,6 @@ export function Roulette({
 
   const rotationRef = useRef(0);
   const [gameState, setGameState] = useState<RouletteGameState>("IDLE");
-  const [glowAlpha, setGlowAlpha] = useState(0);
   const confettiRef = useRef<Confetti[]>([]);
   const glowAnimRef = useRef<number>(0);
   const spinStartRef = useRef<number>(0);
@@ -361,7 +360,7 @@ export function Roulette({
     let frame = 0;
     const tick = () => {
       frame++;
-      const glow = 0.6 + 0.4 * Math.sin(frame * 0.08);
+      const glow: number = 0.6 + 0.4 * Math.sin(frame * 0.08);
 
       // Update confetti
       for (const p of confettiRef.current) {
@@ -374,7 +373,6 @@ export function Roulette({
       confettiRef.current = confettiRef.current.filter((p) => p.life > 0);
 
       render(effectiveWinSegment, glow, confettiRef.current);
-      setGlowAlpha(glow);
       glowAnimRef.current = requestAnimationFrame(tick);
     };
     glowAnimRef.current = requestAnimationFrame(tick);

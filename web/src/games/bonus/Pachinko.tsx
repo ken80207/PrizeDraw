@@ -234,7 +234,6 @@ export function Pachinko({
   const rafRef = useRef<number>(0);
   const [gameState, setGameState] = useState<PachinkoGameState>("IDLE");
   const [winSlot, setWinSlot] = useState<number | null>(null);
-  const [glowAlpha, setGlowAlpha] = useState(0);
   const ballRef = useRef<Ball | null>(null);
   const pegsRef = useRef<Peg[]>([]);
   const glowFrameRef = useRef<number>(0);
@@ -374,7 +373,6 @@ export function Pachinko({
     const tick = () => {
       frame++;
       const glow = 0.5 + 0.5 * Math.sin(frame * 0.08);
-      setGlowAlpha(glow);
       drawBackground(ctx);
       drawDropZone(ctx);
       drawPegs(ctx, pegsRef.current);

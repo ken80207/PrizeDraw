@@ -201,11 +201,15 @@ export function GameTutorial({ gameId, forceShow = false, onDone }: GameTutorial
   const [visible, setVisible] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Decide whether to show on mount
+  // Decide whether to show on mount — initialise both at once to avoid extra renders
   useEffect(() => {
-    if (forceShow || !hasSeen(gameId)) {
-      setStepIndex(0);
-      setVisible(true);
+    const shouldShow = forceShow || !hasSeen(gameId);
+    // Schedule in the same event loop tick via startTransition-compatible pattern
+    if (shouldShow) {
+      Promise.resolve().then(() => {
+        setStepIndex(0);
+        setVisible(true);
+      });
     }
   }, [gameId, forceShow]);
 
@@ -231,14 +235,6 @@ export function GameTutorial({ gameId, forceShow = false, onDone }: GameTutorial
 
   const step = steps[stepIndex];
   const isLast = stepIndex === steps.length - 1;
-
-  // Tooltip positioning classes
-  const tooltipPositionClass: Record<TutorialStep["position"], string> = {
-    top: "bottom-full left-1/2 -translate-x-1/2 mb-3",
-    bottom: "top-full left-1/2 -translate-x-1/2 mt-3",
-    left: "right-full top-1/2 -translate-y-1/2 mr-3",
-    right: "left-full top-1/2 -translate-y-1/2 ml-3",
-  };
 
   // Arrow classes
   const arrowClass: Record<TutorialStep["position"], string> = {
