@@ -17,14 +17,66 @@ import io.ktor.websocket.readText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 private val log = LoggerFactory.getLogger("KujiWebSocketHandler")
 private val wsJson = Json { ignoreUnknownKeys = true }
+
+/**
+ * Tracks the most-recent relay timestamp (epoch ms) for each draw session.
+ *
+ * Used by [shouldRelayFrame] to enforce the 60 fps ceiling on `C2S_DRAW_INPUT` messages.
+ * Entries are removed when a session reaches a terminal state via [purgeFpsEntry].
+ */
+private val lastFrameTimeMs = ConcurrentHashMap<String, Long>()
+
+/**
+ * Returns `true` and advances the session timestamp when the frame should be relayed;
+ * returns `false` (dropping the frame silently) when the inter-frame interval is below 16 ms,
+ * which corresponds to the ~60 fps ceiling.
+ *
+ * Thread-safe: the [ConcurrentHashMap.compute] call provides an atomic read-modify-write
+ * on the per-session entry so concurrent coroutines on the same session cannot both pass
+ * through simultaneously within the same 16 ms window.
+ *
+ * @param sessionId The draw session identifier used as the map key.
+ */
+private fun shouldRelayFrame(sessionId: String): Boolean {
+    val now = System.currentTimeMillis()
+    var relay = false
+    lastFrameTimeMs.compute(sessionId) { _, last ->
+        if (last == null || now - last >= 16L) {
+            relay = true
+            now
+        } else {
+            last
+        }
+    }
+    return relay
+}
+
+/**
+ * Removes the frame-rate limiter entry for [sessionId] when the session reaches a
+ * terminal state (`DRAW_REVEALED` or `DRAW_CANCELLED`).
+ *
+ * Keeping stale entries would not cause correctness problems — they are naturally
+ * evicted when the next frame arrives far in the future — but explicit cleanup keeps
+ * the map bounded on high-throughput servers with many short-lived sessions.
+ *
+ * @param sessionId The draw session that has ended.
+ */
+private fun purgeFpsEntry(sessionId: String) {
+    lastFrameTimeMs.remove(sessionId)
+}
 
 /**
  * Registers the `/ws/kuji/{campaignId}` and `/ws/kuji/{campaignId}/rooms/{roomInstanceId}`
@@ -235,6 +287,7 @@ private suspend fun handleC2sFrame(
 ) {
     val obj = runCatching { wsJson.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
     when (val type = obj["type"]?.jsonPrimitive?.content ?: return) {
+        "C2S_DRAW_INPUT" -> handleDrawInput(obj, campaignId, drawSyncService)
         "C2S_DRAW_PROGRESS" -> handleDrawProgress(obj, drawSyncService)
         "C2S_DRAW_CANCEL" -> handleDrawCancel(obj, drawSyncService)
         "C2S_DRAW_COMPLETE" -> handleDrawComplete(obj, drawSyncService)
@@ -249,6 +302,47 @@ private suspend fun handleC2sFrame(
         )
         else -> log.debug("Kuji WS unhandled C2S type: {}", type)
     }
+}
+
+/**
+ * Handles a `C2S_DRAW_INPUT` frame from the drawing player.
+ *
+ * Frames are rate-limited to ~60 fps per session via [shouldRelayFrame]. Frames that
+ * arrive within 16 ms of the previous accepted frame are silently dropped — they are
+ * never passed to [DrawSyncService.relayTouchInput] and are never written to the DB.
+ * Accepted frames are published to Redis for cross-pod spectator fanout only.
+ *
+ * Required payload fields (any missing field causes a silent no-op return):
+ * - `sessionId` — UUID string identifying the active draw sync session.
+ * - `x`         — normalised horizontal coordinate (Float, 0.0–1.0).
+ * - `y`         — normalised vertical coordinate (Float, 0.0–1.0).
+ * - `isDown`    — pointer contact state (Boolean).
+ * - `timestamp` — client epoch milliseconds at frame capture (Long).
+ */
+private suspend fun handleDrawInput(
+    obj: kotlinx.serialization.json.JsonObject,
+    campaignId: UUID,
+    drawSyncService: DrawSyncService,
+) {
+    val sessionIdStr = obj["sessionId"]?.jsonPrimitive?.contentOrNull ?: return
+    val sessionId = runCatching { UUID.fromString(sessionIdStr) }.getOrNull() ?: return
+    val x = obj["x"]?.jsonPrimitive?.floatOrNull ?: return
+    val y = obj["y"]?.jsonPrimitive?.floatOrNull ?: return
+    val isDown = obj["isDown"]?.jsonPrimitive?.booleanOrNull ?: return
+    val timestamp = obj["timestamp"]?.jsonPrimitive?.longOrNull ?: return
+
+    if (!shouldRelayFrame(sessionIdStr)) return
+
+    runCatching {
+        drawSyncService.relayTouchInput(
+            sessionId = sessionId,
+            campaignId = campaignId,
+            x = x,
+            y = y,
+            isDown = isDown,
+            timestamp = timestamp,
+        )
+    }.onFailure { log.warn("relayTouchInput failed for session {}", sessionId, it) }
 }
 
 private suspend fun handleDrawProgress(
@@ -266,20 +360,22 @@ private suspend fun handleDrawCancel(
     obj: kotlinx.serialization.json.JsonObject,
     drawSyncService: DrawSyncService,
 ) {
-    val sessionId = obj["sessionId"]?.jsonPrimitive?.content
-        ?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return
+    val sessionIdStr = obj["sessionId"]?.jsonPrimitive?.content ?: return
+    val sessionId = runCatching { UUID.fromString(sessionIdStr) }.getOrNull() ?: return
     runCatching { drawSyncService.cancelDraw(sessionId) }
         .onFailure { log.warn("cancelDraw failed for session {}", sessionId, it) }
+    purgeFpsEntry(sessionIdStr)
 }
 
 private suspend fun handleDrawComplete(
     obj: kotlinx.serialization.json.JsonObject,
     drawSyncService: DrawSyncService,
 ) {
-    val sessionId = obj["sessionId"]?.jsonPrimitive?.content
-        ?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return
+    val sessionIdStr = obj["sessionId"]?.jsonPrimitive?.content ?: return
+    val sessionId = runCatching { UUID.fromString(sessionIdStr) }.getOrNull() ?: return
     runCatching { drawSyncService.completeDraw(sessionId) }
         .onFailure { log.warn("completeDraw failed for session {}", sessionId, it) }
+    purgeFpsEntry(sessionIdStr)
 }
 
 /**

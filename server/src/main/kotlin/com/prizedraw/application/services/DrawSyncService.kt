@@ -8,6 +8,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
@@ -225,6 +227,39 @@ public class DrawSyncService(
         publishEvent(session.campaignId, event)
         log.debug("Draw sync revealed: sessionId=$sessionId grade=${session.resultGrade}")
         return session
+    }
+
+    /**
+     * Relays a raw touch-coordinate frame to all campaign spectators without any DB write.
+     *
+     * This is a pure pass-through for high-frequency `C2S_DRAW_INPUT` messages.
+     * The frame rate is already throttled at the WebSocket handler layer before this
+     * method is called, so no additional limiting is applied here.
+     *
+     * @param sessionId The draw sync session the gesture belongs to.
+     * @param campaignId The campaign whose spectators should receive the frame.
+     * @param x Normalised horizontal touch position (0.0–1.0).
+     * @param y Normalised vertical touch position (0.0–1.0).
+     * @param isDown `true` while the pointer is in contact with the surface.
+     * @param timestamp Client-side epoch milliseconds at frame capture time.
+     */
+    public suspend fun relayTouchInput(
+        sessionId: UUID,
+        campaignId: UUID,
+        x: Float,
+        y: Float,
+        isDown: Boolean,
+        timestamp: Long,
+    ) {
+        val payload = buildJsonObject {
+            put("type", "DRAW_INPUT")
+            put("sessionId", sessionId.toString())
+            put("x", x)
+            put("y", y)
+            put("isDown", isDown)
+            put("timestamp", timestamp)
+        }.toString()
+        redisPubSub.publish("kuji:$campaignId", payload)
     }
 
     // --- Private helpers ---

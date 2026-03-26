@@ -55,3 +55,25 @@ public data class DrawSyncEventDto(
     val prizeName: String? = null,
     val photoUrl: String? = null,
 )
+
+/**
+ * A single high-frequency touch-coordinate frame sent by the drawing player via
+ * `C2S_DRAW_INPUT` and relayed to spectators as `DRAW_INPUT`.
+ *
+ * Frames are transmitted at up to 60 fps and are **never persisted** — they exist
+ * solely as a live relay signal for the spectator UI to mirror the drawing gesture.
+ *
+ * @param sessionId The active draw sync session this frame belongs to.
+ * @param x Normalised horizontal touch position in the range 0.0–1.0 (left → right).
+ * @param y Normalised vertical touch position in the range 0.0–1.0 (top → bottom).
+ * @param isDown `true` while the finger is in contact with the screen; `false` on lift.
+ * @param timestamp Client-side epoch milliseconds at the moment the frame was captured.
+ */
+@Serializable
+public data class DrawInputFrame(
+    val sessionId: String,
+    val x: Float,
+    val y: Float,
+    val isDown: Boolean,
+    val timestamp: Long,
+)
