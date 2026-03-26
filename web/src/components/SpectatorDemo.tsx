@@ -232,8 +232,11 @@ export function SpectatorDemo({
           isDown: false,
           timestamp: Date.now(),
         });
-        // === RESULT PHASE: keep showing for 6 seconds so spectators can see ===
-        // Don't setIsDrawing(false) yet — keep the animation visible with result
+        // === RESULT PHASE ===
+        // The drawer's session stays visible — spectators see what the drawer sees.
+        // We keep isDrawing=true so the animation component stays mounted.
+        // The result (scratched card revealing prize) remains on screen.
+        // Only when the NEXT drawer starts do we transition.
 
         // Add win to feed immediately
         const prize = pickRandom(FAKE_PRIZES);
@@ -246,18 +249,20 @@ export function SpectatorDemo({
 
         rafRef.current = null;
 
-        // Show result for 6 seconds (÷ speed), then transition
-        const RESULT_DISPLAY_MS = 6_000 / speed;
+        // Simulate: drawer stays on result screen for a realistic amount of time
+        // (real users look at result, celebrate, maybe screenshot)
+        // Then drawer "leaves" and next person starts
+        const DRAWER_STAYS_MS = (8_000 + randomBetween(0, 6_000)) / speed; // 8~14 seconds
         idleTimerRef.current = setTimeout(() => {
-          // NOW hide the draw
+          // Drawer leaves → brief transition gap → next drawer starts
           setIsDrawing(false);
           setCurrentFrame(null);
           setQueueLength((v) => Math.max(0, v - 1));
 
-          // Wait another 2 seconds before next draw starts
-          const NEXT_DRAW_MS = (2_000 + randomBetween(0, 1_000)) / speed;
-          idleTimerRef.current = setTimeout(startDraw, NEXT_DRAW_MS);
-        }, RESULT_DISPLAY_MS);
+          // Short gap between draws (simulates queue advancing)
+          const QUEUE_ADVANCE_MS = (1_500 + randomBetween(0, 1_000)) / speed;
+          idleTimerRef.current = setTimeout(startDraw, QUEUE_ADVANCE_MS);
+        }, DRAWER_STAYS_MS);
         return;
       }
 
