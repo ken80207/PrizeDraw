@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SlotMachine } from "./SlotMachine";
-import { ClawMachine } from "./ClawMachine";
 import { GachaMachine } from "./GachaMachine";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +41,7 @@ type TileType = "FLOOR" | "WALL" | "COUNTER" | "CARPET" | "EMPTY";
 // Player draw flow phase machine
 type RoomPhase = "EXPLORING" | "AT_COUNTER" | "SELECTING_GAME" | "PLAYING" | "RESULT";
 
-type MiniGameKey = "slot" | "claw" | "gacha";
+type MiniGameKey = "slot" | "gacha";
 
 export interface IsometricRoomProps {
   npcCount?: number;
@@ -2379,7 +2378,6 @@ export function IsometricRoom({
                   {(
                     [
                       { key: "slot" as MiniGameKey, icon: "🎰", name: "拉霸機", hint: "拉桿試手氣！" },
-                      { key: "claw" as MiniGameKey, icon: "🪝", name: "夾娃娃", hint: "精準操控！" },
                       { key: "gacha" as MiniGameKey, icon: "🥚", name: "扭蛋機", hint: "轉出驚喜！" },
                     ] as const
                   ).map((g, idx) => (
@@ -2447,13 +2445,6 @@ export function IsometricRoom({
               <div className="w-[340px] max-h-[480px] overflow-hidden rounded-2xl shadow-2xl">
                 {activeGame === "slot" && (
                   <SlotMachine
-                    resultGrade={effectiveResultGrade}
-                    prizeName={resultPrizeName}
-                    onResult={handleGameResult}
-                  />
-                )}
-                {activeGame === "claw" && (
-                  <ClawMachine
                     resultGrade={effectiveResultGrade}
                     prizeName={resultPrizeName}
                     onResult={handleGameResult}
