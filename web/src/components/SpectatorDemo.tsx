@@ -355,6 +355,21 @@ export function SpectatorDemo({
   }, [simulateChat, speed]);
 
   // ── Queue actions ─────────────────────────────────────────────────────────
+  const [isMyTurn, setIsMyTurn] = useState(false);
+
+  const handleStartMyDraw = useCallback(() => {
+    // Stop the auto-draw loop — it's YOUR turn now
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current);
+    rafRef.current = null;
+    idleTimerRef.current = null;
+    setIsDrawing(false);
+    setCurrentFrame(null);
+    setIsMyTurn(true);
+    setQueuePosition(undefined);
+    setQueueLength((v) => Math.max(0, v - 1));
+  }, []);
+
   const handleJoinQueue = useCallback(() => {
     setQueueLength((v) => v + 1);
     setQueuePosition(queueLength + 1);
@@ -428,6 +443,8 @@ export function SpectatorDemo({
       onSendReaction={handleSendReaction}
       onJoinQueue={handleJoinQueue}
       onLeaveQueue={handleLeaveQueue}
+      onStartDraw={handleStartMyDraw}
+      isMyTurn={isMyTurn}
     />
   );
 }

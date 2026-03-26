@@ -54,6 +54,10 @@ export interface LiveSpectatorRoomProps {
   onSendReaction: (emoji: string) => void;
   onJoinQueue: () => void;
   onLeaveQueue: () => void;
+  /** Called when the player clicks "開始抽獎" (queue position = 1). */
+  onStartDraw?: () => void;
+  /** True when it's YOUR turn to draw (main stage shows your interactive animation). */
+  isMyTurn?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -272,8 +276,17 @@ function LiveDrawStage({
         </span>
       </div>
 
-      {/* Drawer name */}
-      {currentDrawer ? (
+      {/* Status text */}
+      {isMyTurn ? (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="text-base font-black text-amber-600 dark:text-amber-400">
+            🎯 你正在抽獎！
+          </span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            用手指刮開看看
+          </span>
+        </div>
+      ) : currentDrawer ? (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
           <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
             {currentDrawer.nickname}
@@ -297,7 +310,22 @@ function LiveDrawStage({
 
       {/* Main animation container */}
       <div className="relative">
-        {currentDrawer ? (
+        {isMyTurn ? (
+          /* YOUR TURN: interactive scratch card — you can scratch it yourself! */
+          <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-amber-400/50 bg-gray-900 aspect-[4/3] flex items-center justify-center relative">
+            <div className="absolute top-3 left-3 z-20 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+              🎯 你的回合
+            </div>
+            <div style={{ width: "min(280px, 80%)", height: "min(400px, 85%)" }}>
+              <ScratchReveal
+                prizePhotoUrl={makePrizeImageUrl("A賞", "限定公仔")}
+                onRevealed={() => {
+                  /* In real app: send DRAW_REVEALED event, update queue */
+                }}
+              />
+            </div>
+          </div>
+        ) : currentDrawer ? (
           /* Key on playerId: fully remounts DrawerAnimationSlot between draws,
              resetting revealed state and the animation component's canvas. */
           <DrawerAnimationSlot
@@ -404,7 +432,8 @@ function QueuePanel({
   queueLength,
   onJoinQueue,
   onLeaveQueue,
-}: Pick<LiveSpectatorRoomProps, "queuePosition" | "queueLength" | "onJoinQueue" | "onLeaveQueue">) {
+  onStartDraw,
+}: Pick<LiveSpectatorRoomProps, "queuePosition" | "queueLength" | "onJoinQueue" | "onLeaveQueue" | "onStartDraw">) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
       <h3 className="font-bold text-sm mb-3 flex items-center gap-2 text-gray-800 dark:text-gray-100">
@@ -420,7 +449,8 @@ function QueuePanel({
             準備開始抽獎
           </div>
           <button
-            className="mt-2.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-colors shadow"
+            onClick={onStartDraw}
+            className="mt-2.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-sm transition-colors shadow"
           >
             🎰 開始抽獎
           </button>
@@ -644,6 +674,8 @@ export function LiveSpectatorRoom({
   onSendReaction,
   onJoinQueue,
   onLeaveQueue,
+  onStartDraw,
+  isMyTurn,
 }: LiveSpectatorRoomProps) {
   const [mobileChat, setMobileChat] = useState(false);
   // Track unread messages: bump when drawer opens to clear the dot.
@@ -683,6 +715,7 @@ export function LiveSpectatorRoom({
             queueLength={queueLength}
             onJoinQueue={onJoinQueue}
             onLeaveQueue={onLeaveQueue}
+            onStartDraw={onStartDraw}
           />
 
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex-1">
