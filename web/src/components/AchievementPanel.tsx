@@ -12,8 +12,9 @@ interface AchievementPanelProps {
 
 /** Collapsible achievement panel showing all achievements and progress. */
 export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
-  const [all, setAll] = useState<Achievement[]>([]);
-  const [stats, setStats] = useState({ total: 0, unlocked: 0 });
+  // Lazily initialise so first render is populated without a synchronous setState in an effect
+  const [all, setAll] = useState<Achievement[]>(() => achievements.getAll());
+  const [stats, setStats] = useState(() => achievements.getStats());
 
   const refresh = useCallback(() => {
     setAll(achievements.getAll());
@@ -21,8 +22,7 @@ export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
   }, []);
 
   useEffect(() => {
-    refresh();
-    // Re-render when a new achievement is unlocked
+    // Re-render whenever a new achievement is unlocked (callback — not synchronous setState)
     const unsubscribe = achievements.onUnlock(() => refresh());
     return unsubscribe;
   }, [refresh]);

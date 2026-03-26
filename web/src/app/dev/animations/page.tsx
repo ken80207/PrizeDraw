@@ -23,6 +23,12 @@ import type { ClawGameState } from "@/games/ClawMachine";
 import { GachaMachine } from "@/games/GachaMachine";
 import type { GachaGameState } from "@/games/GachaMachine";
 import { IsometricRoom } from "@/games/IsometricRoom";
+import { GameTutorial } from "@/components/GameTutorial";
+import type { TutorialGameId } from "@/components/GameTutorial";
+import { resetTutorialFlag } from "@/components/GameTutorial";
+import { AccessibilityPanel } from "@/components/AccessibilityPanel";
+import { DIFFICULTIES, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import type { Difficulty } from "@/lib/difficulty";
 import { sounds } from "@/lib/sounds";
 import { haptics } from "@/lib/haptics";
 import { captureGameScreenshot, shareScreenshot } from "@/lib/screenshot";
@@ -182,6 +188,23 @@ const GachaMachineAnime = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 扭蛋機" /> },
 );
 
+// ── Bonus mini-games ─────────────────────────────────────────────────────────
+
+const RouletteGame = dynamic(
+  () => import("@/games/bonus/Roulette").then((m) => ({ default: m.Roulette })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="轉盤" height={380} /> },
+);
+
+const PachinkoGame = dynamic(
+  () => import("@/games/bonus/Pachinko").then((m) => ({ default: m.Pachinko })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="彈珠台" height={520} /> },
+);
+
+const ScratchCardGame = dynamic(
+  () => import("@/games/bonus/ScratchCard").then((m) => ({ default: m.ScratchCard })),
+  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="刮刮樂" height={280} /> },
+);
+
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
@@ -199,7 +222,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 // ─────────────────────────────────────────────────────────────────────────────
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
-type MiniGameId = "slot" | "claw" | "gacha";
+type MiniGameId = "slot" | "claw" | "gacha" | "roulette" | "pachinko" | "scratch";
 type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
@@ -208,11 +231,19 @@ const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
   { id: "phase3", label: "2.5D 房間", icon: "🏠" },
 ];
 
-const MINI_GAMES: { id: MiniGameId; label: string; desc: string }[] = [
-  { id: "slot",  label: "拉霸機", desc: "Slot Machine" },
-  { id: "claw",  label: "夾娃娃", desc: "Claw Machine" },
-  { id: "gacha", label: "扭蛋機", desc: "Gacha Machine" },
+const MINI_GAMES: { id: MiniGameId; label: string; desc: string; isBonus?: boolean }[] = [
+  { id: "slot",     label: "拉霸機",  desc: "Slot Machine" },
+  { id: "claw",     label: "夾娃娃",  desc: "Claw Machine" },
+  { id: "gacha",    label: "扭蛋機",  desc: "Gacha Machine" },
+  { id: "roulette", label: "轉盤",    desc: "Roulette",   isBonus: true },
+  { id: "pachinko", label: "彈珠台",  desc: "Pachinko",   isBonus: true },
+  { id: "scratch",  label: "刮刮樂",  desc: "Scratch Card", isBonus: true },
 ];
+
+/** Maps MiniGameId to TutorialGameId (bonus games share the same id) */
+function toTutorialId(gameId: MiniGameId): TutorialGameId {
+  return gameId as TutorialGameId;
+}
 
 const MODES: { id: AnimationMode; label: string; hint: string }[] = [
   { id: "TEAR", label: "撕籤", hint: "拖拉紙張以撕開" },
@@ -444,6 +475,14 @@ export default function AnimationsShowcasePage() {
   const [miniGameResult, setMiniGameResult] = useState<string | null>(null);
   const [miniGameLogs, dispatchMiniLog] = useReducer(logReducer, []);
   const miniLogRef = useRef<HTMLDivElement>(null);
+
+  // ── Tutorial + Accessibility state ─────────────────────────────────────────
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialForced, setTutorialForced] = useState(false);
+  const [showA11yPanel, setShowA11yPanel] = useState(false);
+
+  // ── Difficulty state (claw machine only) ───────────────────────────────────
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
 
   // ── Style toggle state (2d | css3d | webgl) ───────────────────────────────
   const [miniGameStyle, setMiniGameStyle] = useState<StyleMode>("2d");
@@ -681,6 +720,13 @@ export default function AnimationsShowcasePage() {
       achievements.unlock("try_all_games");
     }
   }, []);
+
+  // ── Tutorial + Accessibility callbacks ─────────────────────────────────────
+  const handleReplayTutorial = useCallback(() => {
+    resetTutorialFlag(toTutorialId(activeMiniGame));
+    setTutorialForced(true);
+    setShowTutorial(true);
+  }, [activeMiniGame]);
 
   // ── Screenshot callback ─────────────────────────────────────────────────────
   const handleScreenshot = useCallback(async () => {
@@ -1292,10 +1338,27 @@ export default function AnimationsShowcasePage() {
               </div>
             </section>
 
-            {/* Game selector — pill style */}
-            <section>
-              <div className="flex flex-wrap gap-2">
-                {MINI_GAMES.map((g) => (
+            {/* Tutorial overlay */}
+            {showTutorial && (
+              <GameTutorial
+                gameId={toTutorialId(activeMiniGame)}
+                forceShow={tutorialForced}
+                onDone={() => setShowTutorial(false)}
+              />
+            )}
+
+            {/* Accessibility panel */}
+            <AccessibilityPanel
+              open={showA11yPanel}
+              onClose={() => setShowA11yPanel(false)}
+            />
+
+            {/* Game selector — pill style + difficulty + tutorial/a11y toolbar */}
+            <section className="space-y-2">
+              {/* Row 1: game type buttons */}
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* Core games */}
+                {MINI_GAMES.filter((g) => !g.isBonus).map((g) => (
                   <button
                     key={g.id}
                     onClick={() => handleSwitchMiniGame(g.id)}
@@ -1307,12 +1370,82 @@ export default function AnimationsShowcasePage() {
                     ].join(" ")}
                   >
                     {g.label}
-                    <span className={["ml-2 text-xs font-normal opacity-70"].join(" ")}>
-                      {g.desc}
-                    </span>
+                    <span className="ml-2 text-xs font-normal opacity-70">{g.desc}</span>
                   </button>
                 ))}
+
+                {/* Divider */}
+                <span className="text-gray-700 text-xs font-bold px-1">|</span>
+
+                {/* Bonus games */}
+                {MINI_GAMES.filter((g) => g.isBonus).map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleSwitchMiniGame(g.id)}
+                    className={[
+                      "relative px-4 py-2 rounded-full text-sm font-bold transition-all border",
+                      activeMiniGame === g.id
+                        ? "bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/30"
+                        : "border-amber-700/40 text-amber-400 hover:text-white hover:bg-amber-600/20",
+                    ].join(" ")}
+                  >
+                    <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                      NEW
+                    </span>
+                    {g.label}
+                    <span className="ml-2 text-xs font-normal opacity-70">{g.desc}</span>
+                  </button>
+                ))}
+
+                {/* Tutorial + A11y toolbar */}
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button
+                    onClick={handleReplayTutorial}
+                    title="重播教學"
+                    aria-label="重播當前遊戲教學"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white text-xs font-bold transition-all"
+                  >
+                    <span aria-hidden="true">📖</span> 教學
+                  </button>
+                  <button
+                    onClick={() => setShowA11yPanel(true)}
+                    title="無障礙設定"
+                    aria-label="開啟無障礙設定"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white text-xs font-bold transition-all"
+                  >
+                    <span aria-hidden="true">♿</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Row 2: difficulty selector (only for claw machine) */}
+              {activeMiniGame === "claw" && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500 font-medium">難度：</span>
+                  {DIFFICULTY_ORDER.map((d) => {
+                    const cfg = DIFFICULTIES[d];
+                    return (
+                      <button
+                        key={d}
+                        onClick={() => setDifficulty(d)}
+                        className={[
+                          "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                          difficulty === d
+                            ? "bg-purple-600 border-purple-500 text-white shadow shadow-purple-600/30"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                        ].join(" ")}
+                        title={cfg.description}
+                      >
+                        {cfg.icon} {cfg.label}
+                      </button>
+                    );
+                  })}
+                  <span className="text-xs text-gray-600">
+                    {DIFFICULTIES[difficulty].description}
+                    {" · "}限時 {DIFFICULTIES[difficulty].timeLimit}s
+                  </span>
+                </div>
+              )}
             </section>
 
             {/* ── Compare mode: two side-by-side game columns ────────────────── */}

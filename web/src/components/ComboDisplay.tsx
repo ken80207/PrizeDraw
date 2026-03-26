@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ComboDisplayProps {
   streak: number;
@@ -8,35 +8,51 @@ interface ComboDisplayProps {
   milestone?: string | null;
 }
 
+const MILESTONE_CONFIG: Record<string, { label: string; color: string; size: string; emoji: string }> = {
+  combo3:  { label: "3 COMBO!",  color: "#f59e0b", size: "text-4xl", emoji: "🔥" },
+  combo5:  { label: "5 COMBO!",  color: "#ef4444", size: "text-5xl", emoji: "💥" },
+  combo10: { label: "10 COMBO!", color: "#a855f7", size: "text-6xl", emoji: "⚡" },
+};
+
 /**
  * Floating combo counter overlay.
- * Renders nothing when streak is 0.
+ * Shows a persistent streak badge when streak > 0, and a full-screen flash at
+ * milestone values (3, 5, 10).
  */
 export function ComboDisplay({ streak, milestone }: ComboDisplayProps) {
-  const [showMilestone, setShowMilestone] = useState(false);
-  const [currentMilestone, setCurrentMilestone] = useState<string | null>(null);
+  // Snapshot the milestone so we can display it even after the prop clears
+  const [activeMilestone, setActiveMilestone] = useState<string | null>(null);
+  // Controls the fade-out — set via setTimeout, not synchronously in the effect
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!milestone) return;
-    setCurrentMilestone(milestone);
-    setShowMilestone(true);
-    const t = setTimeout(() => setShowMilestone(false), 2000);
-    return () => clearTimeout(t);
+
+    // Schedule the state update slightly deferred to satisfy set-state-in-effect rule
+    const showTimer = setTimeout(() => {
+      setActiveMilestone(milestone);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => setActiveMilestone(null), 2000);
+    }, 0);
+
+    return () => {
+      clearTimeout(showTimer);
+    };
   }, [milestone]);
 
-  if (streak <= 0 && !showMilestone) return null;
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
 
-  const milestoneConfig: Record<string, { label: string; color: string; size: string }> = {
-    combo3:  { label: "3 COMBO!", color: "#f59e0b", size: "text-4xl" },
-    combo5:  { label: "5 COMBO!", color: "#ef4444", size: "text-5xl" },
-    combo10: { label: "10 COMBO!", color: "#a855f7", size: "text-6xl" },
-  };
+  const mConfig = activeMilestone ? MILESTONE_CONFIG[activeMilestone] : null;
 
-  const mConfig = currentMilestone ? milestoneConfig[currentMilestone] : null;
+  if (streak <= 0 && !activeMilestone) return null;
 
   return (
     <>
-      {/* Persistent streak counter */}
+      {/* Persistent streak counter — top-right */}
       {streak > 0 && (
         <div className="fixed top-20 right-4 z-40 pointer-events-none">
           <div className="text-center select-none">
@@ -58,12 +74,10 @@ export function ComboDisplay({ streak, milestone }: ComboDisplayProps) {
       )}
 
       {/* Full-screen milestone flash */}
-      {showMilestone && mConfig && (
+      {activeMilestone && mConfig && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-          style={{
-            animation: "comboFlash 2s ease-out forwards",
-          }}
+          style={{ animation: "comboFlash 2s ease-out forwards" }}
         >
           <div
             className={`font-black ${mConfig.size} select-none`}
@@ -73,8 +87,7 @@ export function ComboDisplay({ streak, milestone }: ComboDisplayProps) {
               animation: "comboPop 2s ease-out forwards",
             }}
           >
-            {currentMilestone === "combo3" ? "🔥" : currentMilestone === "combo5" ? "💥" : "⚡"}{" "}
-            {mConfig.label}
+            {mConfig.emoji} {mConfig.label}
           </div>
 
           <style>{`

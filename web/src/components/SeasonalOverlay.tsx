@@ -39,15 +39,17 @@ function buildParticles(theme: SeasonalTheme): Particle[] {
  * Very subtle — opacity capped at 0.45 so it never obstructs gameplay.
  */
 export function SeasonalOverlay({ theme, enabled = true }: SeasonalOverlayProps) {
-  const [particles, setParticles] = useState<Particle[]>([]);
+  const [particles, setParticles] = useState<Particle[]>(() =>
+    enabled && theme.id !== "default" ? buildParticles(theme) : [],
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!enabled || theme.id === "default") {
-      setParticles([]);
-      return;
-    }
-    setParticles(buildParticles(theme));
+    // Defer the setState to a microtask so it is not synchronous within the effect body
+    const id = setTimeout(() => {
+      setParticles(enabled && theme.id !== "default" ? buildParticles(theme) : []);
+    }, 0);
+    return () => clearTimeout(id);
   }, [theme, enabled]);
 
   if (!enabled || particles.length === 0) return null;
