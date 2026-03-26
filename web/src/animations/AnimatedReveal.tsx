@@ -66,6 +66,8 @@ export function AnimatedReveal({
         return (
           <TearReveal
             prizePhotoUrl={prizePhotoUrl}
+            prizeGrade={prizeGrade}
+            prizeName={prizeName}
             onRevealed={handleRevealed}
           />
         );
@@ -108,16 +110,19 @@ export function AnimatedReveal({
         if (mode === "INSTANT") onDismiss?.();
       }}
     >
-      {/* Animation container */}
+      {/* Animation container — must have explicit dimensions for canvas children */}
       <div
-        className="relative"
+        className="relative overflow-hidden rounded-2xl bg-gray-900"
         style={{
           width: "min(340px, 90vw)",
-          height: "min(480px, 80vh)",
+          height: "min(480px, 75vh)",
+          minHeight: "320px",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {renderAnimation()}
+        <div className="w-full h-full relative">
+          {renderAnimation()}
+        </div>
       </div>
 
       {/* Prize info bar shown for non-FLIP modes (FLIP embeds its own info) */}
