@@ -176,9 +176,10 @@ export function SpectatorDemo({
   const rafRef = useRef<number | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Target: realistic scratching speed — a real person takes 10-15 seconds.
-  // Path has ~120 points. At 0.15 points/frame × 60fps = 9 points/sec → ~13 seconds.
-  const POINTS_PER_FRAME = speed * 0.15;
+  // Random scratch speed per draw — some people scratch fast, some slow.
+  // Range: 0.2 (fast, ~6s) to 0.08 (slow, ~15s) points per frame at 60fps
+  const scratchSpeedRef = useRef(0.12);
+  const POINTS_PER_FRAME = speed * scratchSpeedRef.current;
 
   // ── Live timeAgo updates (every 10s) ────────────────────────────────────
   useEffect(() => {
@@ -207,6 +208,8 @@ export function SpectatorDemo({
     // Build a fresh scratch path for this session
     scratchPathRef.current = buildScratchPath();
     pathIndexRef.current = 0;
+    // Randomize scratch speed — each person scratches at different pace
+    scratchSpeedRef.current = 0.08 + Math.random() * 0.18; // 0.08 (slow ~15s) to 0.26 (fast ~5s)
 
     const nickname = pickRandom(FAKE_NICKNAMES);
     const playerId = `demo-player-${++playerIdCounterRef.current}`;
