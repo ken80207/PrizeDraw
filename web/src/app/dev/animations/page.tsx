@@ -18,8 +18,6 @@ import { InstantReveal } from "@/animations/InstantReveal";
 import { SpectatorAnimation } from "@/components/SpectatorAnimation";
 import { SlotMachine } from "@/games/SlotMachine";
 import type { GameState as SlotGameState } from "@/games/SlotMachine";
-import { ClawMachine } from "@/games/ClawMachine";
-import type { ClawGameState } from "@/games/ClawMachine";
 import { GachaMachine } from "@/games/GachaMachine";
 import type { GachaGameState } from "@/games/GachaMachine";
 import { IsometricRoom } from "@/games/IsometricRoom";
@@ -27,8 +25,6 @@ import { GameTutorial } from "@/components/GameTutorial";
 import type { TutorialGameId } from "@/components/GameTutorial";
 import { resetTutorialFlag } from "@/components/GameTutorial";
 import { AccessibilityPanel } from "@/components/AccessibilityPanel";
-import { DIFFICULTIES, DIFFICULTY_ORDER } from "@/lib/difficulty";
-import type { Difficulty } from "@/lib/difficulty";
 import { sounds } from "@/lib/sounds";
 import { haptics } from "@/lib/haptics";
 import { captureGameScreenshot, shareScreenshot } from "@/lib/screenshot";
@@ -53,11 +49,6 @@ const SlotMachine3D = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="拉霸機 3D" /> },
 );
 
-const ClawMachine3D = dynamic(
-  () => import("@/games/3d/ClawMachine3D").then((m) => ({ default: m.ClawMachine3D })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="夾娃娃 3D" /> },
-);
-
 const GachaMachine3D = dynamic(
   () => import("@/games/3d/GachaMachine3D").then((m) => ({ default: m.GachaMachine3D })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="扭蛋機 3D" /> },
@@ -78,11 +69,6 @@ const SlotMachineCSS3D = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 拉霸機" /> },
 );
 
-const ClawMachineCSS3D = dynamic(
-  () => import("@/games/css3d/ClawMachine_CSS3D").then((m) => ({ default: m.ClawMachineCSS3D })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 夾娃娃機" /> },
-);
-
 const GachaMachineCSS3D = dynamic(
   () => import("@/games/css3d/GachaMachine_CSS3D").then((m) => ({ default: m.GachaMachineCSS3D })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="CSS 3D 扭蛋機" /> },
@@ -96,11 +82,6 @@ const SlotMachinePixel = dynamic(
 const PrizeRoomPixel = dynamic(
   () => import("@/games/pixel/PrizeRoom_Pixel").then((m) => ({ default: m.PrizeRoom_Pixel })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 房間" height={500} /> },
-);
-
-const ClawMachinePixel = dynamic(
-  () => import("@/games/pixel/ClawMachine_Pixel").then((m) => ({ default: m.ClawMachinePixel })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Pixel 夾娃娃機" /> },
 );
 
 const GachaMachinePixel = dynamic(
@@ -118,11 +99,6 @@ const PrizeRoomNeon = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 房間" height={500} /> },
 );
 
-const ClawMachineNeon = dynamic(
-  () => import("@/games/neon/ClawMachine_Neon").then((m) => ({ default: m.ClawMachine_Neon })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 夾娃娃機" /> },
-);
-
 const GachaMachineNeon = dynamic(
   () => import("@/games/neon/GachaMachine_Neon").then((m) => ({ default: m.GachaMachine_Neon })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Neon 扭蛋機" /> },
@@ -138,11 +114,6 @@ const PrizeRoomSketch = dynamic(
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 房間" height={500} /> },
 );
 
-const ClawMachineSketch = dynamic(
-  () => import("@/games/sketch/ClawMachine_Sketch").then((m) => ({ default: m.ClawMachine_Sketch })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 夾娃娃機" /> },
-);
-
 const GachaMachineSketch = dynamic(
   () => import("@/games/sketch/GachaMachine_Sketch").then((m) => ({ default: m.GachaMachine_Sketch })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Sketch 扭蛋機" /> },
@@ -156,11 +127,6 @@ const SlotMachineFlat = dynamic(
 const PrizeRoomFlat = dynamic(
   () => import("@/games/flat/PrizeRoom_Flat").then((m) => ({ default: m.PrizeRoom_Flat })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Flat 房間" height={500} /> },
-);
-
-const ClawMachineFlat = dynamic(
-  () => import("@/games/flat/ClawMachine_Flat").then((m) => ({ default: m.ClawMachine_Flat })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Flat 夾娃娃機" /> },
 );
 
 const GachaMachineFlat = dynamic(
@@ -186,11 +152,6 @@ const PrizeRoomMaple = dynamic(
 const PrizeRoomAnime = dynamic(
   () => import("@/games/anime/PrizeRoom_Anime").then((m) => ({ default: m.PrizeRoom_Anime })),
   { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 房間" height={500} /> },
-);
-
-const ClawMachineAnime = dynamic(
-  () => import("@/games/anime/ClawMachine_Anime").then((m) => ({ default: m.ClawMachine_Anime })),
-  { ssr: false, loading: () => <ThreeDLoadingPlaceholder label="Anime 夾娃娃機" /> },
 );
 
 const GachaMachineAnime = dynamic(
@@ -242,7 +203,7 @@ function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; heig
 // ─────────────────────────────────────────────────────────────────────────────
 
 type PhaseTab = "phase1" | "phase2" | "phase3";
-type MiniGameId = "slot" | "claw" | "gacha" | "roulette" | "pachinko" | "scratch";
+type MiniGameId = "slot" | "gacha" | "roulette" | "pachinko" | "scratch";
 type StyleMode = "2d" | "css3d" | "webgl" | "pixel" | "neon" | "sketch" | "flat" | "anime" | "maple" | "ro";
 
 const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
@@ -253,7 +214,6 @@ const PHASE_TABS: { id: PhaseTab; label: string; icon: string }[] = [
 
 const MINI_GAMES: { id: MiniGameId; label: string; desc: string; isBonus?: boolean }[] = [
   { id: "slot",     label: "拉霸機",  desc: "Slot Machine" },
-  { id: "claw",     label: "夾娃娃",  desc: "Claw Machine" },
   { id: "gacha",    label: "扭蛋機",  desc: "Gacha Machine" },
   { id: "roulette", label: "轉盤",    desc: "Roulette",   isBonus: true },
   { id: "pachinko", label: "彈珠台",  desc: "Pachinko",   isBonus: true },
@@ -509,7 +469,7 @@ export default function AnimationsShowcasePage() {
   const [miniGrade, setMiniGrade] = useState("A賞");
   const [miniPrizeName, setMiniPrizeName] = useState("限定公仔");
   const [miniGameKey, setMiniGameKey] = useState(0);
-  const [miniGameState, setMiniGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
+  const [miniGameState, setMiniGameState] = useState<SlotGameState | GachaGameState>("IDLE");
   const [miniGameResult, setMiniGameResult] = useState<string | null>(null);
   const [miniGameLogs, dispatchMiniLog] = useReducer(logReducer, []);
   const miniLogRef = useRef<HTMLDivElement>(null);
@@ -518,9 +478,6 @@ export default function AnimationsShowcasePage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialForced, setTutorialForced] = useState(false);
   const [showA11yPanel, setShowA11yPanel] = useState(false);
-
-  // ── Difficulty state (claw machine only) ───────────────────────────────────
-  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
 
   // ── Style toggle state (2d | css3d | webgl) ───────────────────────────────
   const [miniGameStyle, setMiniGameStyle] = useState<StyleMode>("2d");
@@ -536,8 +493,8 @@ export default function AnimationsShowcasePage() {
   const [rightStyle, setRightStyle] = useState<StyleMode>("neon");
   const [leftGameKey, setLeftGameKey] = useState(0);
   const [rightGameKey, setRightGameKey] = useState(0);
-  const [leftGameState, setLeftGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
-  const [rightGameState, setRightGameState] = useState<SlotGameState | ClawGameState | GachaGameState>("IDLE");
+  const [leftGameState, setLeftGameState] = useState<SlotGameState | GachaGameState>("IDLE");
+  const [rightGameState, setRightGameState] = useState<SlotGameState | GachaGameState>("IDLE");
   const [leftGameResult, setLeftGameResult] = useState<string | null>(null);
   const [rightGameResult, setRightGameResult] = useState<string | null>(null);
   const [compareLogs, dispatchCompareLog] = useReducer(logReducer, []);
@@ -728,7 +685,7 @@ export default function AnimationsShowcasePage() {
   }, []);
 
   const handleMiniGameStateChange = useCallback(
-    (s: SlotGameState | ClawGameState | GachaGameState) => {
+    (s: SlotGameState | GachaGameState) => {
       setMiniGameState(s);
       dispatchMiniLog({ type: "push", event: `STATE → ${s}` });
     },
@@ -752,7 +709,6 @@ export default function AnimationsShowcasePage() {
     triedGamesRef.current.add(id);
     if (
       triedGamesRef.current.has("slot") &&
-      triedGamesRef.current.has("claw") &&
       triedGamesRef.current.has("gacha")
     ) {
       achievements.unlock("try_all_games");
@@ -1359,6 +1315,11 @@ export default function AnimationsShowcasePage() {
                             新
                           </span>
                         )}
+                        {mode === "ro" && (
+                          <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            新
+                          </span>
+                        )}
                       </button>
                     ))}
                     {/* Info button — toggles recommendation panel */}
@@ -1396,7 +1357,7 @@ export default function AnimationsShowcasePage() {
               onClose={() => setShowA11yPanel(false)}
             />
 
-            {/* Game selector — pill style + difficulty + tutorial/a11y toolbar */}
+            {/* Game selector — pill style + tutorial/a11y toolbar */}
             <section className="space-y-2">
               {/* Row 1: game type buttons */}
               <div className="flex flex-wrap gap-2 items-center">
@@ -1461,34 +1422,6 @@ export default function AnimationsShowcasePage() {
                 </div>
               </div>
 
-              {/* Row 2: difficulty selector (only for claw machine) */}
-              {activeMiniGame === "claw" && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-500 font-medium">難度：</span>
-                  {DIFFICULTY_ORDER.map((d) => {
-                    const cfg = DIFFICULTIES[d];
-                    return (
-                      <button
-                        key={d}
-                        onClick={() => setDifficulty(d)}
-                        className={[
-                          "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                          difficulty === d
-                            ? "bg-purple-600 border-purple-500 text-white shadow shadow-purple-600/30"
-                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
-                        ].join(" ")}
-                        title={cfg.description}
-                      >
-                        {cfg.icon} {cfg.label}
-                      </button>
-                    );
-                  })}
-                  <span className="text-xs text-gray-600">
-                    {DIFFICULTIES[difficulty].description}
-                    {" · "}限時 {DIFFICULTIES[difficulty].timeLimit}s
-                  </span>
-                </div>
-              )}
             </section>
 
             {/* ── Compare mode: two side-by-side game columns ────────────────── */}
@@ -1719,15 +1652,6 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachine3D
-                              key={`3d-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
-                            />
-                          )}
                           {activeMiniGame === "gacha" && (
                             <GachaMachine3D
                               key={`3d-gacha-${miniGameKey}`}
@@ -1748,15 +1672,6 @@ export default function AnimationsShowcasePage() {
                               prizeName={miniPrizeName}
                               onResult={handleMiniGameResult}
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
-                            />
-                          )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachineCSS3D
-                              key={`css3d-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
                             />
                           )}
                           {activeMiniGame === "gacha" && (
@@ -1781,15 +1696,6 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachinePixel
-                              key={`pixel-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
-                            />
-                          )}
                           {activeMiniGame === "gacha" && (
                             <GachaMachinePixel
                               key={`pixel-gacha-${miniGameKey}`}
@@ -1810,15 +1716,6 @@ export default function AnimationsShowcasePage() {
                               prizeName={miniPrizeName}
                               onResult={handleMiniGameResult}
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
-                            />
-                          )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachineNeon
-                              key={`neon-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
                             />
                           )}
                           {activeMiniGame === "gacha" && (
@@ -1843,15 +1740,6 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachineSketch
-                              key={`sketch-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
-                            />
-                          )}
                           {activeMiniGame === "gacha" && (
                             <GachaMachineSketch
                               key={`sketch-gacha-${miniGameKey}`}
@@ -1872,15 +1760,6 @@ export default function AnimationsShowcasePage() {
                               prizeName={miniPrizeName}
                               onResult={handleMiniGameResult}
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
-                            />
-                          )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachineFlat
-                              key={`flat-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
                             />
                           )}
                           {activeMiniGame === "gacha" && (
@@ -1905,15 +1784,6 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachineAnime
-                              key={`anime-claw-${miniGameKey}`}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s as ClawGameState)}
-                            />
-                          )}
                           {activeMiniGame === "gacha" && (
                             <GachaMachineAnime
                               key={`anime-gacha-${miniGameKey}`}
@@ -1936,10 +1806,30 @@ export default function AnimationsShowcasePage() {
                               onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
                             />
                           )}
-                          {(activeMiniGame === "claw" || activeMiniGame === "gacha") && (
+                          {activeMiniGame === "gacha" && (
                             <div className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-950/40 to-red-950/40 border-2 border-red-800/40" style={{ width: 340, height: 480 }}>
                               <span className="text-4xl">🍁</span>
-                              <p className="text-red-300 font-bold text-sm">楓之谷 {activeMiniGame === "claw" ? "夾娃娃機" : "扭蛋機"}</p>
+                              <p className="text-red-300 font-bold text-sm">楓之谷 扭蛋機</p>
+                              <p className="text-gray-500 text-xs">開發中 — Coming Soon</p>
+                            </div>
+                          )}
+                        </>
+                      ) : miniGameStyle === "ro" ? (
+                        /* Ragnarok Online versions — slot available, others show WIP */
+                        <>
+                          {activeMiniGame === "slot" && (
+                            <SlotMachineRO
+                              key={`ro-slot-${miniGameKey}`}
+                              resultGrade={miniGrade}
+                              prizeName={miniPrizeName}
+                              onResult={handleMiniGameResult}
+                              onStateChange={(s) => handleMiniGameStateChange(s as SlotGameState)}
+                            />
+                          )}
+                          {activeMiniGame === "gacha" && (
+                            <div className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-orange-950/40 to-amber-950/40 border-2 border-orange-800/40" style={{ width: 340, height: 480 }}>
+                              <span className="text-4xl">⚔️</span>
+                              <p className="text-orange-300 font-bold text-sm">仙境傳說 扭蛋機</p>
                               <p className="text-gray-500 text-xs">開發中 — Coming Soon</p>
                             </div>
                           )}
@@ -1949,15 +1839,6 @@ export default function AnimationsShowcasePage() {
                         <>
                           {activeMiniGame === "slot" && (
                             <SlotMachine
-                              key={miniGameKey}
-                              resultGrade={miniGrade}
-                              prizeName={miniPrizeName}
-                              onResult={handleMiniGameResult}
-                              onStateChange={(s) => handleMiniGameStateChange(s)}
-                            />
-                          )}
-                          {activeMiniGame === "claw" && (
-                            <ClawMachine
                               key={miniGameKey}
                               resultGrade={miniGrade}
                               prizeName={miniPrizeName}
@@ -2009,7 +1890,7 @@ export default function AnimationsShowcasePage() {
                   <div className="mt-3 text-center">
                     <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
                       {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
-                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : miniGameStyle === "maple" ? " (楓之谷 Maple)" : " (2D Canvas)"}
+                      {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : miniGameStyle === "maple" ? " (楓之谷 Maple)" : miniGameStyle === "ro" ? " (仙境傳說 RO)" : " (2D Canvas)"}
                     </span>
                   </div>
                 </div>
@@ -2155,6 +2036,8 @@ export default function AnimationsShowcasePage() {
                     ? "動漫/漫畫風格一番賞店。粉藍漸層天空，暖色木地板，條紋雨棚，Chibi 角色（大頭比例），粗黑輪廓，表情隨機應變（^_^ >_< O_O），點擊地板移動，靠近櫃台抽獎。"
                     : roomStyle === "maple"
                     ? "楓之谷 2D 橫版場景。日落視差背景（天空/丘陵/室內三層），可愛 Chibi 角色（超大頭比例），彩色爆炸頭髮，大圓眼雙亮點，名牌標籤，楓葉飄落。點擊地板移動角色，點擊櫃台抽獎，獎品從天而降帶閃光拖尾。"
+                    : roomStyle === "ro"
+                    ? "仙境傳說（RO）2D 等距商店。暖色磚牆室內，木梁天花板，窗光光柱，火把，石板地，RO 職業角色（騎士/巫師/弓手/牧師/商人），頭頂泡泡表情，物品掉落光柱，傷害數字飄字，點擊商人 NPC 對話抽獎。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
                 {/* Nine-way style toggle — hidden in compare mode */}
@@ -2170,7 +2053,7 @@ export default function AnimationsShowcasePage() {
                             ? "bg-purple-600 text-white shadow"
                             : "text-gray-400 hover:text-white",
                         ].join(" ")}
-                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版側視" : undefined}
+                        title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版側視" : mode === "ro" ? "仙境傳說 — 2D 等距 RPG 風" : undefined}
                       >
                         {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : mode === "anime" ? "Anime" : mode === "maple" ? "Maple" : "RO"}
                         {mode === "anime" && (
@@ -2180,6 +2063,11 @@ export default function AnimationsShowcasePage() {
                         )}
                         {mode === "maple" && (
                           <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                            新
+                          </span>
+                        )}
+                        {mode === "ro" && (
+                          <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             新
                           </span>
                         )}
@@ -2255,7 +2143,7 @@ export default function AnimationsShowcasePage() {
                     </div>
                     <div className="flex items-center justify-center">
                       <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
-                        {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : leftStyle === "maple" ? "楓之谷 Maple 橫版店" : "2.5D 等距房間"}
+                        {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : leftStyle === "maple" ? "楓之谷 Maple 橫版店" : leftStyle === "ro" ? "仙境傳說 RO 商店" : "2.5D 等距房間"}
                       </span>
                     </div>
                   </div>
@@ -2286,7 +2174,7 @@ export default function AnimationsShowcasePage() {
                     </div>
                     <div className="flex items-center justify-center">
                       <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
-                        {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : rightStyle === "maple" ? "楓之谷 Maple 橫版店" : "2.5D 等距房間"}
+                        {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : rightStyle === "maple" ? "楓之谷 Maple 橫版店" : rightStyle === "ro" ? "仙境傳說 RO 商店" : "2.5D 等距房間"}
                       </span>
                     </div>
                   </div>
@@ -2396,6 +2284,12 @@ export default function AnimationsShowcasePage() {
                           npcCount={npcCount}
                           onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
                         />
+                      ) : roomStyle === "ro" ? (
+                        <PrizeRoomRO
+                          key={`ro-room-${npcCount}`}
+                          npcCount={npcCount}
+                          onDrawResult={(grade) => dispatchMiniLog({ type: "push", event: `ROOM_DRAW: ${grade}` })}
+                        />
                       ) : (
                         <IsometricRoom
                           npcCount={npcCount}
@@ -2422,6 +2316,8 @@ export default function AnimationsShowcasePage() {
                         ? "Anime/Manga — Chibi 角色，粗黑輪廓，一番賞店"
                         : roomStyle === "maple"
                         ? "楓之谷 Maple — 2D 橫版，視差背景，Chibi 超大頭，楓葉飄落"
+                        : roomStyle === "ro"
+                        ? "仙境傳說 RO — 2D 等距室內，RO 職業角色，光柱掉落，傷害數字"
                         : "2.5D 等距房間"}
                     </span>
                   </div>
@@ -2522,6 +2418,13 @@ export default function AnimationsShowcasePage() {
                       <DebugCell label="解析度" value="520×380" />
                       <DebugCell label="特效" value="視差背景 + 楓葉 + 道具掉落" />
                       <DebugCell label="模式" value="2D 橫版側視" highlight />
+                    </>
+                  ) : roomStyle === "ro" ? (
+                    <>
+                      <DebugCell label="渲染" value="仙境傳說 RO" highlight />
+                      <DebugCell label="解析度" value="520×400" />
+                      <DebugCell label="特效" value="光柱掉落 + Poring + 傷害數字 + 表情泡泡" />
+                      <DebugCell label="模式" value="2D 等距室內" highlight />
                     </>
                   ) : (
                     <>
@@ -2897,6 +2800,7 @@ function StyleSelector({
       <option value="flat">Flat</option>
       <option value="anime">Anime 🌸 推薦</option>
       <option value="maple">Maple 🍁 楓之谷</option>
+      <option value="ro">RO ⚔️ 仙境傳說</option>
     </select>
   );
 }
@@ -2914,7 +2818,7 @@ interface MiniGameRendererProps {
   resultGrade: string;
   prizeName: string;
   onResult: (g: string) => void;
-  onStateChange: (s: SlotGameState | ClawGameState | GachaGameState) => void;
+  onStateChange: (s: SlotGameState | GachaGameState) => void;
 }
 
 function MiniGameRenderer({
@@ -2931,42 +2835,54 @@ function MiniGameRenderer({
 
   if (style === "webgl") {
     if (game === "slot") return <SlotMachine3D key={`${prefix}-3d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachine3D key={`${prefix}-3d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachine3D key={`${prefix}-3d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "css3d") {
     if (game === "slot") return <SlotMachineCSS3D key={`${prefix}-css3d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachineCSS3D key={`${prefix}-css3d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachineCSS3D key={`${prefix}-css3d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "pixel") {
     if (game === "slot") return <SlotMachinePixel key={`${prefix}-pixel-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachinePixel key={`${prefix}-pixel-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachinePixel key={`${prefix}-pixel-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "neon") {
     if (game === "slot") return <SlotMachineNeon key={`${prefix}-neon-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachineNeon key={`${prefix}-neon-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachineNeon key={`${prefix}-neon-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "sketch") {
     if (game === "slot") return <SlotMachineSketch key={`${prefix}-sketch-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachineSketch key={`${prefix}-sketch-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachineSketch key={`${prefix}-sketch-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "flat") {
     if (game === "slot") return <SlotMachineFlat key={`${prefix}-flat-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachineFlat key={`${prefix}-flat-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachineFlat key={`${prefix}-flat-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
   }
   if (style === "anime") {
     if (game === "slot") return <SlotMachineAnime key={`${prefix}-anime-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
-    if (game === "claw") return <ClawMachineAnime key={`${prefix}-anime-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as ClawGameState)} />;
     return <GachaMachineAnime key={`${prefix}-anime-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as GachaGameState)} />;
+  }
+  if (style === "maple") {
+    if (game === "slot") return <SlotMachineMaple key={`${prefix}-maple-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    return (
+      <div key={`${prefix}-maple-wip-${gameKey}`} className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-950/40 to-red-950/40" style={{ width: 340, height: 480 }}>
+        <span className="text-4xl">🍁</span>
+        <p className="text-red-300 font-bold text-sm">楓之谷 扭蛋機 開發中</p>
+        <p className="text-gray-500 text-xs">Coming Soon</p>
+      </div>
+    );
+  }
+  if (style === "ro") {
+    if (game === "slot") return <SlotMachineRO key={`${prefix}-ro-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
+    return (
+      <div key={`${prefix}-ro-wip-${gameKey}`} className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-orange-950/40 to-amber-950/40" style={{ width: 340, height: 480 }}>
+        <span className="text-4xl">⚔️</span>
+        <p className="text-orange-300 font-bold text-sm">仙境傳說 扭蛋機 開發中</p>
+        <p className="text-gray-500 text-xs">Coming Soon</p>
+      </div>
+    );
   }
   // 2D Canvas fallback
   if (game === "slot") return <SlotMachine key={`${prefix}-2d-slot-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
-  if (game === "claw") return <ClawMachine key={`${prefix}-2d-claw-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
   if (game === "gacha") return <GachaMachine key={`${prefix}-2d-gacha-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={onStateChange} />;
   // Bonus games — always 2D, style has no effect
   if (game === "roulette") return <RouletteGame key={`${prefix}-roulette-${gameKey}`} resultGrade={resultGrade} prizeName={prizeName} onResult={onResult} onStateChange={(s) => onStateChange(s as SlotGameState)} />;
@@ -3050,6 +2966,24 @@ function RoomRenderer({ style, npcCount, side, resultGrade, onDrawResult }: Room
     return (
       <PrizeRoomAnime
         key={`${prefix}-anime-${npcCount}`}
+        npcCount={npcCount}
+        onDrawResult={onDrawResult}
+      />
+    );
+  }
+  if (style === "maple") {
+    return (
+      <PrizeRoomMaple
+        key={`${prefix}-maple-${npcCount}`}
+        npcCount={npcCount}
+        onDrawResult={onDrawResult}
+      />
+    );
+  }
+  if (style === "ro") {
+    return (
+      <PrizeRoomRO
+        key={`${prefix}-ro-${npcCount}`}
         npcCount={npcCount}
         onDrawResult={onDrawResult}
       />
