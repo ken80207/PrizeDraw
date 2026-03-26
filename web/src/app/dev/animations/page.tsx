@@ -812,7 +812,7 @@ export default function AnimationsShowcasePage() {
               onClick={() => setAchievementPanelOpen((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-900/40 border border-amber-700/40 text-amber-300 hover:bg-amber-800/50 transition-colors"
             >
-              🏆 成就 ({achievements.getStats().unlocked}/{achievements.getStats().total})
+              🏆 成就 {mounted ? `(${achievements.getStats().unlocked}/${achievements.getStats().total})` : ""}
             </button>
 
             {/* Seasonal theme selector */}
@@ -848,7 +848,7 @@ export default function AnimationsShowcasePage() {
 
             {/* Time-of-day ambient label */}
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-800/40 border border-gray-700/40 text-gray-400">
-              {timeAmbient.label}
+              {mounted ? timeAmbient.label : ""}
             </span>
           </div>
 
