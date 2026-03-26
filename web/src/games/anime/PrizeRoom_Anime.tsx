@@ -179,12 +179,12 @@ function makePetals(count: number): Petal[] {
   return Array.from({ length: count }, (_, i) => ({
     x: (i / count) * W,
     y: (Math.sin(i * 2.1) * 0.5 + 0.5) * H,
-    size: 4 + (i % 3) * 2,
-    speed: 0.22 + (i % 4) * 0.09,
-    drift: Math.sin(i * 0.9) * 0.5,
+    size: 6 + (i % 4) * 3,   // bigger: 6–15px range
+    speed: 0.18 + (i % 5) * 0.07,  // slightly slower = more graceful
+    drift: Math.sin(i * 0.9) * 0.7,
     phase: i * 0.77,
     rotation: i * 0.5,
-    rotSpeed: 0.006 + (i % 3) * 0.004,
+    rotSpeed: 0.005 + (i % 3) * 0.004,
   }));
 }
 
@@ -656,7 +656,7 @@ export function PrizeRoom_Anime({
   const lastTime = useRef(0);
 
   const npcsRef = useRef<NPC[]>(makeNPCs(npcCount));
-  const petals = useRef<Petal[]>(makePetals(12));
+  const petals = useRef<Petal[]>(makePetals(20));
   const sparkles = useRef<Sparkle[]>([]);
 
   // Player

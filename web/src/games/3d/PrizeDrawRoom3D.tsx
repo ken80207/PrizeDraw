@@ -42,7 +42,7 @@ const GRADES = ["A賞", "B賞", "C賞", "D賞"] as const;
 // Room structure components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Floor({ onClick }: { onClick?: (point: THREE.Vector3) => void }) {
+function Floor({ onClick, onHover }: { onClick?: (point: THREE.Vector3) => void; onHover?: (point: THREE.Vector3 | null) => void }) {
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
@@ -52,9 +52,38 @@ function Floor({ onClick }: { onClick?: (point: THREE.Vector3) => void }) {
         e.stopPropagation();
         onClick?.(e.point);
       }}
+      onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        onHover?.(e.point);
+      }}
+      onPointerLeave={() => onHover?.(null)}
     >
       <planeGeometry args={[10, 10]} />
       <meshStandardMaterial color="#7c5c2a" roughness={0.8} metalness={0.05} />
+    </mesh>
+  );
+}
+
+/** Animated ring that shows where the player will move to on click/hover */
+function MoveTargetRing({ position, type }: { position: [number, number, number]; type: "hover" | "target" }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame((_, delta) => {
+    if (!ringRef.current) return;
+    ringRef.current.rotation.z += delta * (type === "target" ? 1.5 : 0.8);
+    const s = 1 + Math.sin(performance.now() / 400) * 0.08;
+    ringRef.current.scale.set(s, s, 1);
+  });
+  return (
+    <mesh ref={ringRef} position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={type === "target" ? [0.28, 0.38, 32] : [0.32, 0.38, 32]} />
+      <meshStandardMaterial
+        color={type === "target" ? "#fbbf24" : "#ffffff"}
+        emissive={type === "target" ? "#fbbf24" : "#aaaaff"}
+        emissiveIntensity={type === "target" ? 1.2 : 0.6}
+        transparent
+        opacity={type === "target" ? 0.85 : 0.35}
+        depthWrite={false}
+      />
     </mesh>
   );
 }
@@ -509,6 +538,7 @@ function RoomScene({
   }) => void;
 }) {
   const [playerTarget, setPlayerTarget] = useState<{ x: number; z: number }>({ x: 0, z: 2.5 });
+  const [hoverPoint, setHoverPoint] = useState<{ x: number; z: number } | null>(null);
   const [playerBubble, setPlayerBubble] = useState<string | null>(null);
   const [playerState, setPlayerState] = useState<"IDLE" | "WALKING" | "CELEBRATING">("IDLE");
 
@@ -624,6 +654,13 @@ function RoomScene({
     setTimeout(() => setPlayerState("IDLE"), 2000);
   }, []);
 
+  const handleFloorHover = useCallback((point: THREE.Vector3 | null) => {
+    if (!point) { setHoverPoint(null); return; }
+    const clampedX = Math.max(-4.5, Math.min(4.5, point.x));
+    const clampedZ = Math.max(-4.5, Math.min(4.5, point.z));
+    setHoverPoint({ x: clampedX, z: clampedZ });
+  }, []);
+
   return (
     <>
       {/* Lighting */}
@@ -642,7 +679,13 @@ function RoomScene({
       
 
       {/* Room structure */}
-      <Floor onClick={handleFloorClick} />
+      <Floor onClick={handleFloorClick} onHover={handleFloorHover} />
+      {/* Move-to target ring (persists after click) */}
+      <MoveTargetRing position={[playerTarget.x, 0.005, playerTarget.z]} type="target" />
+      {/* Hover preview ring */}
+      {hoverPoint && (
+        <MoveTargetRing position={[hoverPoint.x, 0.004, hoverPoint.z]} type="hover" />
+      )}
       <FloorTiles />
       <BackWall />
       <SideWallLeft />

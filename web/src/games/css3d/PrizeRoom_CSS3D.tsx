@@ -254,11 +254,14 @@ function CharacterBadge({
     <div
       className="absolute flex flex-col items-center gap-0.5 cursor-pointer select-none"
       style={{
-        transform: `translate3d(${npc.x}px, ${bobOffset}px, ${npc.z}px)`,
-        transition: "transform 0.8s ease",
+        /* Position-only transform transitions smoothly when x/z changes */
+        transform: `translate3d(${npc.x}px, 0px, ${npc.z}px)`,
+        transition: "transform 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
       }}
       onClick={onClick}
     >
+    {/* Inner wrapper carries only the bob offset — no transition so it's instant each frame */}
+    <div style={{ transform: `translateY(${bobOffset}px)` }}>
       {/* Speech bubble */}
       {npc.bubble && (
         <div
@@ -319,6 +322,7 @@ function CharacterBadge({
           />
         )}
       </div>
+    </div>
     </div>
   );
 }
@@ -533,6 +537,11 @@ export function PrizeRoomCSS3D({ npcCount = 3, onStateChange }: PrizeRoomCSS3DPr
           0% { transform: translateY(0) rotate(0deg); opacity: 1; }
           100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
         }
+        @keyframes css3d-btn-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.5), 0 0 10px rgba(251,191,36,0.3); }
+          50% { box-shadow: 0 0 0 6px rgba(251,191,36,0), 0 0 22px rgba(251,191,36,0.6); }
+        }
+        .css3d-pulse-btn { animation: css3d-btn-pulse 1.8s ease-in-out infinite; }
       `}</style>
 
       {/* Scene container with perspective */}
@@ -698,6 +707,7 @@ export function PrizeRoomCSS3D({ npcCount = 3, onStateChange }: PrizeRoomCSS3DPr
             colorTop="#d97706"
             colorSide="#92400e"
             colorBack="#78350f"
+            className="css3d-pulse-btn"
             style={{
               position: "absolute",
               left: 220,
@@ -857,6 +867,18 @@ export function PrizeRoomCSS3D({ npcCount = 3, onStateChange }: PrizeRoomCSS3DPr
       <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-end justify-between pointer-events-none">
         {/* Status badge */}
         <div className="flex flex-col gap-1">
+          {/* Spectator count */}
+          <div
+            className="px-2 py-1 rounded-lg text-[10px] font-bold"
+            style={{
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#e5e7eb",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            👀 {npcs.length + 1} 人觀看中
+          </div>
           {activeDrawer && (
             <div
               className="px-2 py-1 rounded-lg text-[10px] font-bold"

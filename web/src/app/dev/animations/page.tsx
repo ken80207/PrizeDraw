@@ -461,19 +461,25 @@ export default function AnimationsShowcasePage() {
             </span>
           </div>
 
-          {/* Phase tabs — pill style */}
+          {/* Phase tabs — pill style with numeric badge */}
           <div className="flex gap-2 flex-wrap">
-            {PHASE_TABS.map((tab) => (
+            {PHASE_TABS.map((tab, idx) => (
               <button
                 key={tab.id}
                 onClick={() => setActivePhase(tab.id)}
                 className={[
-                  "px-4 py-1.5 rounded-full text-sm font-bold transition-all",
+                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition-all",
                   activePhase === tab.id
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                    : "text-purple-300 hover:text-white hover:bg-white/10",
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400/40"
+                    : "text-purple-300 hover:text-white hover:bg-white/10 border border-purple-800/40",
                 ].join(" ")}
               >
+                <span className={[
+                  "w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center",
+                  activePhase === tab.id ? "bg-white/20 text-white" : "bg-purple-900/60 text-purple-400",
+                ].join(" ")}>
+                  {idx + 1}
+                </span>
                 {tab.icon} {tab.label}
               </button>
             ))}
@@ -813,20 +819,26 @@ export default function AnimationsShowcasePage() {
                 <p className="text-sm text-gray-400">
                   <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span> 或 <span className="text-pink-300 font-semibold">Anime/Manga</span> 八種渲染模式可切換比較。
                 </p>
-                {/* Eight-way style toggle */}
-                <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
+                {/* Eight-way style toggle — wraps on narrow screens */}
+                <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
                   {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => { setMiniGameStyle(mode); handleMiniGameReset(); }}
                       className={[
-                        "px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                        "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
                         miniGameStyle === mode
                           ? "bg-purple-600 text-white shadow"
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
+                      title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
                     >
                       {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                      {mode === "anime" && (
+                        <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          推薦
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1260,20 +1272,26 @@ export default function AnimationsShowcasePage() {
                     ? "動漫/漫畫風格一番賞店。粉藍漸層天空，暖色木地板，條紋雨棚，Chibi 角色（大頭比例），粗黑輪廓，表情隨機應變（^_^ >_< O_O），點擊地板移動，靠近櫃台抽獎。"
                     : "等距視角（isometric）的虛擬商店。點擊地板移動角色，NPC 自動走動並定期抽獎。純 Canvas API + A* 尋路。"}
                 </p>
-                {/* Eight-way style toggle */}
-                <div className="flex items-center gap-1 shrink-0 rounded-full p-0.5 bg-gray-800 border border-gray-700">
+                {/* Eight-way style toggle — wraps on narrow screens */}
+                <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
                   {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setRoomStyle(mode)}
                       className={[
-                        "px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
+                        "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
                         roomStyle === mode
                           ? "bg-purple-600 text-white shadow"
                           : "text-gray-400 hover:text-white",
                       ].join(" ")}
+                      title={mode === "anime" ? "推薦 — 最適合一番賞主題" : undefined}
                     >
                       {mode === "2d" ? "2D" : mode === "css3d" ? "CSS 3D" : mode === "webgl" ? "WebGL" : mode === "pixel" ? "Pixel" : mode === "neon" ? "Neon" : mode === "sketch" ? "Sketch" : mode === "flat" ? "Flat" : "Anime"}
+                      {mode === "anime" && (
+                        <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          推薦
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

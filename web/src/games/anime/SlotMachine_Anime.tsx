@@ -107,12 +107,12 @@ function makePetals(count: number): Petal[] {
     petals.push({
       x: (i / count) * W * 1.4 - W * 0.2,
       y: Math.sin(i * 2.3) * H * 0.6 + Math.cos(i * 1.1) * H * 0.3 + H * 0.1,
-      size: 5 + (i % 4) * 2,
-      speed: 0.3 + (i % 5) * 0.12,
-      drift: Math.sin(i * 0.7) * 0.6,
+      size: 7 + (i % 4) * 3,   // bigger: 7–16px
+      speed: 0.22 + (i % 5) * 0.09,  // a little slower = more graceful
+      drift: Math.sin(i * 0.7) * 0.8,
       phase: i * 0.83,
       rotation: i * 0.45,
-      rotSpeed: 0.008 + (i % 3) * 0.004,
+      rotSpeed: 0.006 + (i % 3) * 0.004,
     });
   }
   return petals;
@@ -483,7 +483,7 @@ export function SlotMachine_Anime({
   const shakeY = useRef(0);          // screen shake offset Y
   const shakeTimer = useRef(0);      // remaining shake time
   const sparkles = useRef<Sparkle[]>([]);
-  const petals = useRef<Petal[]>(makePetals(14));
+  const petals = useRef<Petal[]>(makePetals(20));
 
   const changeState = useCallback((s: AnimeSlotGameState) => {
     stateRef.current = s;
@@ -891,10 +891,15 @@ export function SlotMachine_Anime({
 
       // Win text above panel
       if (isJackpot) {
-        mangaText(ctx, "★ 大当たり ★", 0, -68, 18, AN.sparkleA, AN.bodyStroke, 4);
-        mangaText(ctx, "JACKPOT!!", 0, -82, 11, AN.white, "#aa4400", 2.5);
+        // Animated scale bounce on jackpot text
+        const jackpotPulse = 1 + Math.abs(Math.sin(winPhase.current * Math.PI * 2)) * 0.18;
+        ctx.save();
+        ctx.scale(jackpotPulse, jackpotPulse);
+        mangaText(ctx, "★ 大当たり ★", 0, -66, 24, AN.sparkleA, AN.bodyStroke, 6);
+        ctx.restore();
+        mangaText(ctx, "JACKPOT!!", 0, -88, 13, AN.white, "#aa4400", 3);
       } else {
-        mangaText(ctx, "当たり!", 0, -64, 15, gradeHex, AN.bodyStroke, 3.5);
+        mangaText(ctx, "当たり!", 0, -62, 19, gradeHex, AN.bodyStroke, 4.5);
       }
 
       ctx.restore();
