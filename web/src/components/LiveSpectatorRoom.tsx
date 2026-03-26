@@ -242,6 +242,7 @@ interface LiveDrawStageProps {
   campaignTitle: string;
   viewerCount: number;
   onSendReaction: (emoji: string) => void;
+  isMyTurn?: boolean;
 }
 
 function LiveDrawStage({
@@ -249,6 +250,7 @@ function LiveDrawStage({
   campaignTitle,
   viewerCount,
   onSendReaction,
+  isMyTurn,
 }: LiveDrawStageProps) {
   const { currentEmoji, pushReaction } = useReactionQueue();
 
@@ -733,6 +735,7 @@ export function LiveSpectatorRoom({
             viewerCount={viewerCount}
             currentDrawer={currentDrawer}
             onSendReaction={onSendReaction}
+            isMyTurn={isMyTurn}
           />
 
           {/* Tablet: Queue & Wins below stage */}
