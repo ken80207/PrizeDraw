@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
 import com.prizedraw.contracts.enums.PrizeState
+import com.prizedraw.i18n.S
 
 /**
  * Prize detail screen showing image gallery, grade chip, source info, and action buttons.
@@ -52,7 +53,7 @@ public fun PrizeDetailScreen(
                     .height(IMAGE_HEIGHT.dp),
         ) {
             Text(
-                text = "Prize Image\n${prize.photoUrl ?: "No image"}",
+                text = "${S("prizes.prizeImage")}\n${prize.photoUrl ?: S("prizes.noImage")}",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -70,7 +71,7 @@ public fun PrizeDetailScreen(
 
         Text(text = prize.name, style = MaterialTheme.typography.titleLarge)
         Text(
-            text = "Acquired via: ${prize.acquisitionMethod.replace("_", " ")}",
+            text = "${S("prizes.acquiredVia")}: ${prize.acquisitionMethod.replace("_", " ")}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -78,13 +79,13 @@ public fun PrizeDetailScreen(
         if (prize.state == PrizeState.HOLDING) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(modifier = Modifier.fillMaxWidth(), onClick = { onListForSale(prize) }) {
-                    Text("List for Sale")
+                    Text(S("prizes.listForSale"))
                 }
                 OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { onBuyback(prize) }) {
-                    Text("Official Buyback")
+                    Text(S("prizes.officialBuyback"))
                 }
                 OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { onRequestShipping(prize) }) {
-                    Text("Request Shipping")
+                    Text(S("shipping.requestShipping"))
                 }
             }
         }

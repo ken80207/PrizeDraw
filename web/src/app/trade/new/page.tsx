@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 
 interface PrizeInstanceDto {
@@ -42,6 +43,9 @@ export default function CreateListingPage() {
 }
 
 function CreateListingContent() {
+  const tt = useTranslations("trade");
+  const tc = useTranslations("common");
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedPrizeId = searchParams.get("prizeId") ?? "";
@@ -78,98 +82,142 @@ function CreateListingContent() {
       const listing = await apiClient.post<TradeListingDto>("/api/v1/trade/listings", body);
       router.push(`/trade/${listing.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create listing");
+      setError(err instanceof Error ? err.message : tt("loadFailed"));
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <button type="button" onClick={() => router.back()} className="mb-4 text-sm text-zinc-500 hover:text-zinc-800">
-        ← Back
-      </button>
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">List a Prize for Sale</h1>
+    <div className="min-h-screen bg-surface-dim">
+      <div className="mx-auto max-w-lg px-4 py-8">
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-sm font-label text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          {tc("back")}
+        </button>
 
-      {error && <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {!preselectedPrizeId && prizes.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="prize" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Select Prize
-            </label>
-            <select
-              id="prize"
-              value={selectedPrizeId}
-              onChange={(e) => setSelectedPrizeId(e.target.value)}
-              required
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-            >
-              <option value="">-- Select a prize --</option>
-              {prizes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  [{p.grade}] {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Prize photo preview */}
-        {selectedPrize?.photoUrl && (
-          <div className="flex items-center gap-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 p-4 border border-zinc-200 dark:border-zinc-700">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selectedPrize.photoUrl}
-              alt={selectedPrize.name}
-              className="h-20 w-20 rounded-lg object-cover flex-shrink-0 border border-zinc-200 dark:border-zinc-700"
-            />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-0.5">
-                {selectedPrize.grade}
-              </p>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {selectedPrize.name}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="price" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Listing Price (draw points)
-          </label>
-          <input
-            id="price"
-            data-testid="listing-price"
-            type="number"
-            min={1}
-            value={priceInput}
-            onChange={(e) => setPriceInput(e.target.value)}
-            required
-            placeholder="e.g. 500"
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-          />
+        <div className="flex items-center gap-3 mb-8">
+          <span className="material-symbols-outlined text-primary text-3xl">sell</span>
+          <h1 className="font-headline text-2xl font-extrabold text-on-surface">
+            {tt("listPrize")}
+          </h1>
         </div>
 
-        {listPrice > 0 && (
-          <div className="rounded-lg bg-zinc-50 p-3 text-sm dark:bg-zinc-800">
-            <p className="text-zinc-500">Platform fee ({DEFAULT_FEE_RATE_BPS / 100}%): <strong>{feeAmount.toLocaleString()} pts</strong></p>
-            <p className="mt-1 font-semibold text-zinc-900 dark:text-zinc-50">
-              Your proceeds: {proceeds.toLocaleString()} pts
-            </p>
+        {/* Error */}
+        {error && (
+          <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-error/10">
+            <span className="material-symbols-outlined text-error text-lg flex-shrink-0">
+              error_outline
+            </span>
+            <p className="font-body text-sm text-error">{error}</p>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isLoading || !selectedPrizeId || listPrice <= 0}
-          className="flex h-11 items-center justify-center rounded-lg bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {isLoading ? "Creating…" : "Confirm Listing"}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* Prize selector */}
+          {!preselectedPrizeId && prizes.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="prize"
+                className="font-label text-sm font-medium text-on-surface-variant uppercase tracking-wider"
+              >
+                {tt("selectPrize")}
+              </label>
+              <select
+                id="prize"
+                value={selectedPrizeId}
+                onChange={(e) => setSelectedPrizeId(e.target.value)}
+                required
+                className="rounded-xl bg-surface-container-lowest px-4 py-3 text-sm text-on-surface font-body focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+              >
+                <option value="">{tt("selectPrizePlaceholder")}</option>
+                {prizes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    [{p.grade}] {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Prize photo preview */}
+          {selectedPrize?.photoUrl && (
+            <div className="flex items-center gap-4 rounded-xl bg-surface-container p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedPrize.photoUrl}
+                alt={selectedPrize.name}
+                className="h-20 w-20 rounded-lg object-cover flex-shrink-0"
+              />
+              <div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary text-xs font-bold font-label tracking-wide mb-1.5">
+                  {selectedPrize.grade}
+                </span>
+                <p className="font-headline font-semibold text-on-surface text-sm">
+                  {selectedPrize.name}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Price input */}
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="price"
+              className="font-label text-sm font-medium text-on-surface-variant uppercase tracking-wider"
+            >
+              {tt("listingPrice")}
+            </label>
+            <input
+              id="price"
+              data-testid="listing-price"
+              type="number"
+              min={1}
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              required
+              placeholder="e.g. 500"
+              className="rounded-xl bg-surface-container-lowest px-4 py-3 text-sm text-on-surface font-body placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          {/* Fee preview */}
+          {listPrice > 0 && (
+            <div className="rounded-xl bg-surface-container p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-body text-sm text-on-surface-variant">
+                  {tt("platformFee", { rate: DEFAULT_FEE_RATE_BPS / 100 })}
+                </span>
+                <span className="font-label text-sm text-on-surface-variant">
+                  {feeAmount.toLocaleString()} {tc("pts")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-on-surface/10">
+                <span className="font-label text-sm font-bold text-on-surface">
+                  {tt("yourProceeds")}
+                </span>
+                <span className="font-headline text-lg font-black text-primary">
+                  {proceeds.toLocaleString()} {tc("pts")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading || !selectedPrizeId || listPrice <= 0}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            <span className="material-symbols-outlined text-lg">storefront</span>
+            {isLoading ? tt("creating") : tt("confirmListing")}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

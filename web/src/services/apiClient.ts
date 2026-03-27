@@ -20,7 +20,7 @@ class ApiError extends Error {
     public readonly status: number,
     message: string,
   ) {
-    super(`${status}: ${message}`);
+    super(message);
     this.name = "ApiError";
   }
 }
@@ -45,12 +45,18 @@ async function request<T>(
     ...options.headers,
   };
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal: options.signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: options.signal,
+    });
+  } catch (networkError) {
+    // Network error (server unreachable, CORS, DNS failure, etc.)
+    throw new ApiError(0, "無法連線至伺服器，請確認網路連線後再試");
+  }
 
   // Auto-refresh on 401 (only retry once)
   if (res.status === 401 && !isRetry) {
@@ -70,6 +76,9 @@ async function request<T>(
       errorMessage = errorBody?.error ?? errorBody?.message ?? errorMessage;
     } catch {
       // Ignore JSON parse errors for error bodies
+    }
+    if (res.status === 502 || res.status === 503) {
+      errorMessage = "伺服器暫時無法提供服務，請稍後再試";
     }
     throw new ApiError(res.status, errorMessage);
   }

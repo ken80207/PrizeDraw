@@ -2,6 +2,9 @@
 
 package com.prizedraw.infrastructure.persistence.tables
 
+import com.prizedraw.domain.entities.CouponApplicableTo
+import com.prizedraw.domain.entities.CouponDiscountType
+import com.prizedraw.domain.entities.PlayerCouponStatus
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
@@ -9,14 +12,18 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
  * Exposed table definitions for the coupon and discount code subsystem.
  *
  * Covers `coupons`, `discount_codes`, and `player_coupons`.
+ * Enum columns ([CouponsTable.discountType], [CouponsTable.applicableTo],
+ * [PlayerCouponsTable.status]) map to their respective PG enum types via [pgEnum],
+ * using the domain-layer enum types that the repository layer depends on.
  */
 public object CouponsTable : Table("coupons") {
     public val id = uuid("id").autoGenerate()
     public val name = varchar("name", 128)
     public val description = text("description").nullable()
-    public val discountType = varchar("discount_type", 32)
+    public val discountType = pgEnum<CouponDiscountType>("discount_type", "coupon_discount_type")
     public val discountValue = integer("discount_value")
-    public val applicableTo = varchar("applicable_to", 32).default("ALL")
+    public val applicableTo = pgEnum<CouponApplicableTo>("applicable_to", "coupon_applicable_to")
+        .default(CouponApplicableTo.ALL)
     public val maxUsesPerPlayer = integer("max_uses_per_player").default(1)
     public val totalIssued = integer("total_issued").default(0)
     public val totalUsed = integer("total_used").default(0)
@@ -52,7 +59,8 @@ public object PlayerCouponsTable : Table("player_coupons") {
     public val couponId = uuid("coupon_id")
     public val discountCodeId = uuid("discount_code_id").nullable()
     public val useCount = integer("use_count").default(0)
-    public val status = varchar("status", 32).default("ACTIVE")
+    public val status = pgEnum<PlayerCouponStatus>("status", "player_coupon_status")
+        .default(PlayerCouponStatus.ACTIVE)
     public val issuedAt = timestampWithTimeZone("issued_at")
     public val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
     public val createdAt = timestampWithTimeZone("created_at")

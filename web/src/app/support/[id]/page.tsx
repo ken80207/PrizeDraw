@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { toast } from "@/components/Toast";
 
@@ -26,33 +27,35 @@ interface SupportTicketDetailDto {
   updatedAt: string;
 }
 
-const CATEGORY_ZH: Record<string, string> = {
-  TRADE_DISPUTE: "交易爭議",
-  DRAW_ISSUE: "抽獎問題",
-  ACCOUNT_ISSUE: "帳戶問題",
-  SHIPPING_ISSUE: "寄送問題",
-  PAYMENT_ISSUE: "付款問題",
-  OTHER: "其他",
-};
-
-const STATUS_ZH: Record<string, string> = {
-  OPEN: "待回應",
-  IN_PROGRESS: "處理中",
-  RESOLVED: "已解決",
-  CLOSED: "已關閉",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400",
-  RESOLVED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-  CLOSED: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+const STATUS_STYLES: Record<string, string> = {
+  OPEN: "bg-[#8fd5ff]/10 text-[#8fd5ff]",
+  IN_PROGRESS: "bg-[#ffc174]/10 text-[#ffc174]",
+  RESOLVED: "bg-emerald-400/10 text-emerald-400",
+  CLOSED: "bg-[#534434]/30 text-[#d8c3ad]/60",
 };
 
 export default function TicketDetailPage() {
+  const t = useTranslations("support");
+  const tCommon = useTranslations("common");
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    TRADE_DISPUTE: t("categoryTrade"),
+    DRAW_ISSUE: t("categoryDraw"),
+    ACCOUNT_ISSUE: t("categoryAccount"),
+    SHIPPING_ISSUE: t("categoryShipping"),
+    PAYMENT_ISSUE: t("categoryPayment"),
+    OTHER: t("categoryOther"),
+  };
+
+  const STATUS_LABELS: Record<string, string> = {
+    OPEN: t("open"),
+    IN_PROGRESS: t("inProgress"),
+    RESOLVED: t("resolved"),
+    CLOSED: t("closed"),
+  };
 
   const [ticket, setTicket] = useState<SupportTicketDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,13 +70,13 @@ export default function TicketDetailPage() {
     if (!id) return;
     apiClient
       .get<SupportTicketDetailDto>(`/api/v1/support/tickets/${id}`)
-      .then((t) => {
-        setTicket(t);
-        setRatingScore(t.satisfactionScore);
+      .then((data) => {
+        setTicket(data);
+        setRatingScore(data.satisfactionScore);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "載入工單失敗"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("loadError")))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -91,7 +94,7 @@ export default function TicketDetailPage() {
       setTicket(updated);
       setReplyBody("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "訊息發送失敗");
+      toast.error(err instanceof Error ? err.message : t("replyError"));
     } finally {
       setSending(false);
     }
@@ -108,84 +111,93 @@ export default function TicketDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-indigo-600" />
+      <div className="min-h-screen bg-[#111125] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#ffc174]/20 border-t-[#ffc174]" />
       </div>
     );
   }
 
   if (error || !ticket) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4">
-        <span className="text-5xl">😞</span>
-        <p className="text-gray-600 dark:text-gray-400">{error ?? "找不到此工單"}</p>
+      <div className="min-h-screen bg-[#111125] flex flex-col items-center justify-center gap-4 px-4">
+        <span className="material-symbols-outlined text-5xl text-[#d8c3ad]/40">sentiment_dissatisfied</span>
+        <p className="text-[#d8c3ad]">{error ?? t("ticketNotFound")}</p>
         <button
           onClick={() => router.push("/support")}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+          className="px-5 py-2.5 rounded-xl amber-gradient text-[#472a00] font-bold text-sm"
         >
-          返回客服中心
+          {t("backToSupport")}
         </button>
       </div>
     );
   }
 
+  const statusStyle = STATUS_STYLES[ticket.status] ?? STATUS_STYLES.CLOSED;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 flex flex-col" style={{ minHeight: "calc(100vh - 4rem)" }}>
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-4">
+    <div className="min-h-screen bg-[#111125]">
+      <div
+        className="max-w-3xl mx-auto px-4 sm:px-6 py-8 flex flex-col"
+        style={{ minHeight: "calc(100vh - 4rem)" }}
+      >
+        {/* Header card */}
+        <div className="bg-[#1e1e32] rounded-2xl p-5 mb-4">
           <Link
             href="/support"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-3 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-[#d8c3ad]/60 hover:text-[#ffc174] mb-4 transition-colors"
           >
-            ← 返回客服中心
+            <span className="material-symbols-outlined text-sm" style={{ fontSize: "18px" }}>
+              arrow_back
+            </span>
+            {t("title")}
           </Link>
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1.5">
                 {ticket.ticketNumber && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                    #{ticket.ticketNumber}
+                  <span className="text-xs text-[#d8c3ad]/50 font-mono">
+                    TK-{ticket.ticketNumber}
                   </span>
                 )}
-                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                  {CATEGORY_ZH[ticket.category] ?? ticket.category}
+                <span className="text-xs text-[#c0c1ff] bg-[#c0c1ff]/10 px-2 py-0.5 rounded-full">
+                  {CATEGORY_LABELS[ticket.category] ?? ticket.category}
                 </span>
               </div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">{ticket.subject}</h1>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                建立於 {new Date(ticket.createdAt).toLocaleString("zh-TW")}
+              <h1 className="text-lg font-bold text-[#e2e0fc]">{ticket.subject}</h1>
+              <p className="text-xs text-[#d8c3ad]/50 mt-1">
+                {t("createdAt", { date: new Date(ticket.createdAt).toLocaleString("zh-TW") })}
               </p>
             </div>
-            <span
-              className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[ticket.status] ?? STATUS_COLORS.CLOSED}`}
-            >
-              {STATUS_ZH[ticket.status] ?? ticket.status}
+            <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusStyle}`}>
+              {STATUS_LABELS[ticket.status] ?? ticket.status}
             </span>
           </div>
         </div>
 
         {/* Message thread */}
-        <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-4 overflow-y-auto min-h-64 space-y-4">
+        <div className="flex-1 bg-[#1e1e32] rounded-2xl p-4 mb-4 overflow-y-auto min-h-64 space-y-4">
           {ticket.messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-12 text-gray-400 dark:text-gray-500">
-              <span className="text-3xl mb-2">💬</span>
-              <p className="text-sm">等待客服人員回覆中...</p>
+            <div className="flex flex-col items-center justify-center h-full py-12 text-[#d8c3ad]/40">
+              <span className="material-symbols-outlined text-4xl mb-3">chat_bubble_outline</span>
+              <p className="text-sm">{t("waitingReply")}</p>
             </div>
           ) : (
-            ticket.messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+            ticket.messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} agentName={t("agentName")} />
+            ))
           )}
           <div ref={bottomRef} />
         </div>
 
         {/* Satisfaction rating (closed tickets) */}
         {isClosed && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-4">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <div className="bg-[#1e1e32] rounded-2xl p-5 mb-4">
+            <p className="text-sm font-semibold text-[#e2e0fc] mb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#ffc174] text-lg">star</span>
               {ratingScore !== null
-                ? `感謝你的評分！(${ratingScore}/5 顆星)`
-                : "對此次服務的滿意度如何？"}
+                ? t("ratingThanks", { score: ratingScore })
+                : t("ratingPrompt")}
             </p>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((score) => (
@@ -197,9 +209,22 @@ export default function TicketDetailPage() {
                   onMouseEnter={() => ratingScore === null && setHoveredStar(score)}
                   onMouseLeave={() => setHoveredStar(null)}
                   className="text-3xl transition-transform hover:scale-125 disabled:cursor-default"
-                  aria-label={`評分 ${score} 顆星`}
+                  aria-label={t("starLabel", { score })}
                 >
-                  {score <= (hoveredStar ?? ratingScore ?? 0) ? "⭐" : "☆"}
+                  <span
+                    className={`material-symbols-outlined text-3xl transition-colors ${
+                      score <= (hoveredStar ?? ratingScore ?? 0)
+                        ? "text-[#ffc174]"
+                        : "text-[#534434]"
+                    }`}
+                    style={{
+                      fontVariationSettings: score <= (hoveredStar ?? ratingScore ?? 0)
+                        ? "'FILL' 1"
+                        : "'FILL' 0",
+                    }}
+                  >
+                    star
+                  </span>
                 </button>
               ))}
             </div>
@@ -210,22 +235,31 @@ export default function TicketDetailPage() {
         {!isClosed && (
           <form
             onSubmit={handleReply}
-            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
+            className="bg-[#1e1e32] rounded-2xl p-4"
           >
             <div className="flex gap-3">
               <textarea
                 value={replyBody}
                 onChange={(e) => setReplyBody(e.target.value)}
-                placeholder="輸入你的回覆..."
+                placeholder={t("replyPlaceholder")}
                 rows={3}
-                className="flex-1 resize-none px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 resize-none px-4 py-3 rounded-xl bg-[#0c0c1f] text-sm text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all"
               />
               <button
                 type="submit"
                 disabled={!replyBody.trim() || sending}
-                className="self-end px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="self-end flex items-center gap-2 px-5 py-3 rounded-xl amber-gradient text-[#472a00] font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(245,158,11,0.25)]"
               >
-                {sending ? "發送中..." : "發送"}
+                {sending ? (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#472a00] border-t-transparent" />
+                ) : (
+                  <>
+                    <span>{t("send")}</span>
+                    <span className="material-symbols-outlined text-sm" style={{ fontSize: "18px" }}>
+                      send
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -235,7 +269,7 @@ export default function TicketDetailPage() {
   );
 }
 
-function MessageBubble({ message }: { message: TicketMessageDto }) {
+function MessageBubble({ message, agentName }: { message: TicketMessageDto; agentName: string }) {
   const isPlayer = message.senderType === "PLAYER";
   const time = new Date(message.createdAt).toLocaleTimeString("zh-TW", {
     hour: "2-digit",
@@ -246,18 +280,23 @@ function MessageBubble({ message }: { message: TicketMessageDto }) {
     <div className={`flex ${isPlayer ? "justify-start" : "justify-end"}`}>
       <div className={`max-w-[80%] ${isPlayer ? "items-start" : "items-end"} flex flex-col gap-1`}>
         {!isPlayer && (
-          <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">客服人員</span>
+          <span className="text-xs text-[#c0c1ff]/60 mr-1 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs" style={{ fontSize: "14px" }}>
+              support_agent
+            </span>
+            {agentName}
+          </span>
         )}
         <div
           className={`rounded-2xl px-4 py-3 text-sm ${
             isPlayer
-              ? "rounded-tl-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              : "rounded-tr-sm bg-indigo-600 text-white"
+              ? "rounded-tl-sm bg-[#28283d] text-[#e2e0fc]"
+              : "rounded-tr-sm bg-gradient-to-br from-[#ffc174] to-[#f59e0b] text-[#472a00]"
           }`}
         >
           <p className="whitespace-pre-wrap">{message.body}</p>
         </div>
-        <span className={`text-xs ${isPlayer ? "text-gray-400" : "text-gray-400"}`}>{time}</span>
+        <span className="text-xs text-[#d8c3ad]/40">{time}</span>
       </div>
     </div>
   );

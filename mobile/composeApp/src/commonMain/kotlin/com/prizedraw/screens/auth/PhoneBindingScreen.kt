@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.auth.AuthIntent
 import com.prizedraw.viewmodels.auth.AuthState
 import com.prizedraw.viewmodels.auth.AuthViewModel
@@ -77,7 +78,7 @@ public fun PhoneBindingScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Verify Your Phone",
+            text = S("auth.verifyPhone"),
             style = MaterialTheme.typography.headlineMedium,
         )
 
@@ -87,7 +88,7 @@ public fun PhoneBindingScreen(
             modifier = Modifier.fillMaxWidth(),
             value = phone,
             onValueChange = { phone = it },
-            label = { Text("Phone Number (e.g. +886912345678)") },
+            label = { Text(S("auth.phoneLabel")) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
         )
@@ -99,7 +100,7 @@ public fun PhoneBindingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = otp,
                 onValueChange = { otp = it },
-                label = { Text("6-digit OTP Code") },
+                label = { Text(S("auth.otpLabel")) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 singleLine = true,
             )
@@ -116,7 +117,11 @@ public fun PhoneBindingScreen(
                 enabled = resendCountdown <= 0,
             ) {
                 Text(
-                    if (resendCountdown > 0) "Resend OTP in ${resendCountdown}s" else "Resend OTP",
+                    if (resendCountdown > 0) {
+                        "${S("auth.resendOtpIn")} ${resendCountdown}s"
+                    } else {
+                        S("auth.resendOtp")
+                    },
                 )
             }
         }
@@ -134,7 +139,7 @@ public fun PhoneBindingScreen(
                 },
                 enabled = phone.isNotBlank(),
             ) {
-                Text("Send OTP")
+                Text(S("auth.sendOtp"))
             }
         } else {
             Button(
@@ -144,7 +149,7 @@ public fun PhoneBindingScreen(
                 },
                 enabled = phone.isNotBlank() && otp.length == 6,
             ) {
-                Text("Verify")
+                Text(S("auth.verify"))
             }
         }
 

@@ -38,7 +38,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                 .where {
                     val base = KujiCampaignsTable.deletedAt.isNull()
                     if (status != null) {
-                        base and (KujiCampaignsTable.status eq status.name)
+                        base and (KujiCampaignsTable.status eq status)
                     } else {
                         base
                     }
@@ -50,7 +50,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             KujiCampaignsTable
                 .selectAll()
                 .where {
-                    (KujiCampaignsTable.status eq CampaignStatus.ACTIVE.name) and
+                    (KujiCampaignsTable.status eq CampaignStatus.ACTIVE) and
                         (KujiCampaignsTable.deletedAt.isNull())
                 }.map { it.toKujiCampaign() }
         }
@@ -71,7 +71,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[coverImageUrl] = campaign.coverImageUrl
                     it[pricePerDraw] = campaign.pricePerDraw
                     it[drawSessionSeconds] = campaign.drawSessionSeconds
-                    it[status] = campaign.status.name
+                    it[status] = campaign.status
                     it[activatedAt] = campaign.activatedAt?.toOffsetDateTime()
                     it[soldOutAt] = campaign.soldOutAt?.toOffsetDateTime()
                     it[createdByStaffId] = campaign.createdByStaffId
@@ -86,7 +86,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[coverImageUrl] = campaign.coverImageUrl
                     it[pricePerDraw] = campaign.pricePerDraw
                     it[drawSessionSeconds] = campaign.drawSessionSeconds
-                    it[status] = campaign.status.name
+                    it[status] = campaign.status
                     it[activatedAt] = campaign.activatedAt?.toOffsetDateTime()
                     it[soldOutAt] = campaign.soldOutAt?.toOffsetDateTime()
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
@@ -107,7 +107,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
     ): Unit =
         newSuspendedTransaction {
             KujiCampaignsTable.update({ KujiCampaignsTable.id eq id.value }) {
-                it[KujiCampaignsTable.status] = status.name
+                it[KujiCampaignsTable.status] = status
                 it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
             }
         }
@@ -132,7 +132,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                 .where {
                     val base = UnlimitedCampaignsTable.deletedAt.isNull()
                     if (status != null) {
-                        base and (UnlimitedCampaignsTable.status eq status.name)
+                        base and (UnlimitedCampaignsTable.status eq status)
                     } else {
                         base
                     }
@@ -144,7 +144,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             UnlimitedCampaignsTable
                 .selectAll()
                 .where {
-                    (UnlimitedCampaignsTable.status eq CampaignStatus.ACTIVE.name) and
+                    (UnlimitedCampaignsTable.status eq CampaignStatus.ACTIVE) and
                         (UnlimitedCampaignsTable.deletedAt.isNull())
                 }.map { it.toUnlimitedCampaign() }
         }
@@ -165,7 +165,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[coverImageUrl] = campaign.coverImageUrl
                     it[pricePerDraw] = campaign.pricePerDraw
                     it[rateLimitPerSecond] = campaign.rateLimitPerSecond
-                    it[status] = campaign.status.name
+                    it[status] = campaign.status
                     it[activatedAt] = campaign.activatedAt?.toOffsetDateTime()
                     it[createdByStaffId] = campaign.createdByStaffId
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
@@ -179,7 +179,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[coverImageUrl] = campaign.coverImageUrl
                     it[pricePerDraw] = campaign.pricePerDraw
                     it[rateLimitPerSecond] = campaign.rateLimitPerSecond
-                    it[status] = campaign.status.name
+                    it[status] = campaign.status
                     it[activatedAt] = campaign.activatedAt?.toOffsetDateTime()
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
                     it[updatedAt] = campaign.updatedAt.toOffsetDateTime()
@@ -199,7 +199,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
     ): Unit =
         newSuspendedTransaction {
             UnlimitedCampaignsTable.update({ UnlimitedCampaignsTable.id eq id.value }) {
-                it[UnlimitedCampaignsTable.status] = status.name
+                it[UnlimitedCampaignsTable.status] = status
                 it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
             }
         }
@@ -212,7 +212,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             coverImageUrl = this[KujiCampaignsTable.coverImageUrl],
             pricePerDraw = this[KujiCampaignsTable.pricePerDraw],
             drawSessionSeconds = this[KujiCampaignsTable.drawSessionSeconds],
-            status = CampaignStatus.valueOf(this[KujiCampaignsTable.status]),
+            status = this[KujiCampaignsTable.status],
             activatedAt = this[KujiCampaignsTable.activatedAt]?.toInstant()?.toKotlinInstant(),
             soldOutAt = this[KujiCampaignsTable.soldOutAt]?.toInstant()?.toKotlinInstant(),
             createdByStaffId = this[KujiCampaignsTable.createdByStaffId],
@@ -229,7 +229,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             coverImageUrl = this[UnlimitedCampaignsTable.coverImageUrl],
             pricePerDraw = this[UnlimitedCampaignsTable.pricePerDraw],
             rateLimitPerSecond = this[UnlimitedCampaignsTable.rateLimitPerSecond],
-            status = CampaignStatus.valueOf(this[UnlimitedCampaignsTable.status]),
+            status = this[UnlimitedCampaignsTable.status],
             activatedAt = this[UnlimitedCampaignsTable.activatedAt]?.toInstant()?.toKotlinInstant(),
             createdByStaffId = this[UnlimitedCampaignsTable.createdByStaffId],
             deletedAt = this[UnlimitedCampaignsTable.deletedAt]?.toInstant()?.toKotlinInstant(),

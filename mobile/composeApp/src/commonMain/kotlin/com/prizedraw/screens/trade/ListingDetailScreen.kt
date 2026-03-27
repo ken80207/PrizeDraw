@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.trade.TradeListingDto
+import com.prizedraw.i18n.S
 
 /**
  * Listing detail screen showing prize photo, grade, seller nickname, price, and buy button.
@@ -53,7 +54,7 @@ public fun ListingDetailScreen(
                     .height(IMAGE_HEIGHT.dp),
         ) {
             Text(
-                text = listing.prizePhotoUrl.ifEmpty { "No image" },
+                text = listing.prizePhotoUrl.ifEmpty { S("prizes.noImage") },
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -64,7 +65,7 @@ public fun ListingDetailScreen(
 
         Text(text = listing.prizeName, style = MaterialTheme.typography.titleLarge)
         Text(
-            text = "Seller: ${listing.sellerNickname}",
+            text = "${S("trade.seller")}: ${listing.sellerNickname}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -82,7 +83,7 @@ public fun ListingDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { showConfirmDialog = true },
             ) {
-                Text("Buy Now")
+                Text(S("trade.buyNow"))
             }
         }
     }
@@ -90,10 +91,10 @@ public fun ListingDetailScreen(
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Confirm Purchase") },
+            title = { Text(S("trade.confirmPurchase")) },
             text = {
                 Text(
-                    "Buy \"${listing.prizeName}\" for ${listing.listPrice} draw points?",
+                    "\"${listing.prizeName}\" — ${listing.listPrice} ${S("trade.drawPoints")}?",
                 )
             },
             confirmButton = {
@@ -101,12 +102,12 @@ public fun ListingDetailScreen(
                     showConfirmDialog = false
                     onPurchase(listing)
                 }) {
-                    Text("Confirm")
+                    Text(S("common.confirm"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(S("common.cancel"))
                 }
             },
         )

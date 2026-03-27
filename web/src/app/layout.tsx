@@ -1,49 +1,68 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { ToastContainer } from "@/components/Toast";
 import { StatusGate } from "@/components/StatusGate";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-headline",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const manrope = Manrope({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "PrizeDraw — 一番賞抽獎平台",
-    template: "%s | PrizeDraw",
+    default: "The Illuminated Gallery | Kuji Noir",
+    template: "%s | Kuji Noir",
   },
   description:
-    "PrizeDraw 是台灣最好玩的線上一番賞平台。參加活動、即時抽獎、交易賞品，盡在 PrizeDraw。",
-  keywords: ["一番賞", "抽獎", "賞品", "PrizeDraw", "無限賞"],
+    "The Illuminated Gallery — Premium digital collectible experience. Ichiban Kuji & Infinite Kuji draws.",
+  keywords: ["一番賞", "抽獎", "賞品", "Kuji Noir", "無限賞", "Ichiban Kuji"],
   openGraph: {
     type: "website",
     locale: "zh_TW",
-    siteName: "PrizeDraw",
+    siteName: "Kuji Noir",
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
     <html
-      lang="zh-TW"
-      className={`${geistSans.variable} h-full antialiased`}
+      lang={locale}
+      className={`dark ${plusJakarta.variable} ${manrope.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        <StatusGate>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </StatusGate>
-        <ToastContainer />
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-full bg-surface-dim text-on-surface font-body">
+        <NextIntlClientProvider messages={messages}>
+          <StatusGate>
+            <AppShell>{children}</AppShell>
+          </StatusGate>
+          <ToastContainer />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

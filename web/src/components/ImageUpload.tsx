@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -12,6 +13,7 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
+  const t = useTranslations("imageUpload");
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -23,12 +25,12 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
       setError(null);
 
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        setError("僅支援 JPEG、PNG 或 WebP 格式");
+        setError(t("fileTypeError"));
         return;
       }
 
       if (file.size > MAX_SIZE_BYTES) {
-        setError("圖片大小不可超過 5MB");
+        setError(t("fileSizeError"));
         return;
       }
 
@@ -58,15 +60,15 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
                 const data = JSON.parse(xhr.responseText) as { url: string };
                 resolve(data.url);
               } catch {
-                reject(new Error("伺服器回應格式錯誤"));
+                reject(new Error(t("responseError")));
               }
             } else {
-              reject(new Error(`上傳失敗 (${xhr.status})`));
+              reject(new Error(`${t("uploadFailed")} (${xhr.status})`));
             }
           });
 
-          xhr.addEventListener("error", () => reject(new Error("網路錯誤，請稍後再試")));
-          xhr.addEventListener("abort", () => reject(new Error("上傳已取消")));
+          xhr.addEventListener("error", () => reject(new Error(t("networkError"))));
+          xhr.addEventListener("abort", () => reject(new Error(t("abortError"))));
 
           xhr.send(formData);
         });
@@ -75,13 +77,13 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
         onUpload(url);
         // Keep preview as the local blob URL until component re-renders with the real URL
       } catch (err) {
-        setError(err instanceof Error ? err.message : "上傳失敗");
+        setError(err instanceof Error ? err.message : t("uploadFailed"));
         setPreview(currentUrl ?? null);
       } finally {
         setProgress(null);
       }
     },
-    [currentUrl, onUpload],
+    [currentUrl, onUpload, t],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +112,7 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
   return (
     <div className="space-y-2">
       {label && (
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
+        <p className="text-sm font-medium text-on-surface">{label}</p>
       )}
 
       <div
@@ -121,48 +123,48 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
+        className={`relative flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-xl transition-colors ${
           isDragging
-            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
-            : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-900/10"
+            ? "bg-primary/10"
+            : "bg-surface-container-lowest hover:bg-surface-container-high"
         }`}
       >
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview}
-            alt="預覽"
+            alt={t("preview")}
             className="max-h-40 w-full rounded-lg object-contain p-2"
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-center p-4">
-            <span className="text-3xl">📷</span>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              拖放圖片至此，或點擊瀏覽
+            <span className="material-symbols-outlined text-3xl text-on-surface-variant">add_photo_alternate</span>
+            <p className="text-sm font-medium text-on-surface-variant">
+              {t("dragDrop")}
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              支援 JPEG / PNG / WebP，最大 5MB
+            <p className="text-xs text-on-surface-variant/50">
+              {t("formats")}
             </p>
           </div>
         )}
 
         {/* Progress overlay */}
         {progress !== null && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-white/80 dark:bg-gray-900/80">
-            <div className="w-2/3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-surface-dim/80 backdrop-blur-sm">
+            <div className="w-2/3 overflow-hidden rounded-full bg-surface-container-highest">
               <div
-                className="h-2 rounded-full bg-indigo-600 transition-all duration-200"
+                className="h-2 rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-200"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="mt-2 text-xs font-medium text-indigo-600">{progress}%</p>
+            <p className="mt-2 text-xs font-bold text-primary">{progress}%</p>
           </div>
         )}
       </div>
 
       {/* Error message */}
       {error && (
-        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-xs text-error">{error}</p>
       )}
 
       {/* Change button when preview is shown */}
@@ -170,9 +172,9 @@ export function ImageUpload({ onUpload, currentUrl, label }: ImageUploadProps) {
         <button
           type="button"
           onClick={openFilePicker}
-          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-xs text-primary hover:underline"
         >
-          更換圖片
+          {t("changeImage")}
         </button>
       )}
 

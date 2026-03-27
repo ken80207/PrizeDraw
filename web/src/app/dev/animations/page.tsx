@@ -190,7 +190,7 @@ const ScratchCardGame = dynamic(
 function ThreeDLoadingPlaceholder({ label, height = 480 }: { label: string; height?: number }) {
   return (
     <div
-      className="w-full flex flex-col items-center justify-center bg-gray-900 text-gray-500 gap-3"
+      className="w-full flex flex-col items-center justify-center bg-surface-container-low text-on-surface-variant/50 gap-3"
       style={{ height }}
     >
       <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -280,9 +280,9 @@ function PlaceholderImage({
       className={`w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br ${gradient} select-none ${className}`}
     >
       <span className="text-5xl drop-shadow-md">🎁</span>
-      <span className="text-white font-black text-xl drop-shadow-md tracking-wide">{grade}</span>
+      <span className="text-on-surface font-black text-xl drop-shadow-md tracking-wide">{grade}</span>
       <span
-        className="text-white/80 font-semibold text-sm text-center px-4 leading-tight drop-shadow"
+        className="text-on-surface/80 font-semibold text-sm text-center px-4 leading-tight drop-shadow"
         style={{ maxWidth: 180 }}
       >
         {prizeName}
@@ -322,14 +322,14 @@ function logReducer(
 
 function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDetailsElement | null> }) {
   return (
-    <details ref={detailsRef} className="mb-6 bg-gray-800/50 border border-gray-700 rounded-xl">
-      <summary className="px-5 py-3 cursor-pointer text-sm font-bold text-gray-300 hover:text-white flex items-center gap-2">
+    <details ref={detailsRef} className="mb-6 bg-surface-container/50 border border-outline-variant/15 rounded-xl">
+      <summary className="px-5 py-3 cursor-pointer text-sm font-bold text-on-surface-variant hover:text-on-surface flex items-center gap-2">
         💡 哪種風格最適合？— 風格推薦指南
       </summary>
       <div className="px-5 pb-5 pt-2">
-        <table className="w-full text-xs text-gray-300">
+        <table className="w-full text-xs text-on-surface-variant">
           <thead>
-            <tr className="text-left text-gray-500 border-b border-gray-700">
+            <tr className="text-left text-on-surface-variant/50 border-b border-outline-variant/15">
               <th className="py-2 pr-3">風格</th>
               <th className="py-2 pr-3">效能需求</th>
               <th className="py-2 pr-3">視覺品質</th>
@@ -340,43 +340,43 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">🌸 Anime</td>
               <td>低</td>
               <td>⭐⭐⭐⭐⭐</td>
               <td>⭐⭐⭐⭐</td>
               <td>快</td>
               <td>一番賞主題 — 最搭配</td>
-              <td><span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">推薦</span></td>
+              <td><span className="bg-amber-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">推薦</span></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">🎮 WebGL 3D</td>
               <td>高</td>
               <td>⭐⭐⭐⭐⭐</td>
               <td>⭐⭐⭐⭐⭐</td>
               <td>慢（需載入 Three.js）</td>
               <td>高端裝置、沉浸式體驗</td>
-              <td><span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">進階</span></td>
+              <td><span className="bg-blue-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">進階</span></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">🧊 CSS 3D</td>
               <td>低</td>
               <td>⭐⭐⭐⭐</td>
               <td>⭐⭐⭐⭐</td>
               <td>最快（無額外載入）</td>
               <td>手機、低端裝置、快速載入</td>
-              <td><span className="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">輕量</span></td>
+              <td><span className="bg-green-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">輕量</span></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">🎨 2D Canvas</td>
               <td>中</td>
               <td>⭐⭐⭐⭐</td>
               <td>⭐⭐⭐⭐</td>
               <td>快</td>
               <td>通用、穩定、跨平台一致</td>
-              <td><span className="bg-gray-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">穩定</span></td>
+              <td><span className="bg-gray-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">穩定</span></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">👾 Pixel Art</td>
               <td>最低</td>
               <td>⭐⭐⭐</td>
@@ -385,7 +385,7 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>復古主題活動、懷舊風格</td>
               <td></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">💜 Neon</td>
               <td>中</td>
               <td>⭐⭐⭐⭐</td>
@@ -394,7 +394,7 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>夜間模式、科幻主題活動</td>
               <td></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">✏️ Sketch</td>
               <td>低</td>
               <td>⭐⭐⭐</td>
@@ -403,7 +403,7 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>特殊活動、藝術風格</td>
               <td></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">⬜ Flat</td>
               <td>最低</td>
               <td>⭐⭐⭐</td>
@@ -412,14 +412,14 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>企業風、簡報展示用</td>
               <td></td>
             </tr>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-outline-variant/10">
               <td className="py-2.5 font-bold">🍁 Maple</td>
               <td>低</td>
               <td>⭐⭐⭐⭐⭐</td>
               <td>⭐⭐⭐⭐⭐</td>
               <td>快</td>
               <td>楓之谷風格、可愛卡通、橫版場景</td>
-              <td><span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
+              <td><span className="bg-red-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
             </tr>
             <tr>
               <td className="py-2.5 font-bold">⚔️ RO 仙境</td>
@@ -428,7 +428,7 @@ function StyleRecommendationPanel({ detailsRef }: { detailsRef: RefObject<HTMLDe
               <td>⭐⭐⭐⭐⭐</td>
               <td>快</td>
               <td>仙境傳說 2D 等距、精靈角色、Poring、水彩風</td>
-              <td><span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
+              <td><span className="bg-orange-500 text-on-surface text-[10px] px-2 py-0.5 rounded-full font-bold">新</span></td>
             </tr>
           </tbody>
         </table>
@@ -765,7 +765,7 @@ export default function AnimationsShowcasePage() {
   }, [activePhase, grade, miniGrade, prizeName, miniPrizeName, mode, miniGameStyle]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 relative">
+    <div className="min-h-screen bg-surface-dim text-on-surface relative">
       {/* ── Global overlays — client-only to prevent hydration mismatch ── */}
       {mounted && (
         <>
@@ -787,7 +787,7 @@ export default function AnimationsShowcasePage() {
             <div className="flex items-center gap-3 min-w-0">
               <Link
                 href="/dev"
-                className="text-purple-400 hover:text-purple-200 transition-colors shrink-0"
+                className="text-secondary hover:text-purple-200 transition-colors shrink-0"
                 aria-label="Back to dev tools"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -796,11 +796,11 @@ export default function AnimationsShowcasePage() {
               </Link>
               <span className="text-2xl shrink-0">🎮</span>
               <div className="min-w-0">
-                <h1 className="text-lg font-black text-white leading-tight truncate">PrizeDraw 遊戲預覽</h1>
-                <p className="text-purple-300 text-xs">Animation &amp; Game Showcase</p>
+                <h1 className="text-lg font-black text-on-surface leading-tight truncate">PrizeDraw 遊戲預覽</h1>
+                <p className="text-secondary text-xs">Animation &amp; Game Showcase</p>
               </div>
             </div>
-            <span className="shrink-0 text-xs px-2 py-1 rounded bg-purple-900/60 border border-purple-700/50 text-purple-300 font-mono">
+            <span className="shrink-0 text-xs px-2 py-1 rounded bg-purple-900/60 border border-purple-700/50 text-secondary font-mono">
               /dev/animations
             </span>
           </div>
@@ -823,7 +823,7 @@ export default function AnimationsShowcasePage() {
                   const id = e.target.value;
                   setSeasonalTheme(id === "auto" ? getSeasonalTheme() : (SEASONAL_THEMES[id] ?? getSeasonalTheme()));
                 }}
-                className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-full px-3 py-1 focus:border-purple-500 outline-none cursor-pointer"
+                className="bg-surface-container border border-outline-variant/15 text-on-surface-variant text-xs rounded-full px-3 py-1 focus:border-purple-500 outline-none cursor-pointer"
               >
                 <option value="auto">🔮 自動偵測</option>
                 {THEME_IDS.map((id) => (
@@ -839,15 +839,15 @@ export default function AnimationsShowcasePage() {
               onClick={() => setParticlesEnabled((v) => !v)}
               className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                 particlesEnabled
-                  ? "bg-indigo-900/40 border-indigo-700/40 text-indigo-300"
-                  : "bg-gray-800/40 border-gray-700/40 text-gray-500"
+                  ? "bg-indigo-900/40 border-indigo-700/40 text-primary"
+                  : "bg-surface-container/40 border-outline-variant/15/40 text-on-surface-variant/50"
               }`}
             >
               {particlesEnabled ? "✨ 粒子 ON" : "✨ 粒子 OFF"}
             </button>
 
             {/* Time-of-day ambient label */}
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-800/40 border border-gray-700/40 text-gray-400">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-surface-container/40 border border-outline-variant/15/40 text-on-surface-variant">
               {mounted ? timeAmbient.label : ""}
             </span>
           </div>
@@ -871,13 +871,13 @@ export default function AnimationsShowcasePage() {
                 className={[
                   "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition-all",
                   activePhase === tab.id
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400/40"
-                    : "text-purple-300 hover:text-white hover:bg-white/10 border border-purple-800/40",
+                    ? "bg-secondary-container text-on-surface shadow-lg shadow-purple-600/30 ring-2 ring-purple-400/40"
+                    : "text-secondary hover:text-on-surface hover:bg-white/10 border border-purple-800/40",
                 ].join(" ")}
               >
                 <span className={[
                   "w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center",
-                  activePhase === tab.id ? "bg-white/20 text-white" : "bg-purple-900/60 text-purple-400",
+                  activePhase === tab.id ? "bg-white/20 text-on-surface" : "bg-purple-900/60 text-secondary",
                 ].join(" ")}>
                   {idx + 1}
                 </span>
@@ -893,8 +893,8 @@ export default function AnimationsShowcasePage() {
                 }}
                 className={`ml-auto px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                   compareMode
-                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600"
+                    ? "bg-amber-500 text-on-surface shadow-lg shadow-amber-500/30"
+                    : "bg-surface-container-high text-on-surface-variant hover:bg-surface-bright border border-outline-variant/20"
                 }`}
               >
                 🔀 {compareMode ? "比較模式 ON" : "比較模式"}
@@ -913,7 +913,7 @@ export default function AnimationsShowcasePage() {
                 "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
                 soundEnabled
                   ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
-                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+                  : "bg-surface-container border-outline-variant/15 text-on-surface-variant/50 hover:bg-surface-container-high",
               ].join(" ")}
               title={soundEnabled ? "關閉音效" : "開啟音效"}
             >
@@ -929,7 +929,7 @@ export default function AnimationsShowcasePage() {
                 "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
                 hapticEnabled
                   ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
-                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+                  : "bg-surface-container border-outline-variant/15 text-on-surface-variant/50 hover:bg-surface-container-high",
               ].join(" ")}
               title={hapticEnabled ? "關閉震動" : "開啟震動"}
             >
@@ -938,7 +938,7 @@ export default function AnimationsShowcasePage() {
 
             <button
               onClick={() => { void handleScreenshot(); }}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border bg-indigo-800/60 border-indigo-700/60 text-indigo-200 hover:bg-indigo-700 active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border bg-indigo-800/60 border-indigo-700/60 text-indigo-200 hover:bg-primary-container active:scale-95"
               title="截圖並分享"
             >
               📸 截圖
@@ -950,7 +950,7 @@ export default function AnimationsShowcasePage() {
                 "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border",
                 showFPS
                   ? "bg-cyan-700/60 border-cyan-600/60 text-cyan-200 hover:bg-cyan-700"
-                  : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+                  : "bg-surface-container border-outline-variant/15 text-on-surface-variant/50 hover:bg-surface-container-high",
               ].join(" ")}
               title={showFPS ? "隱藏 FPS" : "顯示 FPS"}
             >
@@ -982,15 +982,15 @@ export default function AnimationsShowcasePage() {
                     className={[
                       "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 border",
                       mode === m.id
-                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-                        : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white",
+                        ? "bg-gradient-to-tr from-primary to-primary-container border-primary-container text-on-surface shadow-lg shadow-indigo-500/20"
+                        : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:border-gray-500 hover:text-on-surface",
                     ].join(" ")}
                   >
                     {m.label}
                     <span
                       className={[
                         "ml-2 text-xs font-normal",
-                        mode === m.id ? "text-indigo-200" : "text-gray-500",
+                        mode === m.id ? "text-indigo-200" : "text-on-surface-variant/50",
                       ].join(" ")}
                     >
                       {m.id}
@@ -998,7 +998,7 @@ export default function AnimationsShowcasePage() {
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-on-surface-variant/50">
                 {MODES.find((m) => m.id === mode)?.hint}
               </p>
             </section>
@@ -1009,7 +1009,7 @@ export default function AnimationsShowcasePage() {
               <div className="w-full lg:flex-[3] space-y-4">
                 <SectionLabel>Animation Canvas</SectionLabel>
                 <div
-                  className="mx-auto rounded-2xl overflow-hidden border border-gray-700 bg-gray-800 shadow-2xl relative"
+                  className="mx-auto rounded-2xl overflow-hidden border border-outline-variant/15 bg-surface-container shadow-2xl relative"
                   style={{ width: 340, height: 480 }}
                 >
                   <div
@@ -1034,11 +1034,11 @@ export default function AnimationsShowcasePage() {
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
-                        <div className="text-gray-600 text-center px-6">
+                        <div className="text-on-surface-variant text-center px-6">
                           <div className="text-4xl mb-3">🎮</div>
-                          <p className="text-sm font-medium text-gray-400">
+                          <p className="text-sm font-medium text-on-surface-variant">
                             按下「開始」預覽{" "}
-                            <span className="text-indigo-400 font-bold">
+                            <span className="text-primary font-bold">
                               {MODES.find((m) => m.id === mode)?.label}
                             </span>{" "}
                             動畫
@@ -1053,7 +1053,7 @@ export default function AnimationsShowcasePage() {
                 <div className="flex gap-3 justify-center">
                   <button
                     onClick={handlePlay}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/20"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-tr from-primary to-primary-container hover:bg-primary-container active:scale-95 text-on-surface font-semibold text-sm transition-all shadow-lg shadow-indigo-500/20"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
@@ -1062,7 +1062,7 @@ export default function AnimationsShowcasePage() {
                   </button>
                   <button
                     onClick={handleReset}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 active:scale-95 text-white font-semibold text-sm transition-all"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-bright active:scale-95 text-on-surface font-semibold text-sm transition-all"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -1074,13 +1074,13 @@ export default function AnimationsShowcasePage() {
 
               {/* RIGHT: Settings panel — 40% on desktop */}
               <div className="w-full lg:flex-[2]">
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 space-y-4">
-                  <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4 space-y-4">
+                  <h3 className="text-on-surface font-bold text-sm flex items-center gap-2">
                     ⚙️ 設定
                   </h3>
 
                 <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  <label className="text-on-surface-variant text-xs font-medium block mb-1.5">
                     獎品等級
                   </label>
                   <div className="flex flex-wrap gap-1.5">
@@ -1101,38 +1101,38 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  <label className="text-on-surface-variant text-xs font-medium block mb-1.5">
                     獎品名稱
                   </label>
                   <input
                     type="text"
                     value={prizeName}
                     onChange={(e) => setPrizeName(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
+                    className="w-full bg-surface-container border border-outline-variant/15 rounded-lg px-3 py-2 text-on-surface text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
                     placeholder={DEFAULT_PRIZE_NAME}
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  <label className="text-on-surface-variant text-xs font-medium block mb-1.5">
                     圖片網址
                   </label>
                   <input
                     type="url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
+                    className="w-full bg-surface-container border border-outline-variant/15 rounded-lg px-3 py-2 text-on-surface text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
                     placeholder="留空使用預設漸層佔位圖"
                   />
                   {!effectiveImageUrl && (
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-on-surface-variant">
                       Using gradient placeholder based on grade colour.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  <label className="text-on-surface-variant text-xs font-medium block mb-1.5">
                     動畫速度
                   </label>
                   <div className="flex gap-1.5">
@@ -1143,8 +1143,8 @@ export default function AnimationsShowcasePage() {
                         className={[
                           "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
                           speedMultiplier === s
-                            ? "bg-purple-600 border-purple-500 text-white"
-                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600",
+                            ? "bg-secondary-container border-purple-500 text-on-surface"
+                            : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:border-outline-variant/20",
                         ].join(" ")}
                       >
                         {s}x
@@ -1154,10 +1154,10 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  <label className="text-on-surface-variant text-xs font-medium block mb-1.5">
                     獎品圖預覽
                   </label>
-                  <div className="rounded-xl overflow-hidden border border-gray-700 shadow-inner" style={{ height: 120 }}>
+                  <div className="rounded-xl overflow-hidden border border-outline-variant/15 shadow-inner" style={{ height: 120 }}>
                     {effectiveImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -1178,12 +1178,12 @@ export default function AnimationsShowcasePage() {
             </div>{/* end two-column flex */}
 
             {/* Spectator section */}
-            <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-4">
+            <section className="rounded-2xl border border-outline-variant/10 bg-surface-container-low p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-base">👁</span>
                 <SectionLabel className="mb-0">觀戰者視角 — Spectator View</SectionLabel>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-on-surface-variant/50">
                 This is what other players watching the draw would see — a read-only miniature synced to the current progress.
               </p>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
@@ -1197,11 +1197,11 @@ export default function AnimationsShowcasePage() {
                 </div>
                 <div className="flex-1 space-y-3 min-w-0">
                   <div>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <div className="flex justify-between text-xs text-on-surface-variant mb-1">
                       <span>Progress</span>
                       <span className="font-mono">{(progress * 100).toFixed(0)}%</span>
                     </div>
-                    <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-surface-container rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-75"
                         style={{ width: `${progress * 100}%` }}
@@ -1218,7 +1218,7 @@ export default function AnimationsShowcasePage() {
             </section>
 
             {/* Debug panel */}
-            <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-3">
+            <section className="rounded-2xl border border-outline-variant/10 bg-surface-container-low p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">🔍</span>
@@ -1226,7 +1226,7 @@ export default function AnimationsShowcasePage() {
                 </div>
                 <button
                   onClick={() => dispatchLog({ type: "clear" })}
-                  className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                  className="text-xs text-on-surface-variant hover:text-on-surface-variant transition-colors"
                 >
                   Clear log
                 </button>
@@ -1244,9 +1244,9 @@ export default function AnimationsShowcasePage() {
                 <DebugCell label="Speed" value={`${speedMultiplier}x`} />
               </div>
               {/* Terminal-style event log */}
-              <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+              <div className="bg-surface-dim rounded-xl border border-outline-variant/10 p-3 font-mono text-xs">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-gray-500">
+                  <div className="flex items-center gap-2 text-on-surface-variant/50">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
                     Event Log
                   </div>
@@ -1260,7 +1260,7 @@ export default function AnimationsShowcasePage() {
                   ) : (
                     logs.map((entry) => (
                       <div key={entry.id} className="flex gap-3 items-baseline">
-                        <span className="text-gray-600 shrink-0">
+                        <span className="text-on-surface-variant shrink-0">
                           {new Date(entry.ts).toLocaleTimeString("zh-TW", {
                             hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
                           })}
@@ -1270,8 +1270,8 @@ export default function AnimationsShowcasePage() {
                           : entry.event.startsWith("RESET") ? "text-amber-400"
                           : entry.event.startsWith("MODE_CHANGED") ? "text-cyan-400"
                           : entry.event.startsWith("DRAW_STARTED") ? "text-cyan-400"
-                          : entry.event.startsWith("DRAW_PROGRESS") ? "text-gray-500"
-                          : "text-gray-400"
+                          : entry.event.startsWith("DRAW_PROGRESS") ? "text-on-surface-variant/50"
+                          : "text-on-surface-variant"
                         }>
                           {entry.event}
                         </span>
@@ -1295,12 +1295,12 @@ export default function AnimationsShowcasePage() {
             {/* Description */}
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-indigo-300 font-semibold">Minimalist Flat</span>、<span className="text-pink-300 font-semibold">Anime/Manga</span> 、<span className="text-red-400 font-semibold">楓之谷 Maple</span> 或 <span className="text-orange-400 font-semibold">仙境傳說 RO</span> 十種渲染模式可切換比較。
+                <p className="text-sm text-on-surface-variant">
+                  <span className="text-secondary font-semibold">Phase 2 迷你遊戲</span> — 結果預決，遊戲只是視覺演出。Canvas 2D、CSS 3D、React Three Fiber WebGL、<span className="text-yellow-400 font-semibold">Pixel Art</span>、<span className="text-pink-400 font-semibold">Neon Cyberpunk</span>、<span className="text-amber-300 font-semibold">Hand-drawn Sketch</span>、<span className="text-primary font-semibold">Minimalist Flat</span>、<span className="text-pink-300 font-semibold">Anime/Manga</span> 、<span className="text-red-400 font-semibold">楓之谷 Maple</span> 或 <span className="text-orange-400 font-semibold">仙境傳說 RO</span> 十種渲染模式可切換比較。
                 </p>
                 {/* Nine-way style toggle — hidden in compare mode + for bonus games */}
                 {!compareMode && !["roulette", "pachinko", "scratch"].includes(activeMiniGame) && (
-                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
+                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-surface-container border border-outline-variant/15">
                     {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime", "maple", "ro"] as const).map((mode) => (
                       <button
                         key={mode}
@@ -1313,8 +1313,8 @@ export default function AnimationsShowcasePage() {
                         className={[
                           "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
                           miniGameStyle === mode
-                            ? "bg-purple-600 text-white shadow"
-                            : "text-gray-400 hover:text-white",
+                            ? "bg-secondary-container text-on-surface shadow"
+                            : "text-on-surface-variant hover:text-on-surface",
                         ].join(" ")}
                         title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版" : mode === "ro" ? "仙境傳說 — 2D 等距 RPG 風" : undefined}
                       >
@@ -1325,12 +1325,12 @@ export default function AnimationsShowcasePage() {
                           </span>
                         )}
                         {mode === "maple" && (
-                          <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          <span className="absolute -top-2 -right-1 bg-red-500 text-on-surface text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             新
                           </span>
                         )}
                         {mode === "ro" && (
-                          <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          <span className="absolute -top-2 -right-1 bg-orange-500 text-on-surface text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             新
                           </span>
                         )}
@@ -1345,7 +1345,7 @@ export default function AnimationsShowcasePage() {
                         else el.setAttribute("open", "");
                         el.scrollIntoView({ behavior: "smooth", block: "nearest" });
                       }}
-                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all"
                       title="風格推薦指南"
                       aria-label="開啟風格推薦指南"
                     >
@@ -1383,8 +1383,8 @@ export default function AnimationsShowcasePage() {
                     className={[
                       "px-5 py-2 rounded-full text-sm font-bold transition-all",
                       activeMiniGame === g.id
-                        ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                        : "text-purple-300 hover:text-white hover:bg-white/10",
+                        ? "bg-secondary-container text-on-surface shadow-lg shadow-purple-600/30"
+                        : "text-secondary hover:text-on-surface hover:bg-white/10",
                     ].join(" ")}
                   >
                     {g.label}
@@ -1403,8 +1403,8 @@ export default function AnimationsShowcasePage() {
                     className={[
                       "relative px-4 py-2 rounded-full text-sm font-bold transition-all border",
                       activeMiniGame === g.id
-                        ? "bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/30"
-                        : "border-amber-700/40 text-amber-400 hover:text-white hover:bg-amber-600/20",
+                        ? "bg-amber-500 border-amber-400 text-on-surface shadow-lg shadow-amber-500/30"
+                        : "border-amber-700/40 text-amber-400 hover:text-on-surface hover:bg-amber-600/20",
                     ].join(" ")}
                   >
                     <span className="absolute -top-2 -right-1 bg-amber-400 text-gray-900 text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
@@ -1421,7 +1421,7 @@ export default function AnimationsShowcasePage() {
                     onClick={handleReplayTutorial}
                     title="重播教學"
                     aria-label="重播當前遊戲教學"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white text-xs font-bold transition-all"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/15 text-on-surface-variant hover:text-on-surface text-xs font-bold transition-all"
                   >
                     <span aria-hidden="true">📖</span> 教學
                   </button>
@@ -1429,7 +1429,7 @@ export default function AnimationsShowcasePage() {
                     onClick={() => setShowA11yPanel(true)}
                     title="無障礙設定"
                     aria-label="開啟無障礙設定"
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white text-xs font-bold transition-all"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/15 text-on-surface-variant hover:text-on-surface text-xs font-bold transition-all"
                   >
                     <span aria-hidden="true">♿</span>
                   </button>
@@ -1442,14 +1442,14 @@ export default function AnimationsShowcasePage() {
             {compareMode && (
               <>
                 {/* Shared controls bar */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4">
-                  <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4">
+                  <h3 className="text-on-surface font-bold text-sm flex items-center gap-2 mb-3">
                     ⚙️ 共用設定
                   </h3>
                   <div className="flex flex-wrap gap-4 items-start">
                     {/* Grade selector */}
                     <div className="space-y-1.5">
-                      <label className="text-gray-400 text-xs font-medium block">獎品等級</label>
+                      <label className="text-on-surface-variant text-xs font-medium block">獎品等級</label>
                       <div className="flex gap-2 flex-wrap">
                         {MINI_GAME_GRADES.map((g) => (
                           <button
@@ -1474,18 +1474,18 @@ export default function AnimationsShowcasePage() {
                     </div>
                     {/* Prize name */}
                     <div className="space-y-1.5 flex-1 min-w-40">
-                      <label className="text-gray-400 text-xs font-medium block">獎品名稱</label>
+                      <label className="text-on-surface-variant text-xs font-medium block">獎品名稱</label>
                       <input
                         type="text"
                         value={miniPrizeName}
                         onChange={(e) => setMiniPrizeName(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors"
+                        className="w-full bg-surface-container border border-outline-variant/15 rounded-lg px-3 py-2 text-on-surface text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors"
                         placeholder="限定公仔"
                       />
                     </div>
                     {/* Game selector */}
                     <div className="space-y-1.5">
-                      <label className="text-gray-400 text-xs font-medium block">遊戲類型</label>
+                      <label className="text-on-surface-variant text-xs font-medium block">遊戲類型</label>
                       <div className="flex gap-2">
                         {MINI_GAMES.map((g) => (
                           <button
@@ -1500,8 +1500,8 @@ export default function AnimationsShowcasePage() {
                             className={[
                               "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
                               activeMiniGame === g.id
-                                ? "bg-purple-600 border-purple-500 text-white"
-                                : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500",
+                                ? "bg-secondary-container border-purple-500 text-on-surface"
+                                : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:border-gray-500",
                             ].join(" ")}
                           >
                             {g.label}
@@ -1518,12 +1518,12 @@ export default function AnimationsShowcasePage() {
                   <div className="flex-1 min-w-0 space-y-3">
                     {/* Style dropdown */}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">左側風格</span>
+                      <span className="text-xs text-on-surface-variant/50 font-medium whitespace-nowrap">左側風格</span>
                       <StyleSelector value={leftStyle} onChange={(s) => { setLeftStyle(s); setLeftGameKey((k) => k + 1); setLeftGameResult(null); }} />
                     </div>
                     {/* Game */}
-                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                      <div className="bg-gray-950 rounded-xl overflow-hidden">
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                      <div className="bg-surface-dim rounded-xl overflow-hidden">
                         <MiniGameRenderer
                           style={leftStyle}
                           game={activeMiniGame}
@@ -1540,7 +1540,7 @@ export default function AnimationsShowcasePage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setLeftGameKey((k) => k + 1); setLeftGameResult(null); setLeftGameState("IDLE"); dispatchCompareLog({ type: "push", event: "LEFT RESET" }); }}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold py-2 rounded-lg transition-colors"
+                        className="flex-1 bg-surface-container-high hover:bg-surface-bright text-on-surface-variant text-sm font-bold py-2 rounded-lg transition-colors"
                       >
                         ↺ 重置左側
                       </button>
@@ -1556,21 +1556,21 @@ export default function AnimationsShowcasePage() {
 
                   {/* Divider */}
                   <div className="hidden md:flex flex-col items-center self-stretch">
-                    <div className="w-px flex-1 bg-gray-700/50" />
-                    <span className="text-gray-600 text-xs font-bold py-2">VS</span>
-                    <div className="w-px flex-1 bg-gray-700/50" />
+                    <div className="w-px flex-1 bg-surface-container-high/50" />
+                    <span className="text-on-surface-variant text-xs font-bold py-2">VS</span>
+                    <div className="w-px flex-1 bg-surface-container-high/50" />
                   </div>
 
                   {/* RIGHT column */}
                   <div className="flex-1 min-w-0 space-y-3">
                     {/* Style dropdown */}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">右側風格</span>
+                      <span className="text-xs text-on-surface-variant/50 font-medium whitespace-nowrap">右側風格</span>
                       <StyleSelector value={rightStyle} onChange={(s) => { setRightStyle(s); setRightGameKey((k) => k + 1); setRightGameResult(null); }} />
                     </div>
                     {/* Game */}
-                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                      <div className="bg-gray-950 rounded-xl overflow-hidden">
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                      <div className="bg-surface-dim rounded-xl overflow-hidden">
                         <MiniGameRenderer
                           style={rightStyle}
                           game={activeMiniGame}
@@ -1587,7 +1587,7 @@ export default function AnimationsShowcasePage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setRightGameKey((k) => k + 1); setRightGameResult(null); setRightGameState("IDLE"); dispatchCompareLog({ type: "push", event: "RIGHT RESET" }); }}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold py-2 rounded-lg transition-colors"
+                        className="flex-1 bg-surface-container-high hover:bg-surface-bright text-on-surface-variant text-sm font-bold py-2 rounded-lg transition-colors"
                       >
                         ↺ 重置右側
                       </button>
@@ -1603,15 +1603,15 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 {/* Shared compare event log */}
-                <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+                <div className="bg-surface-dim rounded-xl border border-outline-variant/10 p-3 font-mono text-xs">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-gray-500">
+                    <div className="flex items-center gap-2 text-on-surface-variant/50">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block" />
                       比較模式 Event Log
                     </div>
                     <button
                       onClick={() => dispatchCompareLog({ type: "clear" })}
-                      className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                      className="text-on-surface-variant hover:text-on-surface-variant transition-colors text-xs"
                     >
                       Clear
                     </button>
@@ -1622,7 +1622,7 @@ export default function AnimationsShowcasePage() {
                     ) : (
                       compareLogs.map((entry) => (
                         <div key={entry.id} className="flex gap-3 items-baseline">
-                          <span className="text-gray-600 shrink-0">
+                          <span className="text-on-surface-variant shrink-0">
                             {new Date(entry.ts).toLocaleTimeString("zh-TW", {
                               hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
                             })}
@@ -1631,7 +1631,7 @@ export default function AnimationsShowcasePage() {
                             entry.event.includes("RESULT") ? "text-emerald-400"
                             : entry.event.includes("RESET") ? "text-amber-400"
                             : entry.event.includes("STATE") ? "text-cyan-400"
-                            : "text-gray-400"
+                            : "text-on-surface-variant"
                           }>
                             {entry.event}
                           </span>
@@ -1652,8 +1652,8 @@ export default function AnimationsShowcasePage() {
               <div className="w-full lg:flex-[3] flex justify-center">
                 <div className="relative w-full max-w-lg">
                   {/* Arcade cabinet frame */}
-                  <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                    <div className="bg-gray-950 rounded-xl overflow-hidden">
+                  <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                    <div className="bg-surface-dim rounded-xl overflow-hidden">
                       {miniGameStyle === "webgl" ? (
                         /* WebGL 3D versions */
                         <>
@@ -1824,7 +1824,7 @@ export default function AnimationsShowcasePage() {
                             <div className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-950/40 to-red-950/40 border-2 border-red-800/40" style={{ width: 340, height: 480 }}>
                               <span className="text-4xl">🍁</span>
                               <p className="text-red-300 font-bold text-sm">楓之谷 扭蛋機</p>
-                              <p className="text-gray-500 text-xs">開發中 — Coming Soon</p>
+                              <p className="text-on-surface-variant/50 text-xs">開發中 — Coming Soon</p>
                             </div>
                           )}
                         </>
@@ -1844,7 +1844,7 @@ export default function AnimationsShowcasePage() {
                             <div className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-orange-950/40 to-amber-950/40 border-2 border-orange-800/40" style={{ width: 340, height: 480 }}>
                               <span className="text-4xl">⚔️</span>
                               <p className="text-orange-300 font-bold text-sm">仙境傳說 扭蛋機</p>
-                              <p className="text-gray-500 text-xs">開發中 — Coming Soon</p>
+                              <p className="text-on-surface-variant/50 text-xs">開發中 — Coming Soon</p>
                             </div>
                           )}
                         </>
@@ -1902,7 +1902,7 @@ export default function AnimationsShowcasePage() {
                   </div>
                   {/* Game title plate */}
                   <div className="mt-3 text-center">
-                    <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
+                    <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-on-surface text-xs font-bold px-4 py-1 rounded-full shadow">
                       {MINI_GAMES.find(g => g.id === activeMiniGame)?.label ?? ""} — {MINI_GAMES.find(g => g.id === activeMiniGame)?.desc ?? ""}
                       {miniGameStyle === "webgl" ? " (WebGL 3D)" : miniGameStyle === "css3d" ? " (CSS 3D)" : miniGameStyle === "pixel" ? " (Pixel Art)" : miniGameStyle === "neon" ? " (Neon Cyberpunk)" : miniGameStyle === "sketch" ? " (Hand-drawn Sketch)" : miniGameStyle === "flat" ? " (Minimalist Flat)" : miniGameStyle === "anime" ? " (Anime/Manga)" : miniGameStyle === "maple" ? " (楓之谷 Maple)" : miniGameStyle === "ro" ? " (仙境傳說 RO)" : " (2D Canvas)"}
                     </span>
@@ -1913,14 +1913,14 @@ export default function AnimationsShowcasePage() {
               {/* RIGHT: Settings + Debug — 40% */}
               <div className="w-full lg:flex-[2] space-y-4">
                 {/* Settings card */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 space-y-4">
-                  <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4 space-y-4">
+                  <h3 className="text-on-surface font-bold text-sm flex items-center gap-2">
                     ⚙️ 設定
                   </h3>
 
                   {/* Grade selector */}
                   <div className="space-y-1.5">
-                    <label className="text-gray-400 text-xs font-medium">獎品等級</label>
+                    <label className="text-on-surface-variant text-xs font-medium">獎品等級</label>
                     <div className="flex gap-2 flex-wrap">
                       {MINI_GAME_GRADES.map((g) => (
                         <button
@@ -1943,12 +1943,12 @@ export default function AnimationsShowcasePage() {
 
                   {/* Prize name */}
                   <div className="space-y-1.5">
-                    <label className="text-gray-400 text-xs font-medium">獎品名稱</label>
+                    <label className="text-on-surface-variant text-xs font-medium">獎品名稱</label>
                     <input
                       type="text"
                       value={miniPrizeName}
                       onChange={(e) => setMiniPrizeName(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
+                      className="w-full bg-surface-container border border-outline-variant/15 rounded-lg px-3 py-2 text-on-surface text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder-gray-600"
                       placeholder="限定公仔"
                     />
                   </div>
@@ -1957,7 +1957,7 @@ export default function AnimationsShowcasePage() {
                   <div className="flex gap-2">
                     <button
                       onClick={handleMiniGameReset}
-                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold py-2 rounded-lg transition-colors"
+                      className="flex-1 bg-surface-container-high hover:bg-surface-bright text-on-surface-variant text-sm font-bold py-2 rounded-lg transition-colors"
                     >
                       ↺ 重置
                     </button>
@@ -1973,15 +1973,15 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 {/* Terminal-style event log */}
-                <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+                <div className="bg-surface-dim rounded-xl border border-outline-variant/10 p-3 font-mono text-xs">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-gray-500">
+                    <div className="flex items-center gap-2 text-on-surface-variant/50">
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
                       Event Log
                     </div>
                     <button
                       onClick={() => dispatchMiniLog({ type: "clear" })}
-                      className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                      className="text-on-surface-variant hover:text-on-surface-variant transition-colors text-xs"
                     >
                       Clear
                     </button>
@@ -1995,7 +1995,7 @@ export default function AnimationsShowcasePage() {
                     ) : (
                       miniGameLogs.map((entry) => (
                         <div key={entry.id} className="flex gap-3 items-baseline">
-                          <span className="text-gray-600 shrink-0">
+                          <span className="text-on-surface-variant shrink-0">
                             {new Date(entry.ts).toLocaleTimeString("zh-TW", {
                               hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
                             })}
@@ -2005,7 +2005,7 @@ export default function AnimationsShowcasePage() {
                             : entry.event.startsWith("RESET") ? "text-amber-400"
                             : entry.event.startsWith("STATE") ? "text-cyan-400"
                             : entry.event.startsWith("GAME_CHANGED") ? "text-cyan-400"
-                            : "text-gray-500"
+                            : "text-on-surface-variant/50"
                           }>
                             {entry.event}
                           </span>
@@ -2032,8 +2032,8 @@ export default function AnimationsShowcasePage() {
             {/* Description */}
             <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-sm text-gray-400">
-                  <span className="text-purple-300 font-semibold">Phase 3 房間</span> —{" "}
+                <p className="text-sm text-on-surface-variant">
+                  <span className="text-secondary font-semibold">Phase 3 房間</span> —{" "}
                   {roomStyle === "webgl"
                     ? "React Three Fiber 真3D 空間，OrbitControls 自由旋轉視角，點擊地板移動角色。"
                     : roomStyle === "css3d"
@@ -2056,7 +2056,7 @@ export default function AnimationsShowcasePage() {
                 </p>
                 {/* Nine-way style toggle — hidden in compare mode */}
                 {!compareMode && (
-                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-gray-800 border border-gray-700">
+                  <div className="flex flex-wrap items-center gap-1 rounded-2xl p-0.5 bg-surface-container border border-outline-variant/15">
                     {(["2d", "css3d", "webgl", "pixel", "neon", "sketch", "flat", "anime", "maple", "ro"] as const).map((mode) => (
                       <button
                         key={mode}
@@ -2064,8 +2064,8 @@ export default function AnimationsShowcasePage() {
                         className={[
                           "relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-150",
                           roomStyle === mode
-                            ? "bg-purple-600 text-white shadow"
-                            : "text-gray-400 hover:text-white",
+                            ? "bg-secondary-container text-on-surface shadow"
+                            : "text-on-surface-variant hover:text-on-surface",
                         ].join(" ")}
                         title={mode === "anime" ? "推薦 — 最適合一番賞主題" : mode === "maple" ? "楓之谷風格 — 2D 橫版側視" : mode === "ro" ? "仙境傳說 — 2D 等距 RPG 風" : undefined}
                       >
@@ -2076,12 +2076,12 @@ export default function AnimationsShowcasePage() {
                           </span>
                         )}
                         {mode === "maple" && (
-                          <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          <span className="absolute -top-2 -right-1 bg-red-500 text-on-surface text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             新
                           </span>
                         )}
                         {mode === "ro" && (
-                          <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
+                          <span className="absolute -top-2 -right-1 bg-orange-500 text-on-surface text-[8px] font-black px-1 py-px rounded-full leading-none pointer-events-none">
                             新
                           </span>
                         )}
@@ -2096,7 +2096,7 @@ export default function AnimationsShowcasePage() {
                         else el.setAttribute("open", "");
                         el.scrollIntoView({ behavior: "smooth", block: "nearest" });
                       }}
-                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+                      className="ml-1 px-2 py-1 rounded-full text-xs font-bold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all"
                       title="風格推薦指南"
                       aria-label="開啟風格推薦指南"
                     >
@@ -2111,12 +2111,12 @@ export default function AnimationsShowcasePage() {
             {compareMode && (
               <>
                 {/* Shared NPC count control */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4">
-                  <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4">
+                  <h3 className="text-on-surface font-bold text-sm flex items-center gap-2 mb-3">
                     ⚙️ 共用設定
                   </h3>
                   <div className="space-y-1.5">
-                    <label className="text-gray-400 text-xs font-medium">NPC 數量</label>
+                    <label className="text-on-surface-variant text-xs font-medium">NPC 數量</label>
                     <div className="flex gap-1.5">
                       {[1, 2, 3, 4, 5, 6].map((n) => (
                         <button
@@ -2125,8 +2125,8 @@ export default function AnimationsShowcasePage() {
                           className={[
                             "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
                             npcCount === n
-                              ? "bg-purple-600 border-purple-500 text-white"
-                              : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600",
+                              ? "bg-secondary-container border-purple-500 text-on-surface"
+                              : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:border-outline-variant/20",
                           ].join(" ")}
                         >
                           {n}
@@ -2141,11 +2141,11 @@ export default function AnimationsShowcasePage() {
                   {/* LEFT room column */}
                   <div className="flex-1 min-w-0 space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">左側風格</span>
+                      <span className="text-xs text-on-surface-variant/50 font-medium whitespace-nowrap">左側風格</span>
                       <StyleSelector value={leftStyle} onChange={setLeftStyle} />
                     </div>
-                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                      <div className={["bg-gray-950 rounded-xl", leftStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                      <div className={["bg-surface-dim rounded-xl", leftStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
                         <RoomRenderer
                           style={leftStyle}
                           npcCount={npcCount}
@@ -2156,7 +2156,7 @@ export default function AnimationsShowcasePage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-center">
-                      <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
+                      <span className="text-xs text-on-surface-variant font-mono bg-surface-container px-2 py-1 rounded">
                         {leftStyle === "webgl" ? "真 3D — 拖曳旋轉" : leftStyle === "css3d" ? "CSS 3D 房間" : leftStyle === "pixel" ? "Pixel Art 商店" : leftStyle === "neon" ? "Neon Cyberpunk" : leftStyle === "sketch" ? "Hand-drawn Sketch" : leftStyle === "flat" ? "Minimalist Flat" : leftStyle === "anime" ? "Anime/Manga 店" : leftStyle === "maple" ? "楓之谷 Maple 橫版店" : leftStyle === "ro" ? "仙境傳說 RO 商店" : "2.5D 等距房間"}
                       </span>
                     </div>
@@ -2164,19 +2164,19 @@ export default function AnimationsShowcasePage() {
 
                   {/* Divider */}
                   <div className="hidden md:flex flex-col items-center self-stretch">
-                    <div className="w-px flex-1 bg-gray-700/50" />
-                    <span className="text-gray-600 text-xs font-bold py-2">VS</span>
-                    <div className="w-px flex-1 bg-gray-700/50" />
+                    <div className="w-px flex-1 bg-surface-container-high/50" />
+                    <span className="text-on-surface-variant text-xs font-bold py-2">VS</span>
+                    <div className="w-px flex-1 bg-surface-container-high/50" />
                   </div>
 
                   {/* RIGHT room column */}
                   <div className="flex-1 min-w-0 space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">右側風格</span>
+                      <span className="text-xs text-on-surface-variant/50 font-medium whitespace-nowrap">右側風格</span>
                       <StyleSelector value={rightStyle} onChange={setRightStyle} />
                     </div>
-                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                      <div className={["bg-gray-950 rounded-xl", rightStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
+                    <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                      <div className={["bg-surface-dim rounded-xl", rightStyle === "webgl" ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
                         <RoomRenderer
                           style={rightStyle}
                           npcCount={npcCount}
@@ -2187,7 +2187,7 @@ export default function AnimationsShowcasePage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-center">
-                      <span className="text-xs text-gray-600 font-mono bg-gray-800 px-2 py-1 rounded">
+                      <span className="text-xs text-on-surface-variant font-mono bg-surface-container px-2 py-1 rounded">
                         {rightStyle === "webgl" ? "真 3D — 拖曳旋轉" : rightStyle === "css3d" ? "CSS 3D 房間" : rightStyle === "pixel" ? "Pixel Art 商店" : rightStyle === "neon" ? "Neon Cyberpunk" : rightStyle === "sketch" ? "Hand-drawn Sketch" : rightStyle === "flat" ? "Minimalist Flat" : rightStyle === "anime" ? "Anime/Manga 店" : rightStyle === "maple" ? "楓之谷 Maple 橫版店" : rightStyle === "ro" ? "仙境傳說 RO 商店" : "2.5D 等距房間"}
                       </span>
                     </div>
@@ -2195,15 +2195,15 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 {/* Shared compare event log */}
-                <div className="bg-gray-950 rounded-xl border border-gray-800 p-3 font-mono text-xs">
+                <div className="bg-surface-dim rounded-xl border border-outline-variant/10 p-3 font-mono text-xs">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-gray-500">
+                    <div className="flex items-center gap-2 text-on-surface-variant/50">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block" />
                       比較模式 Event Log
                     </div>
                     <button
                       onClick={() => dispatchCompareLog({ type: "clear" })}
-                      className="text-gray-600 hover:text-gray-400 transition-colors text-xs"
+                      className="text-on-surface-variant hover:text-on-surface-variant transition-colors text-xs"
                     >
                       Clear
                     </button>
@@ -2214,7 +2214,7 @@ export default function AnimationsShowcasePage() {
                     ) : (
                       compareLogs.map((entry) => (
                         <div key={entry.id} className="flex gap-3 items-baseline">
-                          <span className="text-gray-600 shrink-0">
+                          <span className="text-on-surface-variant shrink-0">
                             {new Date(entry.ts).toLocaleTimeString("zh-TW", {
                               hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
                             })}
@@ -2222,7 +2222,7 @@ export default function AnimationsShowcasePage() {
                           <span className={
                             entry.event.includes("RESULT") || entry.event.includes("DRAW") ? "text-emerald-400"
                             : entry.event.includes("RESET") ? "text-amber-400"
-                            : "text-gray-400"
+                            : "text-on-surface-variant"
                           }>
                             {entry.event}
                           </span>
@@ -2242,8 +2242,8 @@ export default function AnimationsShowcasePage() {
               {/* LEFT: Arcade cabinet frame — 60% */}
               <div className="w-full lg:flex-[3]">
                 <div className="relative">
-                  <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-purple-900/20">
-                    <div className={["bg-gray-950 rounded-xl", room3D ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
+                  <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-1.5 shadow-2xl shadow-black/20">
+                    <div className={["bg-surface-dim rounded-xl", room3D ? "overflow-hidden" : "overflow-x-auto"].join(" ")}>
                       {roomStyle === "webgl" ? (
                         <PrizeDrawRoom3D
                           key={`3d-room-${npcCount}`}
@@ -2313,7 +2313,7 @@ export default function AnimationsShowcasePage() {
                     </div>
                   </div>
                   <div className="mt-3 text-center">
-                    <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
+                    <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-on-surface text-xs font-bold px-4 py-1 rounded-full shadow">
                       {roomStyle === "webgl"
                         ? "真 3D 房間 — 拖曳旋轉視角，點擊地板移動"
                         : roomStyle === "css3d"
@@ -2341,13 +2341,13 @@ export default function AnimationsShowcasePage() {
               {/* RIGHT: Controls + Info — 40% */}
               <div className="w-full lg:flex-[2] space-y-4">
                 {/* Settings card */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 space-y-4">
-                  <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4 space-y-4">
+                  <h3 className="text-on-surface font-bold text-sm flex items-center gap-2">
                     ⚙️ 設定
                   </h3>
 
                   <div className="space-y-1.5">
-                    <label className="text-gray-400 text-xs font-medium">NPC 數量</label>
+                    <label className="text-on-surface-variant text-xs font-medium">NPC 數量</label>
                     <div className="flex gap-1.5">
                       {[1, 2, 3, 4, 5, 6].map((n) => (
                         <button
@@ -2356,8 +2356,8 @@ export default function AnimationsShowcasePage() {
                           className={[
                             "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all",
                             npcCount === n
-                              ? "bg-purple-600 border-purple-500 text-white"
-                              : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600",
+                              ? "bg-secondary-container border-purple-500 text-on-surface"
+                              : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:border-outline-variant/20",
                           ].join(" ")}
                         >
                           {n}
@@ -2456,8 +2456,8 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 {/* Legend */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-4 space-y-2">
-                  <p className="text-white font-bold text-xs flex items-center gap-1">🗺️ 圖例</p>
+                <div className="bg-surface-container-low/80 backdrop-blur-sm rounded-xl border border-outline-variant/15/50 p-4 space-y-2">
+                  <p className="text-on-surface font-bold text-xs flex items-center gap-1">🗺️ 圖例</p>
                   <div className="space-y-1.5 text-xs">
                     {[
                       { color: "#fbbf24", label: "你的角色" },
@@ -2469,11 +2469,11 @@ export default function AnimationsShowcasePage() {
                     ].map((item) => (
                       <div key={item.label} className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                        <span className="text-gray-400">{item.label}</span>
+                        <span className="text-on-surface-variant">{item.label}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="pt-2 border-t border-gray-700/50 space-y-1 text-xs text-gray-500">
+                  <div className="pt-2 border-t border-outline-variant/15/50 space-y-1 text-xs text-on-surface-variant/50">
                     <p>展架 = 陳列賞品</p>
                     <p>櫃台 = 抽獎區域</p>
                     <p>紫色地毯 = 等候區</p>
@@ -2481,8 +2481,8 @@ export default function AnimationsShowcasePage() {
                 </div>
 
                 {/* Instructions */}
-                <div className="bg-gray-900/50 rounded-xl border border-gray-700/30 p-4 space-y-1.5 text-xs text-gray-500">
-                  <p className="font-semibold text-gray-400">操作說明</p>
+                <div className="bg-surface-container-low/50 rounded-xl border border-outline-variant/15/30 p-4 space-y-1.5 text-xs text-on-surface-variant/50">
+                  <p className="font-semibold text-on-surface-variant">操作說明</p>
                   <p>點擊地板 — 移動角色</p>
                   <p>觸發 NPC 抽獎 — 在遊戲內隨機選 NPC 至櫃台抽獎</p>
                   <p>發送訊息 — 角色頭頂出現聊天氣泡</p>
@@ -2504,7 +2504,7 @@ export default function AnimationsShowcasePage() {
             <div className="flex flex-wrap items-center gap-3 mb-4 px-1">
               {/* Animation mode */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 font-semibold">抽獎方式</span>
+                <span className="text-xs text-on-surface-variant font-semibold">抽獎方式</span>
                 {(["SCRATCH", "TEAR", "FLIP"] as const).map((m) => (
                   <button
                     key={m}
@@ -2515,8 +2515,8 @@ export default function AnimationsShowcasePage() {
                     className={[
                       "px-3 py-1 rounded-full text-xs font-bold transition-all border",
                       spectatorAnimMode === m
-                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md"
-                        : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700",
+                        ? "bg-gradient-to-tr from-primary to-primary-container border-primary-container text-on-surface shadow-md"
+                        : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high",
                     ].join(" ")}
                   >
                     {m === "SCRATCH" ? "刮刮樂" : m === "TEAR" ? "撕籤" : "翻牌"}
@@ -2526,7 +2526,7 @@ export default function AnimationsShowcasePage() {
 
               {/* Speed */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 font-semibold">速度</span>
+                <span className="text-xs text-on-surface-variant font-semibold">速度</span>
                 {([1, 2, 5] as const).map((s) => (
                   <button
                     key={s}
@@ -2537,8 +2537,8 @@ export default function AnimationsShowcasePage() {
                     className={[
                       "px-3 py-1 rounded-full text-xs font-bold transition-all border",
                       spectatorSpeed === s
-                        ? "bg-amber-500 border-amber-400 text-white shadow-md"
-                        : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700",
+                        ? "bg-amber-500 border-amber-400 text-on-surface shadow-md"
+                        : "bg-surface-container border-outline-variant/15 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high",
                     ].join(" ")}
                   >
                     {s}×
@@ -2553,7 +2553,7 @@ export default function AnimationsShowcasePage() {
                   "px-3 py-1 rounded-full text-xs font-bold transition-all border",
                   spectatorSimChat
                     ? "bg-emerald-700/60 border-emerald-600/60 text-emerald-200 hover:bg-emerald-700"
-                    : "bg-gray-800 border-gray-700 text-gray-500 hover:bg-gray-700",
+                    : "bg-surface-container border-outline-variant/15 text-on-surface-variant/50 hover:bg-surface-container-high",
                 ].join(" ")}
               >
                 💬 {spectatorSimChat ? "模擬聊天 ON" : "模擬聊天 OFF"}
@@ -2562,14 +2562,14 @@ export default function AnimationsShowcasePage() {
               {/* Reset */}
               <button
                 onClick={() => setSpectatorKey((k) => k + 1)}
-                className="px-3 py-1 rounded-full text-xs font-bold transition-all border bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 ml-auto"
+                className="px-3 py-1 rounded-full text-xs font-bold transition-all border bg-surface-container border-outline-variant/15 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high ml-auto"
               >
                 重置
               </button>
             </div>
 
             {/* The full-page spectator room — rendered in a contained box */}
-            <div className="rounded-2xl overflow-hidden border border-gray-700/60 shadow-2xl" style={{ minHeight: 620 }}>
+            <div className="rounded-2xl overflow-hidden border border-outline-variant/15/60 shadow-2xl" style={{ minHeight: 620 }}>
               <SpectatorDemo
                 key={spectatorKey}
                 animationMode={spectatorAnimMode}
@@ -2787,7 +2787,7 @@ function SectionLabel({
   className?: string;
 }) {
   return (
-    <p className={`text-xs font-semibold uppercase tracking-wider text-gray-500 ${className}`}>
+    <p className={`text-xs font-semibold uppercase tracking-wider text-on-surface-variant/50 ${className}`}>
       {children}
     </p>
   );
@@ -2810,10 +2810,10 @@ function StatusChip({
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs",
         highlight
           ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-          : "border-gray-700 bg-gray-800 text-gray-300",
+          : "border-outline-variant/15 bg-surface-container text-on-surface-variant",
       ].join(" ")}
     >
-      <span className="text-gray-500">{label}:</span>
+      <span className="text-on-surface-variant/50">{label}:</span>
       <span className={mono ? "font-mono" : "font-medium"}>{value}</span>
     </div>
   );
@@ -2829,12 +2829,12 @@ function DebugCell({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-lg bg-gray-800/60 border border-gray-800 p-2.5 min-w-0">
-      <p className="text-xs text-gray-600 mb-0.5 truncate">{label}</p>
+    <div className="rounded-lg bg-surface-container/60 border border-outline-variant/10 p-2.5 min-w-0">
+      <p className="text-xs text-on-surface-variant mb-0.5 truncate">{label}</p>
       <p
         className={[
           "text-xs font-mono font-semibold truncate",
-          highlight ? "text-emerald-400" : "text-gray-200",
+          highlight ? "text-emerald-400" : "text-on-surface",
         ].join(" ")}
         title={value}
       >
@@ -2888,7 +2888,7 @@ function StyleSelector({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as StyleMode)}
-      className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-600 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors cursor-pointer"
+      className="flex-1 bg-surface-container text-on-surface rounded-lg px-3 py-2 text-sm border border-outline-variant/20 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors cursor-pointer"
     >
       <option value="2d">2D Canvas</option>
       <option value="css3d">CSS 3D</option>
@@ -2966,7 +2966,7 @@ function MiniGameRenderer({
       <div key={`${prefix}-maple-wip-${gameKey}`} className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-amber-950/40 to-red-950/40" style={{ width: 340, height: 480 }}>
         <span className="text-4xl">🍁</span>
         <p className="text-red-300 font-bold text-sm">楓之谷 扭蛋機 開發中</p>
-        <p className="text-gray-500 text-xs">Coming Soon</p>
+        <p className="text-on-surface-variant/50 text-xs">Coming Soon</p>
       </div>
     );
   }
@@ -2976,7 +2976,7 @@ function MiniGameRenderer({
       <div key={`${prefix}-ro-wip-${gameKey}`} className="flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-orange-950/40 to-amber-950/40" style={{ width: 340, height: 480 }}>
         <span className="text-4xl">⚔️</span>
         <p className="text-orange-300 font-bold text-sm">仙境傳說 扭蛋機 開發中</p>
-        <p className="text-gray-500 text-xs">Coming Soon</p>
+        <p className="text-on-surface-variant/50 text-xs">Coming Soon</p>
       </div>
     );
   }

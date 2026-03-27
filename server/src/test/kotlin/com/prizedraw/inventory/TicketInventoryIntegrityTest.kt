@@ -23,6 +23,8 @@ import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.services.DrawValidationException as DomainDrawValidationException
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
@@ -170,6 +172,7 @@ class TicketInventoryIntegrityTest : DescribeSpec({
             grade = grade,
             name = "Prize $grade",
             photos = emptyList(),
+            prizeValue = 0,
             buybackPrice = 0,
             buybackEnabled = false,
             probabilityBps = null,
@@ -350,11 +353,6 @@ class TicketInventoryIntegrityTest : DescribeSpec({
             )
             ticketIndex[ticketId] = drawn
 
-            // Decrement the box's remaining-ticket counter atomically.
-            // The real DB decrements the remaining_tickets column inside the draw transaction;
-            // we mirror that here so findById returns an accurate remaining count.
-            boxStateRef[original.ticketBoxId]?.decrementAndGet()
-
             // Record grade for distribution verification
             val def = defsByGrade.values.find { it.id == original.prizeDefinitionId }
             if (def != null) {
@@ -480,8 +478,8 @@ class TicketInventoryIntegrityTest : DescribeSpec({
                 playerRepository = fakes.playerRepo,
                 campaignRepository = fakes.campaignRepo,
                 queueRepository = fakes.queueRepo,
-                drawPointTxRepository = fakes.drawPointTxRepo,
                 outboxRepository = fakes.outboxRepo,
+                drawCore = DrawCore(DrawCoreDeps(playerRepository = fakes.playerRepo, prizeRepository = fakes.prizeRepo, drawPointTxRepository = fakes.drawPointTxRepo, outboxRepository = fakes.outboxRepo)),
                 auditRepository = fakes.auditRepo,
                 domainService = KujiDrawDomainService(),
                 redisPubSub = fakes.redisPubSub,

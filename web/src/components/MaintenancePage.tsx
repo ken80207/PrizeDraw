@@ -1,35 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface MaintenancePageProps {
-  /** Maintenance headline from the active announcement. */
   title: string;
-  /** Detailed maintenance message. */
   message: string;
-  /**
-   * ISO-8601 timestamp of the expected restoration time, or null when unknown.
-   * Displayed as a localised time string in the user's browser timezone.
-   */
   scheduledEnd: string | null;
-  /** Callback invoked when the user clicks the retry button. */
   onRetry: () => void;
 }
 
-/**
- * Full-screen blocking overlay rendered during platform maintenance.
- *
- * This page **cannot be interacted-with in the background** — it is rendered
- * as the sole child of `layout.tsx` via `useServerStatus()` when `isBlocked`
- * is `true`. Navigation to any other route is impossible while it is displayed.
- *
- * @param title Maintenance headline.
- * @param message Detailed maintenance body text.
- * @param scheduledEnd Optional ISO timestamp of the expected end time.
- * @param onRetry Callback for the retry button; the layout polls automatically
- *   every 30 seconds and will remove this page once the server is back online.
- */
 export function MaintenancePage({ title, message, scheduledEnd, onRetry }: MaintenancePageProps) {
+  const t = useTranslations("maintenance");
   const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -47,29 +29,34 @@ export function MaintenancePage({ title, message, scheduledEnd, onRetry }: Maint
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-950">
-      <div className="mx-auto max-w-md px-6 text-center">
-        {/* Wrench icon */}
-        <div className="mb-6 text-6xl" role="img" aria-label="maintenance">
-          🔧
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dim">
+      {/* Decorative blobs */}
+      <div className="fixed top-[-10%] left-[-5%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="relative mx-auto max-w-md px-6 text-center">
+        <div className="mb-6">
+          <span className="material-symbols-outlined text-6xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+            build
+          </span>
         </div>
 
-        <h1 className="mb-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="mb-3 text-2xl font-black text-on-surface font-headline">
           {title}
         </h1>
 
-        <p className="mb-4 text-gray-600 dark:text-gray-400">{message}</p>
+        <p className="mb-4 text-on-surface-variant">{message}</p>
 
         {endTimeDisplay && (
-          <p className="mb-6 font-medium text-indigo-600 dark:text-indigo-400">
-            預計 {endTimeDisplay} 恢復服務
+          <p className="mb-6 font-bold text-primary">
+            {t("expectedRestore", { time: endTimeDisplay })}
           </p>
         )}
 
         <button
           onClick={handleRetry}
           disabled={isRetrying}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl amber-gradient px-6 py-3 text-sm font-bold text-on-primary shadow-lg shadow-primary/20 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 transition-all"
         >
           {isRetrying ? (
             <>
@@ -93,14 +80,17 @@ export function MaintenancePage({ title, message, scheduledEnd, onRetry }: Maint
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
               </svg>
-              連線中…
+              <span>{t("retrying")}</span>
             </>
           ) : (
-            "重新連線"
+            <>
+              <span className="material-symbols-outlined text-sm">refresh</span>
+              <span>{t("retryButton")}</span>
+            </>
           )}
         </button>
 
-        <p className="mt-3 text-xs text-gray-400">每 30 秒自動重試</p>
+        <p className="mt-3 text-xs text-on-surface-variant/50">{t("autoRetry")}</p>
       </div>
     </div>
   );

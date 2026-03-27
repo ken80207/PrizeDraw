@@ -114,7 +114,7 @@ function TearSpectator({ progress }: { progress: number }) {
 
   return (
     <div
-      className="w-[200px] h-[280px] rounded-xl overflow-hidden relative shrink-0 shadow-md bg-gray-200 dark:bg-gray-700"
+      className="w-[200px] h-[280px] rounded-xl overflow-hidden relative shrink-0 shadow-md bg-surface-container-high"
       style={{ pointerEvents: "none" }}
     >
       <canvas ref={canvasRef} width={200} height={280} className="w-full h-full" />
@@ -162,7 +162,7 @@ function ScratchSpectator({ progress }: { progress: number }) {
 
   return (
     <div
-      className="w-[200px] h-[280px] rounded-xl overflow-hidden relative shrink-0 shadow-md bg-indigo-100 dark:bg-indigo-900/40"
+      className="w-[200px] h-[280px] rounded-xl overflow-hidden relative shrink-0 shadow-md bg-secondary-container/20"
       style={{ pointerEvents: "none" }}
     >
       {/* Prize placeholder beneath scratch layer */}
@@ -201,7 +201,7 @@ function FlipSpectator({ progress }: { progress: number }) {
       >
         {/* Front face */}
         <div
-          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-5xl shadow-md"
+          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-secondary-container to-secondary flex items-center justify-center text-on-surface text-5xl shadow-md"
           style={{ backfaceVisibility: "hidden" }}
         >
           🎫
@@ -209,7 +209,7 @@ function FlipSpectator({ progress }: { progress: number }) {
 
         {/* Back face */}
         <div
-          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-5xl shadow-md"
+          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary text-5xl shadow-md"
           style={{
             backfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
@@ -231,11 +231,11 @@ function FlipSpectator({ progress }: { progress: number }) {
 function InstantSpectator() {
   return (
     <div
-      className="w-[200px] h-[280px] shrink-0 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex flex-col items-center justify-center gap-3 shadow-md"
+      className="w-[200px] h-[280px] shrink-0 rounded-xl bg-gradient-to-br from-surface-container to-surface-container-high flex flex-col items-center justify-center gap-3 shadow-md"
       style={{ pointerEvents: "none" }}
     >
-      <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-      <span className="text-xs text-gray-500 dark:text-gray-400">即時抽獎中</span>
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs text-on-surface-variant">即時抽獎中</span>
     </div>
   );
 }

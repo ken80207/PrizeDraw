@@ -19,15 +19,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
 import com.prizedraw.contracts.enums.PrizeState
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.prize.PrizeInventoryIntent
 import com.prizedraw.viewmodels.prize.PrizeInventoryViewModel
 
-private val FILTER_TABS: List<Pair<String, PrizeState?>> =
+private data class FilterTab(
+    val labelKey: String,
+    val state: PrizeState?,
+)
+
+private val FILTER_TABS: List<FilterTab> =
     listOf(
-        "All" to null,
-        "Holding" to PrizeState.HOLDING,
-        "In Transit" to PrizeState.PENDING_SHIPMENT,
-        "Shipped" to PrizeState.SHIPPED,
+        FilterTab(labelKey = "prizes.filterAll", state = null),
+        FilterTab(labelKey = "prizes.filterHolding", state = PrizeState.HOLDING),
+        FilterTab(labelKey = "prizes.filterInTransit", state = PrizeState.PENDING_SHIPMENT),
+        FilterTab(labelKey = "prizes.filterShipped", state = PrizeState.SHIPPED),
     )
 
 /**
@@ -47,13 +53,13 @@ public fun MyPrizesScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScrollableTabRow(
-            selectedTabIndex = FILTER_TABS.indexOfFirst { it.second == state.filter }.coerceAtLeast(0),
+            selectedTabIndex = FILTER_TABS.indexOfFirst { it.state == state.filter }.coerceAtLeast(0),
         ) {
-            FILTER_TABS.forEachIndexed { index, (label, prizeState) ->
+            FILTER_TABS.forEachIndexed { index, tab ->
                 Tab(
-                    selected = state.filter == prizeState,
-                    onClick = { viewModel.onIntent(PrizeInventoryIntent.SetFilter(prizeState)) },
-                    text = { Text(label) },
+                    selected = state.filter == tab.state,
+                    onClick = { viewModel.onIntent(PrizeInventoryIntent.SetFilter(tab.state)) },
+                    text = { Text(S(tab.labelKey)) },
                 )
             }
         }

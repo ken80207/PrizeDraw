@@ -5,27 +5,20 @@ import com.prizedraw.application.ports.output.DomainEvent
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.ICouponRepository
-import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
-import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
-import com.prizedraw.application.services.LevelService
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
 import com.prizedraw.contracts.enums.CampaignType
-import com.prizedraw.contracts.enums.DrawPointTxType
-import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
-import com.prizedraw.domain.entities.DrawPointTransaction
 import com.prizedraw.domain.entities.PlayerCouponStatus
-import com.prizedraw.domain.entities.PrizeAcquisitionMethod
-import com.prizedraw.domain.entities.PrizeInstance
-import com.prizedraw.domain.entities.XpRules
-import com.prizedraw.domain.entities.XpSourceType
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawValidationException
+import com.prizedraw.domain.services.PrizePoolEntry
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.domain.valueobjects.PrizeInstanceId
+import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import io.lettuce.core.Range
 import io.lettuce.core.ScoredValue
@@ -51,9 +44,6 @@ public class UnlimitedRateLimitExceededException(
         "Player ${playerId.value} exceeded rate limit of $limit draws/sec for campaign $campaignId",
     )
 
-/** Maximum retries for the optimistic balance debit. */
-private const val MAX_BALANCE_RETRIES = 3
-
 /** Basis points denominator used to convert percentage discount values. */
 private const val BPS_DENOMINATOR = 100.0
 
@@ -67,33 +57,27 @@ private const val RATE_LIMIT_WINDOW_MS = 1_000L
 public data class DrawUnlimitedDeps(
     val campaignRepository: ICampaignRepository,
     val prizeRepository: IPrizeRepository,
-    val playerRepository: IPlayerRepository,
-    val drawPointTxRepository: IDrawPointTransactionRepository,
     val outboxRepository: IOutboxRepository,
     val auditRepository: IAuditRepository,
     val domainService: UnlimitedDrawDomainService,
     val redisClient: RedisClient,
+    val drawCore: DrawCore,
     val couponRepository: ICouponRepository? = null,
-    val levelService: LevelService? = null,
 )
 
 /**
  * Executes a single probability-based unlimited draw for an authenticated player.
  *
  * Processing order:
- * 1. Resolve the active [UnlimitedCampaign] and its prize definitions (from cache key or DB).
- * 2. Enforce the Redis sliding-window rate limit:
- *    `ZRANGEBYSCORE unlimited:ratelimit:{playerId}:{campaignId} (now-1s) now`
- *    Rejects if the count >= [campaign.rateLimitPerSecond].
+ * 1. Resolve the active [UnlimitedCampaign] and its prize definitions.
+ * 2. Enforce the Redis sliding-window rate limit.
  * 3. Record the draw timestamp in the Redis sorted set and expire stale entries atomically.
- * 4. Call [UnlimitedDrawDomainService.spin] to select the winning prize definition.
- * 5. In a single DB transaction:
- *    a. Create a [PrizeInstance] in [PrizeState.HOLDING].
- *    b. Debit draw points with optimistic-lock retry (up to [MAX_BALANCE_RETRIES]).
- *    c. Insert a [DrawPointTransaction] ledger entry.
- *    d. Insert an [AuditLog] entry.
- *    e. Enqueue a [UnlimitedDrawCompletedEvent] into the outbox.
- * 6. Return the [UnlimitedDrawResultDto].
+ * 4. Apply coupon discount if provided.
+ * 5. Build a [PrizePoolEntry] list from prize definitions using [probabilityBps] as weight.
+ * 6. Delegate to [DrawCore]: weighted selection → balance debit → PrizeInstance creation →
+ *    DrawPointTransaction recording → outbox event dispatch → XP award.
+ * 7. Record [AuditLog] and enqueue [UnlimitedDrawCompletedEvent].
+ * 8. Return the [UnlimitedDrawResultDto].
  */
 public class DrawUnlimitedUseCase(
     private val deps: DrawUnlimitedDeps,
@@ -114,38 +98,49 @@ public class DrawUnlimitedUseCase(
                 CampaignType.UNLIMITED,
             )
         enforceRateLimit(playerId, campaignId, campaign.rateLimitPerSecond)
-        val wonDefinition = deps.domainService.spin(definitions)
         val (effectivePrice, discountAmount) =
             resolveCouponDiscount(playerId, playerCouponId, campaign.pricePerDraw)
-        val result =
-            executeDrawTransaction(
-                playerId = playerId,
-                campaignId = campaignId,
-                pricePerDraw = effectivePrice,
-                wonDefinition = wonDefinition,
-                playerCouponId = playerCouponId,
-            )
-        awardDrawXp(playerId, effectivePrice, campaignId)
-        return result
-    }
 
-    private suspend fun awardDrawXp(
-        playerId: PlayerId,
-        pricePerDraw: Int,
-        campaignId: UUID,
-    ) {
-        val levelService = deps.levelService ?: return
-        val xpAmount = pricePerDraw * XpRules.XP_PER_DRAW_POINT
-        runCatching {
-            levelService.awardXp(
-                playerId = playerId,
-                amount = xpAmount,
-                sourceType = XpSourceType.UNLIMITED_DRAW,
-                sourceId = campaignId,
-                description = "轉蛋抽獎: campaign $campaignId",
+        // Validate probability distribution before drawing
+        if (!deps.domainService.validateProbabilitySum(definitions)) {
+            throw DrawValidationException(
+                "Probability sum is ${definitions.sumOf { it.probabilityBps ?: 0 }} bps; must equal 1000000",
             )
-        }.onFailure { ex ->
-            log.warn("Failed to award XP for unlimited draw by ${playerId.value}: ${ex.message}")
+        }
+
+        val pool = definitions.map { def ->
+            PrizePoolEntry(
+                prizeDefinitionId = def.id.value,
+                weight = def.probabilityBps ?: 0,
+            )
+        }
+
+        val outcomes = newSuspendedTransaction {
+            markCouponExhausted(playerId, playerCouponId)
+            deps.drawCore.draw(
+                playerId = playerId,
+                pool = pool,
+                quantity = 1,
+                pricePerDraw = effectivePrice,
+                discountAmount = discountAmount,
+                gameType = "UNLIMITED",
+            )
+        }
+
+        val outcome = outcomes.first()
+        return newSuspendedTransaction {
+            val prizeDef = deps.prizeRepository.findDefinitionById(PrizeDefinitionId(outcome.prizeDefinitionId))
+            checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
+
+            recordAuditAndOutbox(playerId, campaignId, outcome.prizeInstanceId.value, effectivePrice)
+
+            UnlimitedDrawResultDto(
+                prizeInstanceId = outcome.prizeInstanceId.value.toString(),
+                grade = prizeDef.grade,
+                prizeName = prizeDef.name,
+                prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
+                pointsCharged = outcome.pointsCharged,
+            )
         }
     }
 
@@ -179,6 +174,22 @@ public class DrawUnlimitedUseCase(
                     (basePrice - coupon.discountValue).coerceAtLeast(0)
             }
         return Pair(discountedPrice, basePrice - discountedPrice)
+    }
+
+    private suspend fun markCouponExhausted(playerId: PlayerId, playerCouponId: UUID?) {
+        if (playerCouponId == null || deps.couponRepository == null) return
+        val pc = deps.couponRepository.findPlayerCouponById(playerCouponId)
+        if (pc != null && pc.playerId == playerId) {
+            val now = Clock.System.now()
+            deps.couponRepository.savePlayerCoupon(
+                pc.copy(
+                    useCount = pc.useCount + 1,
+                    status = PlayerCouponStatus.EXHAUSTED,
+                    lastUsedAt = now,
+                    updatedAt = now,
+                ),
+            )
+        }
     }
 
     /**
@@ -219,111 +230,17 @@ public class DrawUnlimitedUseCase(
         }
     }
 
-    private suspend fun executeDrawTransaction(
-        playerId: PlayerId,
-        campaignId: UUID,
-        pricePerDraw: Int,
-        wonDefinition: com.prizedraw.domain.entities.PrizeDefinition,
-        playerCouponId: UUID?,
-    ): UnlimitedDrawResultDto =
-        newSuspendedTransaction {
-            val now = Clock.System.now()
-            val player = deps.playerRepository.findById(playerId)
-            checkNotNull(player) { "Player ${playerId.value} not found" }
-            if (player.drawPointsBalance < pricePerDraw) {
-                throw InsufficientPointsException(pricePerDraw, player.drawPointsBalance)
-            }
-            if (playerCouponId != null && deps.couponRepository != null) {
-                val pc = deps.couponRepository.findPlayerCouponById(playerCouponId)
-                if (pc != null) {
-                    deps.couponRepository.savePlayerCoupon(
-                        pc.copy(
-                            useCount = pc.useCount + 1,
-                            status = PlayerCouponStatus.EXHAUSTED,
-                            lastUsedAt = now,
-                            updatedAt = now,
-                        ),
-                    )
-                }
-            }
-            val instanceId = PrizeInstanceId(UUID.randomUUID())
-            val instance =
-                PrizeInstance(
-                    id = instanceId,
-                    prizeDefinitionId = wonDefinition.id,
-                    ownerId = playerId,
-                    acquisitionMethod = PrizeAcquisitionMethod.UNLIMITED_DRAW,
-                    sourceDrawTicketId = null,
-                    sourceTradeOrderId = null,
-                    sourceExchangeRequestId = null,
-                    state = PrizeState.HOLDING,
-                    acquiredAt = now,
-                    deletedAt = null,
-                    createdAt = now,
-                    updatedAt = now,
-                )
-            deps.prizeRepository.saveInstance(instance)
-            debitBalanceWithRetry(playerId, pricePerDraw, now)
-            recordAuditAndOutbox(playerId, campaignId, instanceId, pricePerDraw, now)
-            UnlimitedDrawResultDto(
-                prizeInstanceId = instanceId.value.toString(),
-                grade = wonDefinition.grade,
-                prizeName = wonDefinition.name,
-                prizePhotoUrl = wonDefinition.photos.firstOrNull() ?: "",
-                pointsCharged = pricePerDraw,
-            )
-        }
-
-    private suspend fun debitBalanceWithRetry(
-        playerId: PlayerId,
-        cost: Int,
-        now: kotlinx.datetime.Instant,
-    ) {
-        repeat(MAX_BALANCE_RETRIES) { attempt ->
-            val player = deps.playerRepository.findById(playerId)
-            checkNotNull(player) { "Player ${playerId.value} not found" }
-            val newBalance = player.drawPointsBalance - cost
-            if (newBalance < 0) {
-                throw InsufficientPointsException(cost, player.drawPointsBalance)
-            }
-            val updated =
-                deps.playerRepository.updateBalance(
-                    id = playerId,
-                    drawPointsDelta = -cost,
-                    revenuePointsDelta = 0,
-                    expectedVersion = player.version,
-                )
-            if (updated) {
-                deps.drawPointTxRepository.record(
-                    DrawPointTransaction(
-                        id = UUID.randomUUID(),
-                        playerId = playerId,
-                        type = DrawPointTxType.UNLIMITED_DRAW_DEBIT,
-                        amount = -cost,
-                        balanceAfter = newBalance,
-                        paymentOrderId = null,
-                        description = "Unlimited draw debit",
-                        createdAt = now,
-                    ),
-                )
-                return
-            }
-            log.warn("Balance optimistic lock failed for player ${playerId.value}, attempt ${attempt + 1}")
-        }
-        error("Failed to debit balance for player ${playerId.value} after $MAX_BALANCE_RETRIES attempts")
-    }
-
     private fun recordAuditAndOutbox(
         playerId: PlayerId,
         campaignId: UUID,
-        instanceId: PrizeInstanceId,
+        instanceId: UUID,
         cost: Int,
-        now: kotlinx.datetime.Instant,
     ) {
+        val now = Clock.System.now()
         val metadata =
             buildJsonObject {
                 put("campaignId", campaignId.toString())
-                put("prizeInstanceId", instanceId.value.toString())
+                put("prizeInstanceId", instanceId.toString())
                 put("cost", cost)
             }
         deps.auditRepository.record(
@@ -344,7 +261,7 @@ public class DrawUnlimitedUseCase(
         deps.outboxRepository.enqueue(
             UnlimitedDrawCompletedEvent(
                 campaignId = campaignId,
-                prizeInstanceId = instanceId.value,
+                prizeInstanceId = instanceId,
                 playerId = playerId.value,
             ),
         )

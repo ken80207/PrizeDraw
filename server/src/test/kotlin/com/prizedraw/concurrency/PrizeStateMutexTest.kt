@@ -296,6 +296,7 @@ class PrizeStateMutexTest :
                         grade = "A",
                         name = "Test Prize",
                         photos = emptyList(),
+                        prizeValue = 0,
                         buybackPrice = 150,
                         buybackEnabled = true,
                         probabilityBps = null,

@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.support.SupportIntent
 import com.prizedraw.viewmodels.support.SupportTicketSummaryDto
 import com.prizedraw.viewmodels.support.SupportViewModel
@@ -69,11 +70,11 @@ public fun SupportTicketListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Support") })
+            TopAppBar(title = { Text(S("support.title")) })
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateTicket) {
-                Icon(Icons.Filled.Add, contentDescription = "Create ticket")
+                Icon(Icons.Filled.Add, contentDescription = S("support.createTicket"))
             }
         },
     ) { innerPadding ->
@@ -101,7 +102,7 @@ public fun SupportTicketListScreen(
 
                 state.tickets.isEmpty() -> {
                     Text(
-                        text = "No tickets yet. Tap + to get help.",
+                        text = S("support.noTickets"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier =

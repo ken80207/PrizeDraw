@@ -7,6 +7,7 @@ import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCa
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
 import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.usecases.admin.AdminCampaignNotFoundException
@@ -40,7 +41,6 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /**
@@ -79,6 +79,7 @@ private fun Route.adminCampaignCreateRoutes() {
                 coverImageUrl = req.coverImageUrl,
                 pricePerDraw = req.pricePerDraw,
                 drawSessionSeconds = req.drawSessionSeconds,
+                boxes = req.boxes,
             )
         call.respond(HttpStatusCode.Created, campaign.toDto())
     }
@@ -105,6 +106,7 @@ private fun Route.adminCampaignQueryRoutes() {
     val campaignRepository: ICampaignRepository by inject()
     val ticketBoxRepository: ITicketBoxRepository by inject()
     val prizeRepository: IPrizeRepository by inject()
+    val drawRepository: IDrawRepository by inject()
 
     get(AdminEndpoints.CAMPAIGNS) {
         call.requireStaff(StaffRole.OPERATOR) ?: return@get
@@ -135,6 +137,18 @@ private fun Route.adminCampaignQueryRoutes() {
         } else {
             call.respond(HttpStatusCode.OK, response)
         }
+    }
+
+    get(AdminEndpoints.CAMPAIGN_DRAW_RECORDS) {
+        call.requireStaff(StaffRole.OPERATOR) ?: return@get
+        val campaignId = call.parseCampaignId() ?: return@get
+        val limit =
+            call.request.queryParameters["limit"]
+                ?.toIntOrNull()
+                ?.coerceIn(1, 200)
+                ?: 50
+        val records = drawRepository.findDrawnByCampaign(campaignId, limit)
+        call.respond(HttpStatusCode.OK, records)
     }
 }
 
@@ -336,6 +350,7 @@ private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
         grade = grade,
         name = name,
         photos = photos,
+        prizeValue = prizeValue,
         buybackPrice = buybackPrice,
         buybackEnabled = buybackEnabled,
         probabilityBps = probabilityBps,
@@ -343,22 +358,22 @@ private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
         displayOrder = displayOrder,
     )
 
-private fun KujiCampaign.toAdminListItem(): Map<String, Any?> =
+private fun KujiCampaign.toAdminListItem(): Map<String, String> =
     mapOf(
         "id" to id.value.toString(),
         "title" to title,
         "type" to "KUJI",
         "status" to status.name,
-        "pricePerDraw" to pricePerDraw,
+        "pricePerDraw" to pricePerDraw.toString(),
         "createdAt" to createdAt.toString(),
     )
 
-private fun UnlimitedCampaign.toAdminListItem(): Map<String, Any?> =
+private fun UnlimitedCampaign.toAdminListItem(): Map<String, String> =
     mapOf(
         "id" to id.value.toString(),
         "title" to title,
         "type" to "UNLIMITED",
         "status" to status.name,
-        "pricePerDraw" to pricePerDraw,
+        "pricePerDraw" to pricePerDraw.toString(),
         "createdAt" to createdAt.toString(),
     )

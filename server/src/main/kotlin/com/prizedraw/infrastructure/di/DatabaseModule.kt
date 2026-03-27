@@ -62,7 +62,7 @@ public fun databaseModule(config: ApplicationConfig) =
                 .configure()
                 .dataSource(dataSource)
                 .locations("classpath:db/migration")
-                .baselineOnMigrate(false)
+                .baselineOnMigrate(true)
                 .validateOnMigrate(true)
                 .load()
                 .migrate()

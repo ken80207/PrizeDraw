@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.trade.TradeListingDto
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.trade.MarketplaceIntent
 import com.prizedraw.viewmodels.trade.MarketplaceViewModel
 
@@ -101,7 +102,7 @@ private fun TradeListingCard(
             Column {
                 Text(text = listing.prizeName, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = "Grade ${listing.prizeGrade} • ${listing.sellerNickname}",
+                    text = "${S("trade.grade")} ${listing.prizeGrade} • ${listing.sellerNickname}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

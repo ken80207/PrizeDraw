@@ -60,11 +60,11 @@ public class PaymentOrderRepositoryImpl : IPaymentOrderRepository {
                     it[fiatAmount] = order.fiatAmount
                     it[currencyCode] = order.currencyCode
                     it[drawPointsGranted] = order.drawPointsGranted
-                    it[gateway] = order.gateway.name
+                    it[gateway] = order.gateway
                     it[gatewayTransactionId] = order.gatewayTransactionId
                     it[paymentMethod] = order.paymentMethod
                     it[gatewayMetadata] = metadataJson
-                    it[status] = order.status.name
+                    it[status] = order.status
                     it[paidAt] = order.paidAt?.toOffsetDateTime()
                     it[failedAt] = order.failedAt?.toOffsetDateTime()
                     it[refundedAt] = order.refundedAt?.toOffsetDateTime()
@@ -77,7 +77,7 @@ public class PaymentOrderRepositoryImpl : IPaymentOrderRepository {
                     it[gatewayTransactionId] = order.gatewayTransactionId
                     it[paymentMethod] = order.paymentMethod
                     it[gatewayMetadata] = metadataJson
-                    it[status] = order.status.name
+                    it[status] = order.status
                     it[paidAt] = order.paidAt?.toOffsetDateTime()
                     it[failedAt] = order.failedAt?.toOffsetDateTime()
                     it[refundedAt] = order.refundedAt?.toOffsetDateTime()
@@ -114,14 +114,14 @@ public class PaymentOrderRepositoryImpl : IPaymentOrderRepository {
             fiatAmount = this[PaymentOrdersTable.fiatAmount],
             currencyCode = this[PaymentOrdersTable.currencyCode],
             drawPointsGranted = this[PaymentOrdersTable.drawPointsGranted],
-            gateway = PaymentGateway.valueOf(this[PaymentOrdersTable.gateway]),
+            gateway = this[PaymentOrdersTable.gateway],
             gatewayTransactionId = this[PaymentOrdersTable.gatewayTransactionId],
             paymentMethod = this[PaymentOrdersTable.paymentMethod],
             gatewayMetadata =
                 runCatching {
                     Json.parseToJsonElement(this[PaymentOrdersTable.gatewayMetadata]) as JsonObject
                 }.getOrElse { JsonObject(emptyMap()) },
-            status = PaymentOrderStatus.valueOf(this[PaymentOrdersTable.status]),
+            status = this[PaymentOrdersTable.status],
             paidAt = this[PaymentOrdersTable.paidAt]?.toInstant()?.toKotlinInstant(),
             failedAt = this[PaymentOrdersTable.failedAt]?.toInstant()?.toKotlinInstant(),
             refundedAt = this[PaymentOrdersTable.refundedAt]?.toInstant()?.toKotlinInstant(),

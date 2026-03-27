@@ -19,36 +19,41 @@ interface PrizeCardProps {
 export function PrizeCard({ prize }: PrizeCardProps) {
   return (
     <Link href={`/prizes/${prize.id}`} className="group block">
-      <div data-testid="prize-card" className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200">
+      <div
+        data-testid="prize-card"
+        className="rounded-lg overflow-hidden bg-surface-container hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:-translate-y-1.5"
+      >
         {/* Prize image */}
-        <div className="relative w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
+        <div className="relative w-full h-44 bg-surface-container-low overflow-hidden group-hover:bg-surface-container-high transition-colors">
           {prize.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={prize.photoUrl}
               alt={prize.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl">
-              🏆
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-5xl text-on-surface-variant/40">
+                trophy
+              </span>
             </div>
           )}
-          <div className="absolute top-2 left-2">
+          <div className="absolute top-3 left-3">
             <GradeBadge grade={prize.grade} />
           </div>
         </div>
 
         {/* Card body */}
-        <div className="p-3">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm line-clamp-2 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+        <div className="p-4">
+          <h3 className="font-headline font-bold text-on-surface text-sm line-clamp-2 mb-1 group-hover:text-primary transition-colors">
             {prize.name}
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-1">
+          <p className="font-body text-xs text-on-surface-variant mb-3 line-clamp-1">
             來源: {prize.sourceCampaign}
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="font-label text-xs text-on-surface-variant/60">
               {prize.acquisitionDate}
             </span>
             <StatusBadge status={prize.status} />

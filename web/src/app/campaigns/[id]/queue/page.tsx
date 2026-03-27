@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { authStore } from "@/stores/authStore";
 import { GradeBadge } from "@/components/GradeBadge";
@@ -37,13 +38,7 @@ interface DrawResultDto {
   tickets: DrawnTicketResultDto[];
 }
 
-const DRAW_MODES = [
-  { label: "自選籤", qty: 0 },
-  { label: "1 抽", qty: 1 },
-  { label: "3 抽", qty: 3 },
-  { label: "5 抽", qty: 5 },
-  { label: "12 抽", qty: 12 },
-];
+const DRAW_MODE_QTY = [0, 1, 3, 5, 12] as const;
 
 export default function QueuePage() {
   return (
@@ -57,6 +52,8 @@ function QueueContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations("campaign");
+  const tc = useTranslations("common");
 
   const campaignId =
     typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
@@ -74,6 +71,14 @@ function QueueContent() {
 
   const { activeDrawSession, lastRevealed, clearRevealed } = useDrawSync(campaignId);
 
+  const DRAW_MODES = [
+    { label: t("drawModeSelf"), qty: 0 },
+    { label: `1 抽`, qty: 1 },
+    { label: `3 抽`, qty: 3 },
+    { label: `5 抽`, qty: 5 },
+    { label: `12 抽`, qty: 12 },
+  ];
+
   // Load campaign price + player points
   useEffect(() => {
     if (!campaignId) return;
@@ -86,7 +91,7 @@ function QueueContent() {
   }, [campaignId]);
 
   const isMyTurn = queueEntry?.status === "ACTIVE";
-  const selectedQty = DRAW_MODES[selectedMode]?.qty ?? 1;
+  const selectedQty = DRAW_MODE_QTY[selectedMode] ?? 1;
   const totalCost = selectedQty > 0 ? selectedQty * pricePerDraw : pricePerDraw;
 
   // Countdown timer
@@ -99,7 +104,11 @@ function QueueContent() {
           Math.floor((new Date(sessionExpiresAt!).getTime() - Date.now()) / 1000),
         );
         setCountdown(remaining);
-        if (remaining <= 0) clearInterval(countdownRef.current!);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current!);
+          toast.info(t("turnExpired"));
+          setQueueEntry(null);
+        }
       }
       update();
       countdownRef.current = setInterval(update, 1000);
@@ -120,15 +129,15 @@ function QueueContent() {
         ticketBoxId: boxId,
       });
       setQueueEntry(entry);
-      toast.success("成功加入排隊！");
+      toast.success(t("joinedQueue"));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "加入排隊失敗";
+      const msg = err instanceof Error ? err.message : t("joinQueueFailed");
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [boxId]);
+  }, [boxId, t]);
 
   const handleLeaveQueue = useCallback(async () => {
     setLoading(true);
@@ -143,17 +152,17 @@ function QueueContent() {
         },
         body: JSON.stringify({ ticketBoxId: boxId }),
       });
-      if (!res.ok) throw new Error("離開排隊失敗");
+      if (!res.ok) throw new Error(t("leaveQueueFailed"));
       setQueueEntry(null);
-      toast.info("已離開排隊");
+      toast.info(t("leftQueue"));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "離開排隊失敗";
+      const msg = err instanceof Error ? err.message : t("leaveQueueFailed");
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [boxId]);
+  }, [boxId, t]);
 
   const handleDraw = useCallback(async () => {
     setLoading(true);
@@ -165,25 +174,26 @@ function QueueContent() {
         quantity: selectedQty > 0 ? selectedQty : 1,
       });
       setDrawResult(result);
-      toast.success("抽獎成功！");
+      toast.success(t("drawSuccess"));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "抽獎失敗";
+      const msg = err instanceof Error ? err.message : t("drawFailed");
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [boxId, selectedQty]);
+  }, [boxId, selectedQty, t]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-surface-dim">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
         {/* Back link */}
         <Link
           href={`/campaigns/${campaignId}`}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-6 transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-primary"
         >
-          ← 返回活動頁
+          <span className="material-symbols-outlined text-base leading-none">arrow_back</span>
+          {t("backToCampaign")}
         </Link>
 
         {/* When someone else is drawing and player is waiting */}
@@ -203,38 +213,38 @@ function QueueContent() {
 
         {/* Error banner */}
         {error && (
-          <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-error-container/20 px-4 py-3">
+            <p className="text-sm text-error">{error}</p>
             <button
               onClick={() => setError(null)}
-              className="text-red-500 hover:text-red-700 text-lg ml-3"
+              className="ml-3 text-error/60 transition-colors hover:text-error"
             >
-              ×
+              <span className="material-symbols-outlined text-base leading-none">close</span>
             </button>
           </div>
         )}
 
-        {/* ── Queue / Active state card ───────────────────────── */}
+        {/* Queue / Active state card */}
         {isMyTurn ? (
           <ActiveTurnCard countdown={countdown} drawPoints={drawPoints} />
         ) : (
           <WaitingCard queueEntry={queueEntry} />
         )}
 
-        {/* ── Draw mode selector (active turn only) ───────────── */}
+        {/* Draw mode selector (active turn only) */}
         {isMyTurn && !drawResult && (
-          <div className="mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">抽籤模式選擇</h3>
-            <div className="grid grid-cols-5 gap-2 mb-4">
+          <div className="mt-6 rounded-2xl bg-surface-container p-5">
+            <h3 className="mb-4 font-headline font-semibold text-on-surface">{t("drawModeTitle")}</h3>
+            <div className="mb-4 grid grid-cols-5 gap-2">
               {DRAW_MODES.map((mode, i) => (
                 <button
                   key={i}
                   {...(mode.qty > 0 ? { "data-testid": `multi-draw-${mode.qty}` } : {})}
                   onClick={() => setSelectedMode(i)}
-                  className={`py-2 px-1 rounded-xl text-xs font-medium transition-all ${
+                  className={`rounded-xl px-1 py-2 text-xs font-semibold transition-all ${
                     selectedMode === i
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                      ? "amber-gradient text-on-primary shadow-sm"
+                      : "bg-surface-container-high text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
                   {mode.label}
@@ -242,71 +252,71 @@ function QueueContent() {
               ))}
             </div>
             {selectedQty > 0 && (
-              <div className="flex items-center justify-between text-sm mb-4">
-                <span className="text-gray-500 dark:text-gray-400">費用預覽</span>
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                  {selectedQty} 抽 = {totalCost.toLocaleString()} 點
+              <div className="mb-4 flex items-center justify-between text-sm">
+                <span className="text-on-surface-variant">{t("costPreview")}</span>
+                <span className="font-bold text-primary tabular-nums">
+                  {t("costPreviewDetail", { qty: selectedQty, total: totalCost.toLocaleString() })}
                 </span>
               </div>
             )}
 
             {/* Coupon selector placeholder */}
-            <button className="w-full py-2.5 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-4">
-              使用優惠券 ▼
+            <button className="mb-4 w-full rounded-xl border border-dashed border-outline/40 py-2.5 text-sm text-on-surface-variant transition-colors hover:border-primary hover:text-primary">
+              {t("useCoupon")}
             </button>
 
             <button
               onClick={handleDraw}
               disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-xl py-3.5 font-bold text-base transition-all disabled:cursor-not-allowed disabled:opacity-50 amber-gradient text-on-primary shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 gold-glow"
             >
-              {loading ? "抽獎中..." : `🎫 ${DRAW_MODES[selectedMode].label}`}
+              {loading ? t("drawing") : DRAW_MODES[selectedMode]?.label ?? ""}
             </button>
           </div>
         )}
 
-        {/* ── Queue controls ────────────────────────────────── */}
+        {/* Queue controls */}
         <div className="mt-4 space-y-3">
           {!queueEntry ? (
             <button
               data-testid="join-queue-btn"
               onClick={handleJoinQueue}
               disabled={loading || !boxId}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-xl py-3.5 font-bold text-base transition-all disabled:cursor-not-allowed disabled:opacity-50 amber-gradient text-on-primary shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 gold-glow"
             >
-              {loading ? "加入中..." : "加入排隊"}
+              {loading ? t("joiningBtn") : t("joinQueueBtn")}
             </button>
           ) : !isMyTurn ? (
             <button
               data-testid="leave-queue-btn"
               onClick={handleLeaveQueue}
               disabled={loading}
-              className="w-full py-3.5 rounded-xl border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+              className="w-full rounded-xl border border-error/30 bg-error-container/10 py-3.5 font-medium text-error transition-colors disabled:opacity-50 hover:bg-error-container/20"
             >
-              {loading ? "離開中..." : "離開排隊"}
+              {loading ? t("leavingBtn") : t("leaveQueue")}
             </button>
           ) : (
             <div className="flex gap-3">
               <button
                 onClick={() => router.push(`/campaigns/${campaignId}`)}
-                className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+                className="flex-1 rounded-xl bg-surface-container-high py-3 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
               >
-                切換籤盒
+                {t("switchBox")}
               </button>
               <button
                 data-testid="leave-queue-btn"
                 onClick={handleLeaveQueue}
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors text-sm"
+                className="flex-1 rounded-xl border border-error/30 bg-error-container/10 py-3 text-sm font-medium text-error transition-colors disabled:opacity-50 hover:bg-error-container/20"
               >
-                結束抽籤
+                {t("endDraw")}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Draw result modal with animation ─────────────────── */}
+      {/* Draw result modal with animation */}
       {drawResult && (
         <DrawResultSequence
           result={drawResult}
@@ -315,22 +325,25 @@ function QueueContent() {
         />
       )}
 
-      {/* ── Chat panel — players can chat while waiting ───────── */}
+      {/* Chat panel — players can chat while waiting */}
       {campaignId && <ChatPanel roomId={`kuji:${campaignId}`} />}
     </div>
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────
+// Sub-components
 
 function WaitingCard({ queueEntry }: { queueEntry: QueueEntryDto | null }) {
+  const t = useTranslations("campaign");
   if (!queueEntry) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
-        <div className="text-5xl mb-4">🎫</div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">加入排隊</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          點擊下方按鈕加入排隊，等待輪到你時即可開始抽籤
+      <div className="rounded-2xl bg-surface-container p-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high">
+          <span className="material-symbols-outlined text-3xl text-primary">confirmation_number</span>
+        </div>
+        <h2 className="mb-2 font-headline text-xl font-bold text-on-surface">{t("joinQueue")}</h2>
+        <p className="text-sm text-on-surface-variant">
+          {t("queueWatchNote")}
         </p>
       </div>
     );
@@ -342,33 +355,33 @@ function WaitingCard({ queueEntry }: { queueEntry: QueueEntryDto | null }) {
   );
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8">
-      <div className="text-center mb-6">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">你的排隊位置</p>
-        <p className="text-6xl font-extrabold text-indigo-600 dark:text-indigo-400">
-          第 {queueEntry.position} 位
+    <div className="rounded-2xl bg-surface-container p-8">
+      <div className="mb-6 text-center">
+        <p className="mb-1 text-sm text-on-surface-variant">{t("queuePosition")}</p>
+        <p className="text-6xl font-extrabold text-primary tabular-nums">
+          {t("queuePositionNum", { position: queueEntry.position })}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          前方還有 {queueEntry.position - 1} 人
+        <p className="mt-2 text-sm text-on-surface-variant">
+          {t("queuePeopleAhead", { count: queueEntry.position - 1 })}
         </p>
       </div>
 
       {/* Progress bar */}
       <div className="mb-6">
-        <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="h-2 overflow-hidden rounded-full bg-surface-container-high">
           <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
-          <span>等待中</span>
-          <span>輪到你</span>
+        <div className="mt-1.5 flex justify-between text-xs text-on-surface-variant">
+          <span>{t("queueWaiting")}</span>
+          <span>{t("queueYourTurn")}</span>
         </div>
       </div>
 
-      <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-        你在排隊時可以即時觀看籤面更新
+      <p className="text-center text-sm text-on-surface-variant">
+        {t("queueWatchNote")}
       </p>
     </div>
   );
@@ -381,6 +394,8 @@ function ActiveTurnCard({
   countdown: number | null;
   drawPoints: number;
 }) {
+  const t = useTranslations("campaign");
+
   const formatCountdown = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
@@ -390,31 +405,29 @@ function ActiveTurnCard({
   const isUrgent = countdown !== null && countdown < 60;
 
   return (
-    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-2xl border-2 border-emerald-400 dark:border-emerald-600 p-8">
-      <div className="text-center mb-6">
-        <div className="text-5xl mb-2">🎉</div>
-        <h2 className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">
-          輪到你了！
-        </h2>
+    <div className="rounded-2xl bg-surface-container p-8 gold-glow">
+      {/* Amber accent top bar */}
+      <div className="amber-gradient -mx-8 -mt-8 mb-6 rounded-t-2xl px-8 py-4 text-center">
+        <p className="font-headline font-extrabold text-on-primary text-xl">{t("yourTurnHeader")}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">剩餘時間</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-xl bg-surface-container-high p-4 text-center">
+          <p className="mb-1 text-xs text-on-surface-variant">{t("timeRemaining")}</p>
           <p
             data-testid="countdown-timer"
             className={`text-3xl font-bold tabular-nums ${
               isUrgent
-                ? "text-red-600 dark:text-red-400 animate-pulse"
-                : "text-gray-900 dark:text-gray-100"
+                ? "animate-pulse text-error"
+                : "text-on-surface"
             }`}
           >
             {countdown !== null ? formatCountdown(countdown) : "--:--"}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">你的點數</p>
-          <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+        <div className="rounded-xl bg-surface-container-high p-4 text-center">
+          <p className="mb-1 text-xs text-on-surface-variant">{t("yourPoints")}</p>
+          <p className="text-3xl font-bold text-primary tabular-nums">
             {drawPoints.toLocaleString()}
           </p>
         </div>
@@ -437,6 +450,7 @@ function DrawResultSequence({
   onContinue: () => void;
   onViewPrizes: () => void;
 }) {
+  const t = useTranslations("campaign");
   const [currentIdx, setCurrentIdx] = useState(0);
   const [ticketRevealed, setTicketRevealed] = useState(false);
   const { mode } = useAnimationMode("FLIP");
@@ -465,11 +479,17 @@ function DrawResultSequence({
 
       {/* Static result card shown after animation completes */}
       {ticketRevealed && (
-        <div data-testid="animation-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div data-testid="prize-result" className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+        <div data-testid="animation-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div
+            data-testid="prize-result"
+            className="w-full max-w-sm overflow-hidden rounded-2xl bg-surface-container shadow-2xl gold-glow"
+          >
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-center text-white">
-              <p className="font-bold text-lg">恭喜獲得！</p>
+            <div className="amber-gradient px-6 py-5 text-center">
+              <span className="material-symbols-outlined mb-1 block text-3xl text-on-primary">
+                celebration
+              </span>
+              <p className="font-headline font-bold text-lg text-on-primary">{t("congratsWon")}</p>
             </div>
 
             {/* Prize info */}
@@ -479,20 +499,20 @@ function DrawResultSequence({
                 <img
                   src={current.prizePhotoUrl}
                   alt={current.prizeName}
-                  className="w-full h-48 object-cover rounded-xl mb-4"
+                  className="mb-4 h-48 w-full rounded-xl object-cover"
                 />
               )}
               <GradeBadge grade={current.grade} className="mb-3" data-testid="prize-grade" />
-              <h3 data-testid="prize-name" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+              <h3 data-testid="prize-name" className="mb-1 font-headline text-lg font-bold text-on-surface">
                 {current.prizeName}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                已存入賞品庫 · 消費 {current.pointsCharged.toLocaleString()} 點
+              <p className="mb-4 text-sm text-on-surface-variant">
+                {t("prizeStoredDot")} · {t("pointsCharged", { points: current.pointsCharged.toLocaleString() })}
               </p>
 
               {result.tickets.length > 1 && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                  第 {currentIdx + 1} / {result.tickets.length} 個
+                <p className="mb-4 text-xs text-on-surface-variant">
+                  {t("ticketNum", { current: currentIdx + 1, total: result.tickets.length })}
                 </p>
               )}
 
@@ -500,23 +520,23 @@ function DrawResultSequence({
                 {hasMore ? (
                   <button
                     onClick={handleNext}
-                    className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors"
+                    className="flex-1 rounded-xl py-3 font-semibold transition-all amber-gradient text-on-primary hover:shadow-md"
                   >
-                    下一個 →
+                    {t("nextTicket")}
                   </button>
                 ) : (
                   <>
                     <button
                       onClick={onContinue}
-                      className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                      className="flex-1 rounded-xl bg-surface-container-high py-3 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
                     >
-                      繼續抽
+                      {t("continueDrawing")}
                     </button>
                     <button
                       onClick={onViewPrizes}
-                      className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors text-sm"
+                      className="flex-1 rounded-xl py-3 text-sm font-semibold transition-all amber-gradient text-on-primary hover:shadow-md"
                     >
-                      查看賞品庫
+                      {t("viewPrizeVault")}
                     </button>
                   </>
                 )}

@@ -23,7 +23,6 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 private const val DEFAULT_PAGE_SIZE = 20

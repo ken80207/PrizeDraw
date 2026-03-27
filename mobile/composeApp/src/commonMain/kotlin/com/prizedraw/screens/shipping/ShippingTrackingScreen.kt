@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.shipping.ShippingOrderDto
 import com.prizedraw.contracts.enums.ShippingOrderStatus
+import com.prizedraw.i18n.S
 
 /**
  * Shipping order tracking screen.
@@ -38,11 +39,11 @@ public fun ShippingTrackingScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Shipping Order",
+            text = S("shipping.orderTitle"),
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
-            text = "Order ID: ${order.id.take(DISPLAY_ID_LENGTH)}…",
+            text = "${S("shipping.orderId")}: ${order.id.take(DISPLAY_ID_LENGTH)}…",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -51,31 +52,35 @@ public fun ShippingTrackingScreen(
 
         // Tracking timeline
         TrackingStep(
-            label = "Order Created",
+            label = S("shipping.stepOrderCreated"),
             isCompleted = true,
-            description = "Your shipping request has been received.",
+            description = S("shipping.stepOrderCreatedDesc"),
         )
         TrackingStep(
-            label = "Awaiting Shipment",
+            label = S("shipping.stepAwaitingShipment"),
             isCompleted =
                 order.status != ShippingOrderStatus.PENDING_SHIPMENT ||
                     order.status == ShippingOrderStatus.SHIPPED ||
                     order.status == ShippingOrderStatus.DELIVERED,
-            description = "Waiting for operator to fulfill.",
+            description = S("shipping.stepAwaitingShipmentDesc"),
         )
         TrackingStep(
-            label = "Shipped",
+            label = S("shipping.stepShipped"),
             isCompleted =
                 order.status == ShippingOrderStatus.SHIPPED ||
                     order.status == ShippingOrderStatus.DELIVERED,
             description =
-                order.trackingNumber?.let { "${order.carrier ?: "Carrier"}: $it" }
-                    ?: "Tracking info not yet available.",
+                order.trackingNumber?.let { "${order.carrier ?: S("shipping.carrier")}: $it" }
+                    ?: S("shipping.trackingNotAvailable"),
         )
         TrackingStep(
-            label = "Delivered",
+            label = S("shipping.stepDelivered"),
             isCompleted = order.status == ShippingOrderStatus.DELIVERED,
-            description = if (order.deliveredAt != null) "Delivered on ${order.deliveredAt}" else "Pending delivery.",
+            description = if (order.deliveredAt != null) {
+                "${S("shipping.deliveredOn")} ${order.deliveredAt}"
+            } else {
+                S("shipping.pendingDelivery")
+            },
         )
 
         if (order.status == ShippingOrderStatus.SHIPPED) {
@@ -83,7 +88,7 @@ public fun ShippingTrackingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onConfirmDelivery,
             ) {
-                Text("Confirm Delivery")
+                Text(S("shipping.confirmDelivery"))
             }
         }
     }

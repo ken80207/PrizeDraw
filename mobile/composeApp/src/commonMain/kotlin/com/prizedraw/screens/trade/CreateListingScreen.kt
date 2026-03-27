@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
+import com.prizedraw.i18n.S
 
 /** Default platform fee rate in basis points (5.00%). */
 private const val DEFAULT_FEE_RATE_BPS = 500
@@ -56,7 +57,7 @@ public fun CreateListingScreen(
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(text = "List for Sale", style = MaterialTheme.typography.titleLarge)
+        Text(text = S("trade.listForSale"), style = MaterialTheme.typography.titleLarge)
 
         // Prize summary
         Column(
@@ -65,9 +66,12 @@ public fun CreateListingScreen(
                     .fillMaxWidth()
                     .padding(12.dp),
         ) {
-            Text(text = "Grade: ${prize.grade} — ${prize.name}", style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = "Current state: ${prize.state.name}",
+                text = "${S("trade.grade")}: ${prize.grade} — ${prize.name}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = "${S("trade.currentState")}: ${prize.state.name}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -76,7 +80,7 @@ public fun CreateListingScreen(
         OutlinedTextField(
             value = priceInput,
             onValueChange = { priceInput = it.filter { c -> c.isDigit() } },
-            label = { Text("Listing Price (draw points)") },
+            label = { Text(S("trade.listingPrice")) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -84,12 +88,12 @@ public fun CreateListingScreen(
         if (listPrice > 0) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Platform fee (${feeRateBps / 100.0}%): $feeAmount pts",
+                    text = "${S("trade.platformFee")} (${feeRateBps / 100.0}%): $feeAmount pts",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "Your proceeds: $proceeds pts",
+                    text = "${S("trade.yourProceeds")}: $proceeds pts",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -101,7 +105,7 @@ public fun CreateListingScreen(
             enabled = listPrice > 0,
             onClick = { onConfirm(prize.id, listPrice) },
         ) {
-            Text("Confirm Listing")
+            Text(S("trade.confirmListing"))
         }
     }
 }

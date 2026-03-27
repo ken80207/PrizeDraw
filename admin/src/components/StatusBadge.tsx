@@ -88,7 +88,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, label }: StatusBadgeProps) {
   const classes =
     VARIANT_CLASSES[status] ?? "bg-slate-100 text-slate-600 border-slate-200";
-  const displayLabel = label ?? STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+  const displayLabel = label ?? STATUS_LABELS[status] ?? (status ? status.replace(/_/g, " ") : "UNKNOWN");
 
   return (
     <span

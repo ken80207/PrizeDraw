@@ -2,6 +2,7 @@
 
 package com.prizedraw.infrastructure.persistence.tables
 
+import com.prizedraw.contracts.enums.ShippingOrderStatus
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
@@ -9,6 +10,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
  * Exposed table definition for the `shipping_orders` table.
  *
  * Records physical prize shipment requests. One-to-one with the [PrizeInstance] being shipped.
+ * The `status` column maps to the `shipping_order_status` PG enum.
  */
 public object ShippingOrdersTable : Table("shipping_orders") {
     public val id = uuid("id").autoGenerate()
@@ -23,7 +25,8 @@ public object ShippingOrdersTable : Table("shipping_orders") {
     public val countryCode = char("country_code", 2).default("TW")
     public val trackingNumber = varchar("tracking_number", 128).nullable()
     public val carrier = varchar("carrier", 64).nullable()
-    public val status = varchar("status", 32).default("PENDING_SHIPMENT")
+    public val status = pgEnum<ShippingOrderStatus>("status", "shipping_order_status")
+        .default(ShippingOrderStatus.PENDING_SHIPMENT)
     public val shippedAt = timestampWithTimeZone("shipped_at").nullable()
     public val deliveredAt = timestampWithTimeZone("delivered_at").nullable()
     public val cancelledAt = timestampWithTimeZone("cancelled_at").nullable()

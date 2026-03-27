@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type OAuthProvider = "GOOGLE" | "APPLE" | "LINE";
 
@@ -33,9 +35,13 @@ interface LoginApiResponse extends TokenResponse {
  * 5. Otherwise redirects to the home page.
  */
 export default function LoginPage() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const [loading, setLoading] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [countryCode] = useState("+886");
 
   async function handleLogin(provider: OAuthProvider) {
     setLoading(provider);
@@ -87,67 +93,204 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg dark:bg-zinc-900">
-        <h1 className="mb-2 text-center text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          PrizeDraw
-        </h1>
-        <p className="mb-8 text-center text-sm text-zinc-500">
-          Sign in to start drawing prizes
-        </p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[#111125]">
+      {/* Background blurred collectible image */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#111125]/80 via-[#1a1a2e]/90 to-[#111125]" />
+      </div>
 
-        <div className="flex flex-col gap-3">
-          <OAuthButton
-            provider="GOOGLE"
-            label="Continue with Google"
-            loading={loading === "GOOGLE"}
-            disabled={loading !== null}
-            onClick={() => handleLogin("GOOGLE")}
-          />
-          <OAuthButton
-            provider="APPLE"
-            label="Continue with Apple"
-            loading={loading === "APPLE"}
-            disabled={loading !== null}
-            onClick={() => handleLogin("APPLE")}
-          />
-          <OAuthButton
-            provider="LINE"
-            label="Continue with LINE"
-            loading={loading === "LINE"}
-            disabled={loading !== null}
-            onClick={() => handleLogin("LINE")}
-          />
+      {/* Decorative blur blobs */}
+      <div className="fixed top-[-10%] left-[-5%] w-[40%] h-[40%] bg-[#ffc174]/5 rounded-full blur-[120px] pointer-events-none z-0" />
+      <div className="fixed bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-[#c0c1ff]/5 rounded-full blur-[100px] pointer-events-none z-0" />
+
+      {/* Login container */}
+      <main className="relative z-10 w-full max-w-[480px]">
+        {/* Brand section */}
+        <div className="flex flex-col items-center mb-10 text-center">
+          <div className="mb-4">
+            <span
+              className="material-symbols-outlined text-[#ffc174] text-5xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              diamond
+            </span>
+          </div>
+          <h1
+            className="font-headline text-4xl font-black tracking-tighter uppercase"
+            style={{
+              background: "linear-gradient(135deg, #ffc174 0%, #f59e0b 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Kuji Noir
+          </h1>
+          <p className="font-body text-[#c0c1ff] text-xs uppercase tracking-[0.2em] mt-2 opacity-80">
+            The Illuminated Gallery
+          </p>
         </div>
 
-        {error && (
-          <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-      </div>
+        {/* Glass card */}
+        <div className="glass-panel rounded-2xl p-8 md:p-10 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+          {/* Social login — 3 buttons in a row */}
+          <div className="grid grid-cols-3 gap-4 mb-10">
+            <SocialButton
+              provider="GOOGLE"
+              icon="google"
+              loading={loading === "GOOGLE"}
+              disabled={loading !== null}
+              onClick={() => handleLogin("GOOGLE")}
+            />
+            <SocialButton
+              provider="APPLE"
+              icon="ios"
+              loading={loading === "APPLE"}
+              disabled={loading !== null}
+              onClick={() => handleLogin("APPLE")}
+            />
+            <SocialButton
+              provider="LINE"
+              icon="chat_bubble"
+              loading={loading === "LINE"}
+              disabled={loading !== null}
+              onClick={() => handleLogin("LINE")}
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="relative flex items-center mb-10">
+            <div className="flex-grow border-t border-[#534434] opacity-20" />
+            <span className="flex-shrink mx-4 text-xs font-body text-[#d8c3ad] uppercase tracking-widest">
+              {t("orContinueWithPhone")}
+            </span>
+            <div className="flex-grow border-t border-[#534434] opacity-20" />
+          </div>
+
+          {/* Phone login form */}
+          <div className="space-y-6">
+            {/* Phone number input */}
+            <div className="space-y-2">
+              <label className="font-body text-xs uppercase tracking-wider text-[#c0c1ff]/70 ml-1">
+                {t("phoneNumber")}
+              </label>
+              <div className="flex gap-2">
+                <div className="w-24 bg-[#0c0c1f] rounded-xl flex items-center justify-center px-3 cursor-pointer">
+                  <span className="text-sm font-medium text-[#e2e0fc]">{countryCode}</span>
+                  <span className="material-symbols-outlined text-xs ml-1 opacity-50 text-[#e2e0fc]">
+                    expand_more
+                  </span>
+                </div>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t("phonePlaceholder")}
+                  className="flex-1 bg-[#0c0c1f] border-none rounded-xl px-4 py-4 text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            {/* OTP input */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-end">
+                <label className="font-body text-xs uppercase tracking-wider text-[#c0c1ff]/70 ml-1">
+                  {t("verificationCode")}
+                </label>
+                <button
+                  type="button"
+                  className="text-xs font-bold text-[#ffc174] hover:opacity-80 transition-opacity mb-1"
+                >
+                  {t("getCode")}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder={t("codePlaceholder")}
+                  className="w-full bg-[#0c0c1f] border-none rounded-xl px-4 py-4 text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 tracking-[0.5em] text-center focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-center text-sm text-[#ffb4ab]">{error}</p>
+            )}
+
+            {/* Primary CTA */}
+            <button
+              type="button"
+              className="w-full h-16 rounded-xl amber-gradient text-[#472a00] font-headline font-bold text-lg shadow-[0_10px_25px_rgba(245,158,11,0.3)] hover:shadow-[0_15px_30px_rgba(245,158,11,0.4)] transform hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center gap-2 group mt-4"
+            >
+              <span>{t("enterGallery")}</span>
+              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
+                arrow_forward
+              </span>
+            </button>
+          </div>
+
+          {/* Footer toggle */}
+          <div className="mt-10 text-center">
+            <p className="text-sm text-[#d8c3ad]">
+              {t("newHere")}{" "}
+              <Link
+                href="/phone-binding"
+                className="text-[#ffc174] font-bold hover:underline decoration-[#ffc174]/30 underline-offset-4 ml-1"
+              >
+                {t("registerWithPhone")}
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Links footer */}
+        <footer className="mt-8 flex justify-center gap-6">
+          <a
+            href="#"
+            className="text-[10px] uppercase tracking-[0.2em] text-[#d8c3ad]/50 hover:text-[#e2e0fc] transition-colors"
+          >
+            {t("termsOfService")}
+          </a>
+          <span className="w-1 h-1 rounded-full bg-[#534434] opacity-30 mt-1" />
+          <a
+            href="#"
+            className="text-[10px] uppercase tracking-[0.2em] text-[#d8c3ad]/50 hover:text-[#e2e0fc] transition-colors"
+          >
+            {t("privacyPolicy")}
+          </a>
+        </footer>
+      </main>
     </div>
   );
 }
 
-interface OAuthButtonProps {
+interface SocialButtonProps {
   provider: OAuthProvider;
-  label: string;
+  icon: string;
   loading: boolean;
   disabled: boolean;
   onClick: () => void;
 }
 
-function OAuthButton({ label, loading, disabled, onClick }: OAuthButtonProps) {
+function SocialButton({ icon, loading, disabled, onClick }: SocialButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex h-11 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+      className="flex items-center justify-center h-14 bg-[#28283d] rounded-full hover:bg-[#37374d] transition-colors group disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? (
-        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#d8c3ad] border-t-transparent" />
       ) : (
-        label
+        <span className="material-symbols-outlined text-[#d8c3ad] group-hover:text-[#ffc174] transition-colors">
+          {icon}
+        </span>
       )}
     </button>
   );

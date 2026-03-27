@@ -28,12 +28,13 @@ import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.player.DrawPointTransactionDto
 import com.prizedraw.contracts.dto.player.RevenuePointTransactionDto
 import com.prizedraw.contracts.dto.player.WalletDto
+import com.prizedraw.i18n.S
 
 /**
  * Wallet screen displaying dual point balances and paginated transaction history.
  *
  * Layout:
- * - Two balance cards at the top: draw points (消費點數) and revenue points (收益點數).
+ * - Two balance cards at the top: draw points and revenue points.
  * - A tab row toggling between draw-point and revenue-point transaction lists.
  * - A top-up button that opens the payment WebView flow.
  *
@@ -46,7 +47,6 @@ public fun WalletScreen(
     onTopUp: () -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Draw Points", "Revenue Points")
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -58,12 +58,12 @@ public fun WalletScreen(
         ) {
             BalanceCard(
                 modifier = Modifier.weight(1f),
-                label = "Draw Points",
+                label = S("wallet.drawPoints"),
                 balance = wallet.drawPointsBalance,
             )
             BalanceCard(
                 modifier = Modifier.weight(1f),
-                label = "Revenue Points",
+                label = S("wallet.revenuePoints"),
                 balance = wallet.revenuePointsBalance,
             )
         }
@@ -75,12 +75,13 @@ public fun WalletScreen(
             modifier = Modifier.fillMaxWidth(),
             onClick = onTopUp,
         ) {
-            Text("Top Up Draw Points")
+            Text(S("wallet.topUp"))
         }
 
         Spacer(Modifier.height(16.dp))
 
         // Transaction history tabs
+        val tabs = listOf(S("wallet.drawPoints"), S("wallet.revenuePoints"))
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -126,7 +127,7 @@ private fun DrawTransactionList(transactions: List<DrawPointTransactionDto>) {
     if (transactions.isEmpty()) {
         Text(
             modifier = Modifier.padding(16.dp),
-            text = "No draw point transactions yet.",
+            text = S("wallet.noDrawTransactions"),
             style = MaterialTheme.typography.bodyMedium,
         )
         return
@@ -168,7 +169,7 @@ private fun RevenueTransactionList(transactions: List<RevenuePointTransactionDto
     if (transactions.isEmpty()) {
         Text(
             modifier = Modifier.padding(16.dp),
-            text = "No revenue point transactions yet.",
+            text = S("wallet.noRevenueTransactions"),
             style = MaterialTheme.typography.bodyMedium,
         )
         return

@@ -89,9 +89,9 @@ public class QueueRepositoryImpl : IQueueRepository {
 
 private val terminalStatuses =
     listOf(
-        QueueEntryStatus.COMPLETED.name,
-        QueueEntryStatus.ABANDONED.name,
-        QueueEntryStatus.EVICTED.name,
+        QueueEntryStatus.COMPLETED,
+        QueueEntryStatus.ABANDONED,
+        QueueEntryStatus.EVICTED,
     )
 
 /** Exposed-backed implementation of [IQueueEntryRepository]. */
@@ -137,7 +137,7 @@ public class QueueEntryRepositoryImpl : IQueueEntryRepository {
                 .selectAll()
                 .where {
                     (QueueEntriesTable.queueId eq queueId) and
-                        (QueueEntriesTable.status eq QueueEntryStatus.WAITING.name)
+                        (QueueEntriesTable.status eq QueueEntryStatus.WAITING)
                 }.orderBy(QueueEntriesTable.position)
                 .limit(1)
                 .singleOrNull()
@@ -172,7 +172,7 @@ public class QueueEntryRepositoryImpl : IQueueEntryRepository {
                     it[queueId] = entry.queueId
                     it[playerId] = entry.playerId.value
                     it[position] = entry.position
-                    it[status] = entry.status.name
+                    it[status] = entry.status
                     it[joinedAt] = entry.joinedAt.toOffsetDateTime()
                     it[activatedAt] = entry.activatedAt?.toOffsetDateTime()
                     it[completedAt] = entry.completedAt?.toOffsetDateTime()
@@ -181,7 +181,7 @@ public class QueueEntryRepositoryImpl : IQueueEntryRepository {
                 }
             } else {
                 QueueEntriesTable.update({ QueueEntriesTable.id eq entry.id }) {
-                    it[status] = entry.status.name
+                    it[status] = entry.status
                     it[activatedAt] = entry.activatedAt?.toOffsetDateTime()
                     it[completedAt] = entry.completedAt?.toOffsetDateTime()
                     it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
@@ -200,7 +200,7 @@ public class QueueEntryRepositoryImpl : IQueueEntryRepository {
             queueId = this[QueueEntriesTable.queueId],
             playerId = PlayerId(this[QueueEntriesTable.playerId]),
             position = this[QueueEntriesTable.position],
-            status = QueueEntryStatus.valueOf(this[QueueEntriesTable.status]),
+            status = this[QueueEntriesTable.status],
             joinedAt = this[QueueEntriesTable.joinedAt].toInstant().toKotlinInstant(),
             activatedAt = this[QueueEntriesTable.activatedAt]?.toInstant()?.toKotlinInstant(),
             completedAt = this[QueueEntriesTable.completedAt]?.toInstant()?.toKotlinInstant(),

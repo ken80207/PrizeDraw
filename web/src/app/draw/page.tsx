@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AnimatedReveal, type AnimationMode } from "@/animations/AnimatedReveal";
 
 interface DrawResult {
@@ -27,105 +28,122 @@ interface DrawResult {
  *   ?mode=TEAR|SCRATCH|FLIP|INSTANT  — overrides stored animation preference
  */
 function DrawPageContent() {
+  const t = useTranslations("draw");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [drawResult, setDrawResult] = useState<DrawResult | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [state, setState] = useState<{
+    drawResult: DrawResult | null;
+    revealed: boolean;
+    error: string | null;
+  }>(() => {
+    if (typeof window === "undefined") return { drawResult: null, revealed: false, error: null };
     try {
       const raw = sessionStorage.getItem("drawResult");
-      if (!raw) {
-        setError("No draw result found. Please start a draw from a campaign.");
-        return;
-      }
+      if (!raw) return { drawResult: null, revealed: false, error: "No draw result found. Please start a draw from a campaign." };
       const result = JSON.parse(raw) as DrawResult;
-
-      // Allow the URL param to override the stored mode
-      const modeParam = searchParams.get("mode") as AnimationMode | null;
-      if (modeParam) {
-        result.animationMode = modeParam;
-      }
-
-      setDrawResult(result);
-      // Clear immediately so a hard-refresh does not replay the animation
       sessionStorage.removeItem("drawResult");
+      return { drawResult: result, revealed: false, error: null };
     } catch {
-      setError("Failed to read draw result.");
+      return { drawResult: null, revealed: false, error: "Failed to read draw result." };
     }
-  }, [searchParams]);
+  });
+
+  const drawResult = state.drawResult;
+  const revealed = state.revealed;
+  const error = state.error;
+
+  // Allow the URL param to override the stored mode
+  const modeParam = searchParams.get("mode") as AnimationMode | null;
+  const effectiveResult = drawResult && modeParam
+    ? { ...drawResult, animationMode: modeParam }
+    : drawResult;
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-        <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-surface-dim px-4 py-16 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-error-container/20">
+          <span className="material-symbols-outlined text-4xl text-error">error</span>
+        </div>
+        <div>
+          <p className="mb-1 font-headline text-lg font-bold text-on-surface">{t("notFoundTitle")}</p>
+          <p className="text-sm text-on-surface-variant">{error}</p>
+        </div>
         <Link
           href="/campaigns"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900"
+          className="rounded-xl px-6 py-3 text-sm font-semibold transition-all amber-gradient text-on-primary hover:shadow-md gold-glow"
         >
-          Browse Campaigns
+          {t("browseCampaigns")}
         </Link>
       </div>
     );
   }
 
-  if (!drawResult) {
+  if (!effectiveResult) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-700" />
+      <div className="flex min-h-screen items-center justify-center bg-surface-dim">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-surface-container-high border-t-primary" />
+          <p className="text-sm text-on-surface-variant">{t("loading")}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-dim px-4 py-8">
       {/* Animation fills the screen before reveal */}
       {!revealed && (
         <div className="w-full max-w-sm">
           <AnimatedReveal
-            mode={drawResult.animationMode}
-            prizePhotoUrl={drawResult.prizePhotoUrl}
-            prizeGrade={drawResult.prizeGrade}
-            prizeName={drawResult.prizeName}
-            onRevealed={() => setRevealed(true)}
+            mode={effectiveResult.animationMode}
+            prizePhotoUrl={effectiveResult.prizePhotoUrl}
+            prizeGrade={effectiveResult.prizeGrade}
+            prizeName={effectiveResult.prizeName}
+            onRevealed={() => setState(prev => ({ ...prev, revealed: true }))}
           />
         </div>
       )}
 
       {/* Prize info — shown after animation completes */}
       {revealed && (
-        <div className="flex flex-col items-center gap-4 text-center">
-          {drawResult.prizePhotoUrl && (
+        <div className="flex flex-col items-center gap-6 text-center">
+          {/* Prize image */}
+          {effectiveResult.prizePhotoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={drawResult.prizePhotoUrl}
-              alt={drawResult.prizeName}
-              className="h-48 w-48 rounded-2xl object-cover shadow-2xl"
+              src={effectiveResult.prizePhotoUrl}
+              alt={effectiveResult.prizeName}
+              className="h-48 w-48 rounded-2xl object-cover shadow-2xl gold-glow"
             />
           )}
+
+          {/* Grade + name */}
           <div>
-            <span className="mb-1 block rounded-full bg-indigo-600 px-3 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-              Grade {drawResult.prizeGrade}
+            <span className="mb-2 inline-flex items-center rounded-full px-4 py-1 text-xs font-extrabold uppercase tracking-widest amber-gradient text-on-primary">
+              {t("grade")} {effectiveResult.prizeGrade}
             </span>
-            <h1 className="mt-2 text-3xl font-bold text-white">{drawResult.prizeName}</h1>
-            <p className="mt-1 text-sm text-zinc-400">Congratulations!</p>
+            <h1 className="mt-3 font-headline text-3xl font-bold text-on-surface">
+              {effectiveResult.prizeName}
+            </h1>
+            <p className="mt-1 text-sm text-on-surface-variant">{t("congratulations")}</p>
           </div>
 
-          <div className="mt-4 flex gap-3">
+          {/* Actions */}
+          <div className="mt-2 flex gap-3">
             <Link
               href="/prizes"
-              className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+              className="rounded-xl px-6 py-3 text-sm font-semibold transition-all amber-gradient text-on-primary hover:shadow-md gold-glow"
             >
-              View My Prizes
+              {t("viewPrizes")}
             </Link>
             <button
               type="button"
               onClick={() => router.back()}
-              className="rounded-lg border border-zinc-600 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-zinc-400 hover:text-white"
+              className="rounded-xl bg-surface-container-high px-6 py-3 text-sm font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
             >
-              Back
+              {tCommon("back")}
             </button>
           </div>
         </div>
@@ -135,11 +153,15 @@ function DrawPageContent() {
 }
 
 export default function DrawPage() {
+  const t = useTranslations("draw");
   return (
     <Suspense
       fallback={
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-700" />
+        <div className="flex min-h-screen items-center justify-center bg-surface-dim">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-surface-container-high border-t-primary" />
+            <p className="text-sm text-on-surface-variant">{t("loading")}</p>
+          </div>
         </div>
       }
     >

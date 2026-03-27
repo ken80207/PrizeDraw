@@ -32,7 +32,6 @@ import io.ktor.server.routing.route
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 @Serializable
@@ -86,7 +85,7 @@ private fun Route.staffManagementRoutes() {
         get {
             call.requireStaffWithRole(StaffRole.ADMIN) ?: return@get
             val staff = staffRepository.findAll()
-            call.respond(HttpStatusCode.OK, staff.map { it.toResponseMap() })
+            call.respond(HttpStatusCode.OK, staff.map { it.toResponse() })
         }
 
         post {
@@ -102,7 +101,7 @@ private fun Route.staffManagementRoutes() {
             runCatching {
                 createStaff.execute(actor.staffId, req.email, req.name, role, req.password)
             }.fold(
-                onSuccess = { call.respond(HttpStatusCode.Created, it.toResponseMap()) },
+                onSuccess = { call.respond(HttpStatusCode.Created, it.toResponse()) },
                 onFailure = { e -> call.respondStaffError(e) },
             )
         }
@@ -121,7 +120,7 @@ private fun Route.staffManagementRoutes() {
             runCatching {
                 updateRole.execute(actor.staffId, targetId, role)
             }.fold(
-                onSuccess = { call.respond(HttpStatusCode.OK, it.toResponseMap()) },
+                onSuccess = { call.respond(HttpStatusCode.OK, it.toResponse()) },
                 onFailure = { e -> call.respondStaffError(e) },
             )
         }
@@ -159,10 +158,10 @@ private fun Route.auditLogRoutes() {
         val page = getAuditLog.execute(filters)
         call.respond(
             HttpStatusCode.OK,
-            mapOf(
-                "items" to page.items.map { it.toResponseMap() },
-                "offset" to page.offset,
-                "limit" to page.limit,
+            AuditLogPageResponse(
+                items = page.items.map { it.toResponse() },
+                offset = page.offset,
+                limit = page.limit,
             ),
         )
     }
@@ -181,9 +180,48 @@ private fun Route.auditLogRoutes() {
         val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
         val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 200)
         val activity = auditRepository.findByActorPlayer(playerId, offset, limit)
-        call.respond(HttpStatusCode.OK, mapOf("items" to activity.map { it.toResponseMap() }))
+        call.respond(HttpStatusCode.OK, AuditLogItemsResponse(items = activity.map { it.toResponse() }))
     }
 }
+
+// --- Response DTOs ---
+
+@Serializable
+private data class StaffResponse(
+    val id: String,
+    val name: String,
+    val email: String,
+    val role: String,
+    val isActive: Boolean,
+    val lastLoginAt: String?,
+    val createdAt: String,
+)
+
+@Serializable
+private data class AuditLogResponse(
+    val id: String,
+    val actorType: String,
+    val actorPlayerId: String?,
+    val actorStaffId: String?,
+    val action: String,
+    val entityType: String,
+    val entityId: String?,
+    val beforeValue: String?,
+    val afterValue: String?,
+    val createdAt: String,
+)
+
+@Serializable
+private data class AuditLogPageResponse(
+    val items: List<AuditLogResponse>,
+    val offset: Int,
+    val limit: Int,
+)
+
+@Serializable
+private data class AuditLogItemsResponse(
+    val items: List<AuditLogResponse>,
+)
 
 // --- Helpers ---
 
@@ -216,29 +254,29 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondStaffError
     }
 }
 
-private fun Staff.toResponseMap(): Map<String, Any?> =
-    mapOf(
-        "id" to id.toString(),
-        "name" to name,
-        "email" to email.value,
-        "role" to role.name,
-        "isActive" to isActive,
-        "lastLoginAt" to lastLoginAt?.toString(),
-        "createdAt" to createdAt.toString(),
+private fun Staff.toResponse(): StaffResponse =
+    StaffResponse(
+        id = id.toString(),
+        name = name,
+        email = email.value,
+        role = role.name,
+        isActive = isActive,
+        lastLoginAt = lastLoginAt?.toString(),
+        createdAt = createdAt.toString(),
     )
 
-private fun AuditLog.toResponseMap(): Map<String, Any?> =
-    mapOf(
-        "id" to id.toString(),
-        "actorType" to actorType.name,
-        "actorPlayerId" to actorPlayerId?.value?.toString(),
-        "actorStaffId" to actorStaffId?.toString(),
-        "action" to action,
-        "entityType" to entityType,
-        "entityId" to entityId?.toString(),
-        "beforeValue" to beforeValue?.toString(),
-        "afterValue" to afterValue?.toString(),
-        "createdAt" to createdAt.toString(),
+private fun AuditLog.toResponse(): AuditLogResponse =
+    AuditLogResponse(
+        id = id.toString(),
+        actorType = actorType.name,
+        actorPlayerId = actorPlayerId?.value?.toString(),
+        actorStaffId = actorStaffId?.toString(),
+        action = action,
+        entityType = entityType,
+        entityId = entityId?.toString(),
+        beforeValue = beforeValue?.toString(),
+        afterValue = afterValue?.toString(),
+        createdAt = createdAt.toString(),
     )
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 
 interface ShippingOrderDto {
@@ -31,6 +32,8 @@ type Step = { label: string; description: string; done: boolean };
  * Shows "Confirm Delivery" button when order is SHIPPED.
  */
 export default function ShippingTrackingPage() {
+  const t = useTranslations("shipping");
+  const tCommon = useTranslations("common");
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<ShippingOrderDto | null>(null);
@@ -42,9 +45,9 @@ export default function ShippingTrackingPage() {
     apiClient
       .get<ShippingOrderDto>(`/api/v1/shipping/orders/${params.id}`)
       .then(setOrder)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load order"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("loadError")))
       .finally(() => setIsLoading(false));
-  }, [params.id]);
+  }, [params.id, t]);
 
   async function confirmDelivery() {
     if (!order) return;
@@ -53,7 +56,7 @@ export default function ShippingTrackingPage() {
       await apiClient.post(`/api/v1/shipping/orders/${order.id}/confirm-delivery`, { shippingOrderId: order.id });
       setOrder((prev) => prev ? { ...prev, status: "DELIVERED" } : prev);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to confirm delivery");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setConfirming(false);
     }
@@ -61,75 +64,148 @@ export default function ShippingTrackingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-700" />
+      <div className="flex min-h-screen items-center justify-center bg-surface-dim">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-container-highest border-t-primary" />
       </div>
     );
   }
+
   if (error || !order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-red-600 dark:text-red-400">{error ?? "Order not found"}</p>
-        <button type="button" onClick={() => router.back()} className="text-sm underline">Go back</button>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-dim">
+        <span className="material-symbols-outlined text-5xl text-error">error_outline</span>
+        <p className="text-error font-body">{error ?? t("orderNotFound")}</p>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="font-label text-sm text-on-surface-variant hover:text-on-surface underline"
+        >
+          {tCommon("goBack")}
+        </button>
       </div>
     );
   }
 
   const steps: Step[] = [
-    { label: "Order Created", description: "Shipping request received.", done: true },
     {
-      label: "Awaiting Shipment",
-      description: "Waiting for operator fulfillment.",
+      label: t("stepOrderCreated"),
+      description: t("stepOrderCreatedDesc"),
+      done: true,
+    },
+    {
+      label: t("stepAwaiting"),
+      description: t("stepAwaitingDesc"),
       done: order.status !== "PENDING_SHIPMENT",
     },
     {
-      label: "Shipped",
+      label: t("stepShipped"),
       description: order.trackingNumber
-        ? `${order.carrier ?? "Carrier"}: ${order.trackingNumber}`
-        : "Tracking info not yet available.",
+        ? `${order.carrier ?? t("carrier")}: ${order.trackingNumber}`
+        : t("stepShippedNoTracking"),
       done: order.status === "SHIPPED" || order.status === "DELIVERED",
     },
     {
-      label: "Delivered",
+      label: t("stepDelivered"),
       description: order.deliveredAt
-        ? `Delivered on ${new Date(order.deliveredAt).toLocaleDateString()}`
-        : "Pending delivery.",
+        ? t("stepDeliveredOn", { date: new Date(order.deliveredAt).toLocaleDateString() })
+        : t("stepDeliveredDesc"),
       done: order.status === "DELIVERED",
     },
   ];
 
+  const STEP_ICONS = ["receipt_long", "inventory_2", "local_shipping", "where_to_vote"];
+
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <button type="button" onClick={() => router.back()} className="mb-4 text-sm text-zinc-500 hover:text-zinc-800">
-        ← Back
-      </button>
-      <h1 className="mb-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">Shipping Tracking</h1>
-      <p className="mb-6 font-mono text-xs text-zinc-400">#{order.id}</p>
-
-      <div className="mb-6 flex flex-col gap-4">
-        {steps.map((step) => (
-          <div key={step.label} className="flex items-start gap-3">
-            <span className={`mt-0.5 text-lg ${step.done ? "text-green-500" : "text-zinc-300"}`}>
-              {step.done ? "✓" : "○"}
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{step.label}</p>
-              <p className="text-xs text-zinc-500">{step.description}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {order.status === "SHIPPED" && (
+    <div className="min-h-screen bg-surface-dim">
+      <div className="mx-auto max-w-lg px-4 py-8">
+        {/* Back button */}
         <button
           type="button"
-          onClick={confirmDelivery}
-          disabled={confirming}
-          className="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-sm font-label text-on-surface-variant hover:text-on-surface transition-colors"
         >
-          {confirming ? "Confirming…" : "Confirm Delivery"}
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          {tCommon("back")}
         </button>
-      )}
+
+        <div className="flex items-center gap-3 mb-2">
+          <span className="material-symbols-outlined text-primary text-3xl">local_shipping</span>
+          <h1 className="font-headline text-2xl font-extrabold text-on-surface">
+            {t("shippingTitle")}
+          </h1>
+        </div>
+        <p className="font-mono text-xs text-on-surface-variant/50 mb-8">#{order.id}</p>
+
+        {/* Tracking timeline */}
+        <div className="bg-surface-container rounded-lg p-6 mb-6 space-y-0">
+          {steps.map((step, idx) => (
+            <div key={step.label} className="flex items-start gap-4">
+              {/* Step indicator + connector */}
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                    step.done
+                      ? "bg-gradient-to-br from-primary to-primary-container shadow-md shadow-primary/20"
+                      : "bg-surface-container-high"
+                  }`}
+                >
+                  <span
+                    className={`material-symbols-outlined text-lg ${
+                      step.done ? "text-on-primary" : "text-on-surface-variant/40"
+                    }`}
+                  >
+                    {step.done ? "check" : STEP_ICONS[idx]}
+                  </span>
+                </div>
+                {idx < steps.length - 1 && (
+                  <div
+                    className={`w-0.5 h-8 mt-1 ${
+                      steps[idx + 1].done ? "bg-primary/40" : "bg-surface-container-highest"
+                    }`}
+                  />
+                )}
+              </div>
+
+              {/* Step text */}
+              <div className={`pb-8 ${idx === steps.length - 1 ? "pb-0" : ""}`}>
+                <p
+                  className={`font-headline text-sm font-bold mb-0.5 ${
+                    step.done ? "text-on-surface" : "text-on-surface-variant/50"
+                  }`}
+                >
+                  {step.label}
+                </p>
+                <p className="font-body text-xs text-on-surface-variant/60">
+                  {step.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-error/10">
+            <span className="material-symbols-outlined text-error text-lg flex-shrink-0">
+              error_outline
+            </span>
+            <p className="font-body text-sm text-error">{error}</p>
+          </div>
+        )}
+
+        {/* Confirm delivery button */}
+        {order.status === "SHIPPED" && (
+          <button
+            type="button"
+            onClick={confirmDelivery}
+            disabled={confirming}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            <span className="material-symbols-outlined text-lg">where_to_vote</span>
+            {confirming ? t("confirming") : t("confirmDelivery")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

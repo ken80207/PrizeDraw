@@ -125,7 +125,7 @@ public class ChatService(
                 message = sanitized,
                 timestamp = chatMessage.createdAt.toString(),
             )
-        redisPubSub.publish("chat:$roomId", json.encodeToString(event))
+        redisPubSub.publish("chat:$roomId", json.encodeToString<ChatEvent>(event))
         log.debug("Chat message sent: room=$roomId player=$playerId")
     }
 
@@ -157,7 +157,7 @@ public class ChatService(
                 emoji = emoji,
                 timestamp = now.toString(),
             )
-        redisPubSub.publish("chat:$roomId", json.encodeToString(event))
+        redisPubSub.publish("chat:$roomId", json.encodeToString<ChatEvent>(event))
     }
 
     /**

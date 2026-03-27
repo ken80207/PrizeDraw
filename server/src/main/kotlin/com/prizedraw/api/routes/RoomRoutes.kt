@@ -10,7 +10,6 @@ import io.ktor.server.application.call
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /**

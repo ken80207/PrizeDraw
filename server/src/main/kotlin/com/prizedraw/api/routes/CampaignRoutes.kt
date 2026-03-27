@@ -14,7 +14,6 @@ import com.prizedraw.contracts.dto.draw.DrawTicketDto
 import com.prizedraw.contracts.endpoints.AdminEndpoints
 import com.prizedraw.contracts.endpoints.CampaignEndpoints
 import com.prizedraw.contracts.enums.CampaignType
-import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.domain.entities.DrawTicketStatus
 import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.PrizeDefinition
@@ -28,7 +27,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /**
@@ -76,6 +74,17 @@ public fun Route.campaignRoutes() {
 
     get(CampaignEndpoints.UNLIMITED_BY_ID) {
         handleUnlimitedCampaignDetail(campaignRepository, prizeRepository)
+    }
+
+    get(CampaignEndpoints.CAMPAIGN_DRAW_RECORDS) {
+        val campaignId = call.parseUuidParam("campaignId") ?: return@get
+        val limit =
+            call.request.queryParameters["limit"]
+                ?.toIntOrNull()
+                ?.coerceIn(1, 100)
+                ?: 20
+        val records = drawRepository.findDrawnByCampaign(CampaignId(campaignId), limit)
+        call.respond(HttpStatusCode.OK, records)
     }
 }
 
@@ -155,7 +164,7 @@ private suspend fun buildTicketBoard(
         DrawTicketDto(
             id = ticket.id.toString(),
             position = ticket.position,
-            status = PrizeState.HOLDING,
+            status = if (isDrawn) "DRAWN" else "AVAILABLE",
             drawnByPlayerId = ticket.drawnByPlayerId?.value?.toString(),
             drawnByNickname = null,
             drawnAt = ticket.drawnAt,
@@ -215,6 +224,7 @@ private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
         grade = grade,
         name = name,
         photos = photos,
+        prizeValue = prizeValue,
         buybackPrice = buybackPrice,
         buybackEnabled = buybackEnabled,
         probabilityBps = probabilityBps,

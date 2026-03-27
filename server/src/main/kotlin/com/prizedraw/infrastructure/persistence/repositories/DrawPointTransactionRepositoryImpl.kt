@@ -23,7 +23,7 @@ public class DrawPointTransactionRepositoryImpl : IDrawPointTransactionRepositor
         DrawPointTransactionsTable.insert {
             it[id] = transaction.id
             it[playerId] = transaction.playerId.value
-            it[type] = transaction.type.name
+            it[type] = transaction.type
             it[amount] = transaction.amount
             it[balanceAfter] = transaction.balanceAfter
             it[paymentOrderId] = transaction.paymentOrderId
@@ -50,7 +50,7 @@ public class DrawPointTransactionRepositoryImpl : IDrawPointTransactionRepositor
         DrawPointTransaction(
             id = this[DrawPointTransactionsTable.id],
             playerId = PlayerId(this[DrawPointTransactionsTable.playerId]),
-            type = DrawPointTxType.valueOf(this[DrawPointTransactionsTable.type]),
+            type = this[DrawPointTransactionsTable.type],
             amount = this[DrawPointTransactionsTable.amount],
             balanceAfter = this[DrawPointTransactionsTable.balanceAfter],
             paymentOrderId = this[DrawPointTransactionsTable.paymentOrderId],

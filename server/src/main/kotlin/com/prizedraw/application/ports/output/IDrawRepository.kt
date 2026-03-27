@@ -1,6 +1,8 @@
 package com.prizedraw.application.ports.output
 
+import com.prizedraw.contracts.dto.draw.DrawRecordDto
 import com.prizedraw.domain.entities.DrawTicket
+import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
 import kotlinx.datetime.Instant
@@ -58,4 +60,20 @@ public interface IDrawRepository {
         prizeInstanceId: PrizeInstanceId,
         at: Instant,
     ): DrawTicket
+
+    /**
+     * Returns drawn ticket records for all ticket boxes belonging to [campaignId],
+     * joined with prize definition and player data.
+     *
+     * Only tickets with status DRAWN are included. Results are ordered by drawn_at DESC
+     * so the most recent draws appear first. Use [limit] to cap the result set size.
+     *
+     * @param campaignId The kuji campaign whose draw history is requested.
+     * @param limit Maximum number of records to return (default 50).
+     * @return Ordered list of [DrawRecordDto] entries, newest first.
+     */
+    public suspend fun findDrawnByCampaign(
+        campaignId: CampaignId,
+        limit: Int = 50,
+    ): List<DrawRecordDto>
 }

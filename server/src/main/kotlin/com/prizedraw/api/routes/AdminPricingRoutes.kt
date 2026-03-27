@@ -24,7 +24,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.patch
 import kotlinx.datetime.Clock
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /**
@@ -124,6 +123,7 @@ private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
         grade = grade,
         name = name,
         photos = photos,
+        prizeValue = prizeValue,
         buybackPrice = buybackPrice,
         buybackEnabled = buybackEnabled,
         probabilityBps = probabilityBps,

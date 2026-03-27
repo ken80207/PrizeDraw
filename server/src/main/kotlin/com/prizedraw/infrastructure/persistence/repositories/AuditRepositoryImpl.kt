@@ -35,7 +35,7 @@ public class AuditRepositoryImpl : IAuditRepository {
     override fun record(log: AuditLog) {
         AuditLogsTable.insert {
             it[id] = log.id
-            it[actorType] = log.actorType.name
+            it[actorType] = log.actorType
             it[actorPlayerId] = log.actorPlayerId?.value
             it[actorStaffId] = log.actorStaffId
             it[action] = log.action
@@ -123,7 +123,7 @@ public class AuditRepositoryImpl : IAuditRepository {
     private fun ResultRow.toAuditLog(): AuditLog =
         AuditLog(
             id = this[AuditLogsTable.id],
-            actorType = AuditActorType.valueOf(this[AuditLogsTable.actorType]),
+            actorType = this[AuditLogsTable.actorType],
             actorPlayerId = this[AuditLogsTable.actorPlayerId]?.let { PlayerId(it) },
             actorStaffId = this[AuditLogsTable.actorStaffId],
             action = this[AuditLogsTable.action],

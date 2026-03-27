@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { authStore, subscribeToAuthStore } from "@/stores/authStore";
 import { GradeBadge } from "@/components/GradeBadge";
@@ -31,23 +32,26 @@ interface ExchangeOfferDto {
 
 type Tab = "received" | "sent";
 
-const STATUS_ZH: Record<string, string> = {
-  PENDING: "待回應",
-  COUNTER_PROPOSED: "反提案",
-  COMPLETED: "已完成",
-  REJECTED: "已拒絕",
-  CANCELLED: "已取消",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400",
-  COUNTER_PROPOSED: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-  COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-  REJECTED: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
-  CANCELLED: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+const STATUS_STYLES: Record<string, string> = {
+  PENDING: "bg-tertiary/15 text-tertiary",
+  COUNTER_PROPOSED: "bg-secondary/15 text-secondary",
+  COMPLETED: "bg-primary/15 text-primary",
+  REJECTED: "bg-error/15 text-error",
+  CANCELLED: "bg-surface-container-highest text-on-surface-variant",
 };
 
 export default function ExchangePage() {
+  const t = useTranslations("exchange");
+  const tCommon = useTranslations("common");
+
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING: t("statusPending"),
+    COUNTER_PROPOSED: t("statusCounterProposed"),
+    COMPLETED: t("statusCompleted"),
+    REJECTED: t("statusRejected"),
+    CANCELLED: t("statusCancelled"),
+  };
+
   const [offers, setOffers] = useState<ExchangeOfferDto[]>([]);
   const [tab, setTab] = useState<Tab>("received");
   const [loading, setLoading] = useState(true);
@@ -69,12 +73,12 @@ export default function ExchangePage() {
       const data = await apiClient.get<ExchangeOfferDto[]>("/api/v1/exchange/offers");
       setOffers(data ?? []);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "載入交換請求失敗";
+      const msg = err instanceof Error ? err.message : t("loadError");
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadOffers();
@@ -83,94 +87,104 @@ export default function ExchangePage() {
   async function handleAccept(offerId: string) {
     try {
       await apiClient.post(`/api/v1/exchange/offers/${offerId}/respond`, { action: "ACCEPT" });
-      toast.success("已接受交換請求！");
+      toast.success(t("accept") + "!");
       loadOffers();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失敗");
+      toast.error(err instanceof Error ? err.message : t("actionFailed"));
     }
   }
 
   async function handleReject(offerId: string) {
     try {
       await apiClient.post(`/api/v1/exchange/offers/${offerId}/respond`, { action: "REJECT" });
-      toast.info("已拒絕交換請求");
+      toast.info(t("reject"));
       loadOffers();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失敗");
+      toast.error(err instanceof Error ? err.message : t("actionFailed"));
     }
   }
+
+  const TABS: [Tab, string, string][] = [
+    ["received", t("received"), "move_to_inbox"],
+    ["sent", t("sent"), "outbox"],
+  ];
 
   const displayed = offers.filter((o) =>
     tab === "sent" ? o.initiatorId === currentPlayerId : o.recipientId === currentPlayerId,
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-surface-dim">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">賞品交換</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              與其他玩家互換喜愛的賞品
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-3xl">swap_horiz</span>
+              <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">
+                {t("title")}
+              </h1>
+            </div>
+            <p className="font-body text-sm text-on-surface-variant">
+              {t("subtitle")}
             </p>
           </div>
           <Link
             href="/exchange/new"
-            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-bold font-label shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 active:scale-95 whitespace-nowrap"
           >
-            + 發起新交換
+            <span className="material-symbols-outlined text-lg">add</span>
+            {t("createOffer")}
           </Link>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 w-fit mb-6">
-          {([["received", "收到的請求"], ["sent", "發出的請求"]] as [Tab, string][]).map(
-            ([value, label]) => (
-              <button
-                key={value}
-                onClick={() => setTab(value)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                  tab === value
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                }`}
-              >
-                {label}
-              </button>
-            ),
-          )}
+        <div className="flex gap-1 p-1.5 bg-surface-container rounded-2xl w-fit mb-8">
+          {TABS.map(([value, label, icon]) => (
+            <button
+              key={value}
+              onClick={() => setTab(value)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-label font-bold transition-all ${
+                tab === value
+                  ? "bg-surface-container-highest text-primary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg">{icon}</span>
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
-            <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
-            <button onClick={loadOffers} className="text-sm font-medium text-red-700 hover:underline">
-              重試
+          <div className="mb-6 flex items-center justify-between p-4 rounded-xl bg-error/10">
+            <span className="font-body text-sm text-error">{error}</span>
+            <button
+              onClick={loadOffers}
+              className="font-label text-sm font-medium text-error hover:underline"
+            >
+              {tCommon("retry")}
             </button>
           </div>
         )}
 
         {/* List */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <ListItemSkeleton key={i} />
             ))}
           </div>
         ) : displayed.length === 0 ? (
           <EmptyState
-            icon={tab === "received" ? "📬" : "📤"}
-            title={tab === "received" ? "還沒有收到任何交換請求" : "你還沒有發出任何交換請求"}
-            description={
-              tab === "received"
-                ? "當其他玩家想和你交換賞品時，會出現在這裡"
-                : "點擊「發起新交換」開始與玩家進行賞品交換"
-            }
+            icon={tab === "received" ? "move_to_inbox" : "outbox"}
+            title={tab === "received" ? t("noExchanges") : t("noSentExchanges")}
+            description={tab === "received" ? t("noExchangesDesc") : t("noSentExchangesDesc")}
             action={
               tab === "sent"
-                ? { label: "發起新交換", onClick: () => (window.location.href = "/exchange/new") }
+                ? { label: t("createOffer"), onClick: () => (window.location.href = "/exchange/new") }
                 : undefined
             }
           />
@@ -181,6 +195,15 @@ export default function ExchangePage() {
                 key={offer.id}
                 offer={offer}
                 tab={tab}
+                statusLabels={STATUS_LABELS}
+                fromLabel={t("from")}
+                toLabel={t("to")}
+                offeredLabel={t("offered")}
+                requestedLabel={t("requested")}
+                acceptLabel={t("accept")}
+                rejectLabel={t("reject")}
+                counterProposeLabel={t("counterPropose")}
+                viewDetailsLabel={t("viewDetails")}
                 onAccept={() => handleAccept(offer.id)}
                 onReject={() => handleReject(offer.id)}
               />
@@ -195,38 +218,62 @@ export default function ExchangePage() {
 function ExchangeCard({
   offer,
   tab,
+  statusLabels,
+  fromLabel,
+  toLabel,
+  offeredLabel,
+  requestedLabel,
+  acceptLabel,
+  rejectLabel,
+  counterProposeLabel,
+  viewDetailsLabel,
   onAccept,
   onReject,
 }: {
   offer: ExchangeOfferDto;
   tab: Tab;
+  statusLabels: Record<string, string>;
+  fromLabel: string;
+  toLabel: string;
+  offeredLabel: string;
+  requestedLabel: string;
+  acceptLabel: string;
+  rejectLabel: string;
+  counterProposeLabel: string;
+  viewDetailsLabel: string;
   onAccept: () => void;
   onReject: () => void;
 }) {
-  const statusLabel = STATUS_ZH[offer.status] ?? offer.status;
-  const statusColor = STATUS_COLORS[offer.status] ?? STATUS_COLORS.CANCELLED;
+  const statusLabel = statusLabels[offer.status] ?? offer.status;
+  const statusStyle = STATUS_STYLES[offer.status] ?? STATUS_STYLES.CANCELLED;
   const isPending = offer.status === "PENDING";
 
   return (
-    <div data-testid="exchange-card" className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+    <div
+      data-testid="exchange-card"
+      className="bg-surface-container rounded-lg p-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] transition-all duration-300"
+    >
       {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          {tab === "received"
-            ? `來自: ${offer.initiatorNickname}`
-            : `發給: ${offer.recipientNickname}`}
-        </p>
-        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor}`}>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm text-on-surface-variant">person</span>
+          <p className="font-headline text-sm font-bold text-on-surface">
+            {tab === "received"
+              ? `${fromLabel}: ${offer.initiatorNickname}`
+              : `${toLabel}: ${offer.recipientNickname}`}
+          </p>
+        </div>
+        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-label ${statusStyle}`}>
           {statusLabel}
         </span>
       </div>
 
       {/* Prize exchange visual */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5">
         {/* Initiator items */}
         <div className="flex-1">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            {offer.initiatorNickname} 提供
+          <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">
+            {offer.initiatorNickname} {offeredLabel}
           </p>
           <div className="flex gap-2 flex-wrap">
             {offer.initiatorItems.map((item, i) => (
@@ -236,12 +283,16 @@ function ExchangeCard({
         </div>
 
         {/* Arrow */}
-        <div className="shrink-0 text-gray-400 text-xl">⇌</div>
+        <div className="shrink-0">
+          <span className="material-symbols-outlined text-2xl text-on-surface-variant">
+            swap_horiz
+          </span>
+        </div>
 
         {/* Recipient items */}
         <div className="flex-1">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            {offer.recipientNickname} 的賞品
+          <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">
+            {offer.recipientNickname} {requestedLabel}
           </p>
           <div className="flex gap-2 flex-wrap">
             {offer.recipientItems.map((item, i) => (
@@ -253,9 +304,12 @@ function ExchangeCard({
 
       {/* Message */}
       {offer.message && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 mb-4">
-          &ldquo;{offer.message}&rdquo;
-        </p>
+        <div className="flex items-start gap-2 italic bg-surface-container-high rounded-xl px-4 py-3 mb-4">
+          <span className="material-symbols-outlined text-sm text-on-surface-variant flex-shrink-0 mt-0.5">
+            format_quote
+          </span>
+          <p className="font-body text-sm text-on-surface-variant">{offer.message}</p>
+        </div>
       )}
 
       {/* Actions */}
@@ -263,21 +317,24 @@ function ExchangeCard({
         <div className="flex gap-3">
           <button
             onClick={onAccept}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-bold font-label shadow-md shadow-primary/20 hover:shadow-primary/40 transition-all"
           >
-            接受
+            <span className="material-symbols-outlined text-sm">check_circle</span>
+            {acceptLabel}
           </button>
           <Link
             href={`/exchange/${offer.id}`}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors text-center"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-secondary/30 text-secondary text-sm font-bold font-label hover:bg-secondary/10 transition-colors text-center"
           >
-            反提案
+            <span className="material-symbols-outlined text-sm">reply</span>
+            {counterProposeLabel}
           </Link>
           <button
             onClick={onReject}
-            className="flex-1 py-2.5 rounded-xl border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-error/30 text-error text-sm font-bold font-label hover:bg-error/10 transition-colors"
           >
-            拒絕
+            <span className="material-symbols-outlined text-sm">cancel</span>
+            {rejectLabel}
           </button>
         </div>
       )}
@@ -285,13 +342,14 @@ function ExchangeCard({
       {!isPending && (
         <Link
           href={`/exchange/${offer.id}`}
-          className="block text-center py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="flex items-center justify-center gap-1.5 py-2 text-sm font-label text-primary hover:underline transition-colors"
         >
-          查看詳情 →
+          {viewDetailsLabel}
+          <span className="material-symbols-outlined text-sm">arrow_forward</span>
         </Link>
       )}
 
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+      <p className="font-label text-xs text-on-surface-variant/50 mt-3">
         {new Date(offer.createdAt).toLocaleString("zh-TW")}
       </p>
     </div>
@@ -300,7 +358,7 @@ function ExchangeCard({
 
 function ItemThumb({ item }: { item: ExchangeItemDto }) {
   return (
-    <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+    <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-surface-container-high">
       {item.prizePhotoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -309,12 +367,17 @@ function ItemThumb({ item }: { item: ExchangeItemDto }) {
           className="w-full h-full object-cover"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-          🏆
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="material-symbols-outlined text-xl text-on-surface-variant/40">
+            trophy
+          </span>
         </div>
       )}
       <div className="absolute bottom-0 left-0 right-0">
-        <GradeBadge grade={item.grade} className="w-full text-center text-[10px] px-1 py-0.5 rounded-none rounded-b-lg" />
+        <GradeBadge
+          grade={item.grade}
+          className="w-full text-center text-[10px] px-1 py-0.5 rounded-none rounded-b-lg"
+        />
       </div>
     </div>
   );

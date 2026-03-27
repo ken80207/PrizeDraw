@@ -26,6 +26,8 @@ import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
@@ -138,6 +140,7 @@ class DrawConcurrencyTest :
                 grade = "A",
                 name = "Grand Prize",
                 photos = emptyList(),
+                prizeValue = 0,
                 buybackPrice = 100,
                 buybackEnabled = true,
                 probabilityBps = null,
@@ -249,11 +252,11 @@ class DrawConcurrencyTest :
                             playerRepository = playerRepo,
                             campaignRepository = campaignRepo,
                             queueRepository = queueRepo,
-                            drawPointTxRepository = drawPointTxRepo,
                             outboxRepository = outboxRepo,
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
+                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                         ),
                     )
 
@@ -314,11 +317,11 @@ class DrawConcurrencyTest :
                             playerRepository = playerRepo,
                             campaignRepository = campaignRepo,
                             queueRepository = queueRepo,
-                            drawPointTxRepository = drawPointTxRepo,
                             outboxRepository = outboxRepo,
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
+                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                         ),
                     )
 
@@ -395,11 +398,11 @@ class DrawConcurrencyTest :
                             playerRepository = playerRepo,
                             campaignRepository = campaignRepo,
                             queueRepository = queueRepo,
-                            drawPointTxRepository = drawPointTxRepo,
                             outboxRepository = outboxRepo,
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
+                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                         ),
                     )
 
@@ -472,10 +475,9 @@ class DrawConcurrencyTest :
                 }
 
                 coEvery { campaignRepo.findUnlimitedById(CampaignId(unlimitedCampaignId)) } returns unlimitedCampaign
-                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns
-                    listOf(
-                        makeDef().copy(probabilityBps = 1_000_000),
-                    )
+                val unlimitedDef = makeDef().copy(probabilityBps = 1_000_000)
+                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns listOf(unlimitedDef)
+                coEvery { prizeRepo.findDefinitionById(any()) } returns unlimitedDef
                 coEvery { playerRepo.findById(player.id) } returns player
                 coEvery { playerRepo.updateBalance(any(), any(), any(), any()) } returns true
                 coEvery { prizeRepo.saveInstance(any()) } answers { firstArg() }
@@ -488,12 +490,11 @@ class DrawConcurrencyTest :
                         DrawUnlimitedDeps(
                             campaignRepository = campaignRepo,
                             prizeRepository = prizeRepo,
-                            playerRepository = playerRepo,
-                            drawPointTxRepository = drawPointTxRepo,
                             outboxRepository = outboxRepo,
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisClient = redisClient,
+                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                         ),
                     )
 
@@ -550,11 +551,10 @@ class DrawConcurrencyTest :
                 val auditRepo = mockk<IAuditRepository>()
                 val domainService = UnlimitedDrawDomainService()
 
+                val unlimitedDef2 = makeDef().copy(probabilityBps = 1_000_000)
                 coEvery { campaignRepo.findUnlimitedById(CampaignId(unlimitedCampaignId)) } returns campaign
-                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns
-                    listOf(
-                        makeDef().copy(probabilityBps = 1_000_000),
-                    )
+                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns listOf(unlimitedDef2)
+                coEvery { prizeRepo.findDefinitionById(any()) } returns unlimitedDef2
                 coEvery { playerRepo.findById(player.id) } returns player
                 coEvery { playerRepo.updateBalance(any(), any(), any(), any()) } returns true
                 coEvery { prizeRepo.saveInstance(any()) } answers { firstArg() }
@@ -567,12 +567,11 @@ class DrawConcurrencyTest :
                         DrawUnlimitedDeps(
                             campaignRepository = campaignRepo,
                             prizeRepository = prizeRepo,
-                            playerRepository = playerRepo,
-                            drawPointTxRepository = drawPointTxRepo,
                             outboxRepository = outboxRepo,
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisClient = redisClient,
+                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                         ),
                     )
 
@@ -606,6 +605,7 @@ class DrawConcurrencyTest :
                 grade = grade,
                 name = "Prize $grade",
                 photos = emptyList(),
+                prizeValue = 0,
                 buybackPrice = 0,
                 buybackEnabled = false,
                 probabilityBps = probabilityBps,

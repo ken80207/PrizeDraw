@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
+import com.prizedraw.i18n.S
 
 /**
  * Exchange offer creation screen.
@@ -57,10 +58,10 @@ public fun ExchangeOfferScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "Exchange with $recipientNickname",
+            text = "${S("exchange.exchangeWith")} $recipientNickname",
             style = MaterialTheme.typography.headlineSmall,
         )
-        Text(text = "Their prizes (select what you want):", style = MaterialTheme.typography.titleMedium)
+        Text(text = S("exchange.theirPrizesPrompt"), style = MaterialTheme.typography.titleMedium)
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(recipientPrizes) { prize ->
                 SelectablePrizeCard(
@@ -72,7 +73,7 @@ public fun ExchangeOfferScreen(
                 )
             }
         }
-        Text(text = "Your prizes to offer:", style = MaterialTheme.typography.titleMedium)
+        Text(text = S("exchange.yourPrizesPrompt"), style = MaterialTheme.typography.titleMedium)
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(ownPrizes) { prize ->
                 SelectablePrizeCard(
@@ -87,7 +88,7 @@ public fun ExchangeOfferScreen(
         OutlinedTextField(
             value = message,
             onValueChange = { message = it },
-            label = { Text("Optional message") },
+            label = { Text(S("exchange.optionalMessage")) },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 3,
         )
@@ -95,7 +96,7 @@ public fun ExchangeOfferScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Cancel") }
+            Button(onClick = onBack, modifier = Modifier.weight(1f)) { Text(S("common.cancel")) }
             Button(
                 onClick = {
                     onSubmit(
@@ -106,7 +107,7 @@ public fun ExchangeOfferScreen(
                 },
                 enabled = selectedOwn.value.isNotEmpty() && selectedRecipient.value.isNotEmpty(),
                 modifier = Modifier.weight(1f),
-            ) { Text("Send Offer") }
+            ) { Text(S("exchange.sendOffer")) }
         }
     }
 }

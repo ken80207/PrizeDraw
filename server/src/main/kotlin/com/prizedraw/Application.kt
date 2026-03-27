@@ -58,6 +58,11 @@ fun Application.module() {
         )
     }
 
+    // --- Eagerly initialize Database (triggers Flyway + Exposed connect) ---
+    val database: org.jetbrains.exposed.sql.Database by inject()
+    @Suppress("UNUSED_VARIABLE")
+    val dbReady = database // force lazy init
+
     // --- Ktor Plugins ---
     configureSerialization()
     configureCORS()

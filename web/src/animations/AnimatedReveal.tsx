@@ -112,7 +112,7 @@ export function AnimatedReveal({
     >
       {/* Animation container — must have explicit dimensions for canvas children */}
       <div
-        className="relative overflow-hidden rounded-2xl bg-gray-900"
+        className="relative overflow-hidden rounded-2xl bg-surface-container-low"
         style={{
           width: "min(340px, 90vw)",
           height: "min(480px, 75vh)",

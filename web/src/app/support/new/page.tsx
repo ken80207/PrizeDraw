@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { toast } from "@/components/Toast";
 
@@ -18,22 +19,24 @@ interface SupportTicketDto {
   id: string;
 }
 
-const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
-  { value: "TRADE_DISPUTE", label: "交易爭議", icon: "💱" },
-  { value: "DRAW_ISSUE", label: "抽獎問題", icon: "🎫" },
-  { value: "ACCOUNT_ISSUE", label: "帳戶問題", icon: "👤" },
-  { value: "SHIPPING_ISSUE", label: "寄送問題", icon: "📦" },
-  { value: "PAYMENT_ISSUE", label: "付款問題", icon: "💳" },
-  { value: "OTHER", label: "其他", icon: "💬" },
-];
-
 export default function NewSupportTicketPage() {
+  const t = useTranslations("support");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const [category, setCategory] = useState<TicketCategory>("OTHER");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
+    { value: "TRADE_DISPUTE", label: t("categoryTrade"), icon: "currency_exchange" },
+    { value: "DRAW_ISSUE", label: t("categoryDraw"), icon: "confirmation_number" },
+    { value: "ACCOUNT_ISSUE", label: t("categoryAccount"), icon: "manage_accounts" },
+    { value: "SHIPPING_ISSUE", label: t("categoryShipping"), icon: "package_2" },
+    { value: "PAYMENT_ISSUE", label: t("categoryPayment"), icon: "credit_card" },
+    { value: "OTHER", label: t("categoryOther"), icon: "chat_bubble" },
+  ];
 
   const canSubmit = subject.trim().length > 0 && body.trim().length > 0 && !submitting;
 
@@ -48,10 +51,10 @@ export default function NewSupportTicketPage() {
         subject: subject.trim(),
         body: body.trim(),
       });
-      toast.success("工單已成功建立！");
+      toast.success(t("createSuccess"));
       router.push(`/support/${ticket.id}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "建立工單失敗";
+      const msg = err instanceof Error ? err.message : t("createError");
       setError(msg);
       toast.error(msg);
       setSubmitting(false);
@@ -59,26 +62,32 @@ export default function NewSupportTicketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-[#111125]">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back */}
+        {/* Back link */}
         <Link
           href="/support"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-[#d8c3ad]/60 hover:text-[#ffc174] mb-6 transition-colors"
         >
-          ← 返回客服中心
+          <span className="material-symbols-outlined text-sm" style={{ fontSize: "18px" }}>
+            arrow_back
+          </span>
+          {t("title")}
         </Link>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-            建立新工單
+        <div className="bg-[#1e1e32] rounded-2xl p-6">
+          <h1 className="font-headline text-2xl font-bold text-[#e2e0fc] mb-1">
+            {t("newTicketTitle")}
           </h1>
+          <p className="text-sm text-[#d8c3ad] mb-6">
+            {t("newTicketDesc")}
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Category */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                問題類別
+              <label className="block text-xs font-semibold text-[#c0c1ff]/70 uppercase tracking-wider mb-3">
+                {t("category")}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {CATEGORIES.map(({ value, label, icon }) => (
@@ -86,13 +95,20 @@ export default function NewSupportTicketPage() {
                     key={value}
                     type="button"
                     onClick={() => setCategory(value)}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       category === value
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                        ? "bg-[#28283d] shadow-[inset_0_0_0_1px_rgba(255,193,116,0.4)] text-[#ffc174]"
+                        : "bg-[#0c0c1f] text-[#d8c3ad] hover:bg-[#1a1a2e]"
                     }`}
                   >
-                    <span>{icon}</span>
+                    <span
+                      className={`material-symbols-outlined text-base ${
+                        category === value ? "text-[#ffc174]" : "text-[#d8c3ad]/50"
+                      }`}
+                      style={{ fontSize: "18px" }}
+                    >
+                      {icon}
+                    </span>
                     {label}
                   </button>
                 ))}
@@ -103,21 +119,21 @@ export default function NewSupportTicketPage() {
             <div>
               <label
                 htmlFor="subject"
-                className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"
+                className="block text-xs font-semibold text-[#c0c1ff]/70 uppercase tracking-wider mb-2"
               >
-                主旨 <span className="text-red-500">*</span>
+                {t("subjectLabel")} <span className="text-[#ffb4ab]">*</span>
               </label>
               <input
                 id="subject"
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="簡短說明你的問題"
+                placeholder={t("subjectPlaceholder")}
                 maxLength={200}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl bg-[#0c0c1f] text-sm text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all"
               />
-              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
+              <p className="mt-1 text-xs text-[#d8c3ad]/40 text-right">
                 {subject.length}/200
               </p>
             </div>
@@ -126,42 +142,42 @@ export default function NewSupportTicketPage() {
             <div>
               <label
                 htmlFor="body"
-                className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5"
+                className="block text-xs font-semibold text-[#c0c1ff]/70 uppercase tracking-wider mb-2"
               >
-                問題描述 <span className="text-red-500">*</span>
+                {t("descriptionLabel")} <span className="text-[#ffb4ab]">*</span>
               </label>
               <textarea
                 id="body"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="請盡量詳細描述你的問題，包含相關的活動 ID、交易編號等資訊..."
+                placeholder={t("descriptionPlaceholder")}
                 rows={7}
                 required
-                className="w-full resize-y px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full resize-y px-4 py-3 rounded-xl bg-[#0c0c1f] text-sm text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all"
               />
             </div>
 
             {/* Error */}
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+              <div className="p-3 rounded-xl bg-[#ffb4ab]/10">
+                <p className="text-sm text-[#ffb4ab]">{error}</p>
               </div>
             )}
 
-            {/* Submit */}
+            {/* Buttons */}
             <div className="flex gap-3 pt-2">
               <Link
                 href="/support"
-                className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium text-sm text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-[#534434]/30 text-[#d8c3ad] font-medium text-sm text-center hover:bg-[#28283d] transition-colors"
               >
-                取消
+                {tCommon("cancel")}
               </Link>
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 py-3 rounded-xl amber-gradient text-[#472a00] font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(245,158,11,0.25)]"
               >
-                {submitting ? "送出中..." : "送出工單"}
+                {submitting ? tCommon("submitting") : t("submitTicket")}
               </button>
             </div>
           </form>

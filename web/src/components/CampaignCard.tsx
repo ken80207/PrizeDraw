@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { StatusBadge } from "./StatusBadge";
+import { useTranslations } from "next-intl";
 
 export interface CampaignCardData {
   id: string;
@@ -19,57 +19,102 @@ interface CampaignCardProps {
 }
 
 export function CampaignCard({ campaign }: CampaignCardProps) {
+  const tc = useTranslations("campaign");
+  const tcommon = useTranslations("common");
+
   const href =
     campaign.type === "無限賞"
       ? `/campaigns/unlimited/${campaign.id}`
       : `/campaigns/${campaign.id}`;
 
+  const remainingPct =
+    campaign.remainingTickets !== undefined && campaign.totalTickets
+      ? Math.round((campaign.remainingTickets / campaign.totalTickets) * 100)
+      : null;
+
+  // Display the type badge label using translation keys
+  const typeBadge = campaign.type === "無限賞" ? tc("unlimited") : tc("ichiban");
+
   return (
     <Link href={href} className="group block">
-      <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200">
+      <div className="relative bg-surface-container rounded-lg flex flex-col transition-all duration-300 hover:-translate-y-2 gacha-glow overflow-hidden">
         {/* Cover image */}
-        <div className="relative w-full h-48 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 overflow-hidden">
+        <div className="relative h-64 overflow-hidden bg-surface-container-high">
           {campaign.coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={campaign.coverImageUrl}
               alt={campaign.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">
-              {campaign.type === "無限賞" ? "🎲" : "🎫"}
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-6xl text-on-surface-variant opacity-40">
+                {campaign.type === "無限賞" ? "all_inclusive" : "confirmation_number"}
+              </span>
             </div>
           )}
-          {campaign.isHot && (
-            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              🔥 熱抽中
+
+          {/* Viewer count badge */}
+          {campaign.viewerCount !== undefined && (
+            <div
+              className={`absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md ${
+                campaign.isHot
+                  ? "bg-error-container/90 text-on-error-container"
+                  : "bg-surface-container-highest/90 text-on-surface"
+              }`}
+            >
+              {campaign.isHot && (
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              )}
+              Live: {campaign.viewerCount}
             </div>
           )}
-          <div className="absolute top-2 right-2">
-            <StatusBadge status={campaign.type} />
+
+          {/* Type badge */}
+          <div className="absolute top-4 right-4">
+            <span
+              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
+                campaign.type === "無限賞"
+                  ? "bg-tertiary/10 text-tertiary"
+                  : "bg-primary/10 text-primary border border-primary/20"
+              }`}
+            >
+              {typeBadge}
+            </span>
           </div>
         </div>
 
         {/* Card body */}
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+        <div className="p-6 flex flex-col flex-1">
+          <h3 className="text-xl font-bold mb-2 text-on-surface group-hover:text-primary transition-colors line-clamp-2">
             {campaign.title}
           </h3>
-          <div className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 font-medium mb-3">
-            <span>💰</span>
-            <span>{campaign.pricePerDraw} 點/抽</span>
+
+          <div className="flex justify-between items-center mb-6">
+            <span className="text-2xl font-black text-primary font-headline">
+              {campaign.pricePerDraw} {tcommon("pts")}
+            </span>
+            <span className="text-xs text-secondary/60">{tc("drawCount")}</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            {campaign.remainingTickets !== undefined && campaign.totalTickets !== undefined ? (
-              <span>剩餘: {campaign.remainingTickets}/{campaign.totalTickets}</span>
-            ) : (
-              <StatusBadge status={campaign.status} />
-            )}
-            {campaign.viewerCount !== undefined && (
-              <span>👀 {campaign.viewerCount} 人觀看</span>
-            )}
-          </div>
+
+          {/* Remaining tickets progress bar (Ichiban Kuji only) */}
+          {remainingPct !== null && campaign.totalTickets !== undefined && (
+            <div className="space-y-2 mt-auto">
+              <div className="flex justify-between text-xs font-bold text-on-surface">
+                <span>{tc("available")}</span>
+                <span className="text-primary">
+                  {campaign.remainingTickets} / {campaign.totalTickets}
+                </span>
+              </div>
+              <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full transition-all duration-500"
+                  style={{ width: `${remainingPct}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Link>

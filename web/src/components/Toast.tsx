@@ -45,18 +45,17 @@ export const toast = {
 };
 
 const ICONS: Record<ToastType, string> = {
-  success: "✓",
-  error: "✕",
-  info: "ℹ",
-  warning: "⚠",
+  success: "check_circle",
+  error: "error",
+  info: "info",
+  warning: "warning",
 };
 
 const COLORS: Record<ToastType, string> = {
-  success:
-    "bg-emerald-600 text-white dark:bg-emerald-500",
-  error: "bg-red-600 text-white dark:bg-red-500",
-  info: "bg-indigo-600 text-white dark:bg-indigo-500",
-  warning: "bg-amber-500 text-white dark:bg-amber-400",
+  success: "bg-emerald-600/90 text-white backdrop-blur-xl",
+  error: "bg-error-container/90 text-on-error-container backdrop-blur-xl",
+  info: "bg-secondary-container/90 text-on-secondary-container backdrop-blur-xl",
+  warning: "bg-primary-container/90 text-on-primary backdrop-blur-xl",
 };
 
 export function ToastContainer() {
@@ -84,7 +83,7 @@ export function ToastContainer() {
           key={t.id}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium max-w-sm animate-in slide-in-from-right-4 fade-in ${COLORS[t.type]}`}
         >
-          <span className="text-base font-bold">{ICONS[t.type]}</span>
+          <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{ICONS[t.type]}</span>
           <span className="flex-1">{t.message}</span>
           <button
             onClick={() => dismiss(t.id)}

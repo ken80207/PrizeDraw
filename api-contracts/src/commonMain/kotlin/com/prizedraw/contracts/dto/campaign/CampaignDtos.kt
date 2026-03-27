@@ -46,6 +46,7 @@ public data class PrizeDefinitionDto(
     val grade: String,
     val name: String,
     val photos: List<String>,
+    val prizeValue: Int,
     val buybackPrice: Int,
     val buybackEnabled: Boolean,
     val probabilityBps: Int?,

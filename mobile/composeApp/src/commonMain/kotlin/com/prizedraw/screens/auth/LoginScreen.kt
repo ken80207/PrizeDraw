@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.enums.OAuthProvider
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.auth.AuthIntent
 import com.prizedraw.viewmodels.auth.AuthState
 import com.prizedraw.viewmodels.auth.AuthViewModel
@@ -70,7 +71,7 @@ public fun LoginScreen(
                     viewModel.onIntent(AuthIntent.Login(OAuthProvider.GOOGLE, "TODO:google-id-token"))
                 },
             ) {
-                Text("Continue with Google")
+                Text(S("auth.continueWithGoogle"))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -83,7 +84,7 @@ public fun LoginScreen(
                     viewModel.onIntent(AuthIntent.Login(OAuthProvider.APPLE, "TODO:apple-id-token"))
                 },
             ) {
-                Text("Continue with Apple")
+                Text(S("auth.continueWithApple"))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -96,7 +97,7 @@ public fun LoginScreen(
                     viewModel.onIntent(AuthIntent.Login(OAuthProvider.LINE, "TODO:line-id-token"))
                 },
             ) {
-                Text("Continue with LINE")
+                Text(S("auth.continueWithLine"))
             }
 
             if (state is AuthState.Error) {

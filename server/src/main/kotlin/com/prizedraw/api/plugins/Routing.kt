@@ -1,6 +1,11 @@
 package com.prizedraw.api.plugins
 
 import com.prizedraw.api.routes.adminAnnouncementRoutes
+import com.prizedraw.api.routes.adminDashboardRoutes
+import com.prizedraw.api.routes.adminLeaderboardConfigRoutes
+import com.prizedraw.api.routes.adminPlayerRoutes
+import com.prizedraw.api.routes.adminPrizesRoutes
+import com.prizedraw.api.routes.adminTradeRoutes
 import com.prizedraw.api.routes.roomRoutes
 import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
@@ -141,6 +146,9 @@ public fun Application.configureRouting() {
         // Phase 11 & 12: Admin Campaign Management + Pricing
         // authenticate("staff") wraps all admin routes
         authenticate("staff") {
+            // Admin dashboard aggregates
+            adminDashboardRoutes()
+
             adminCampaignRoutes()
             adminPricingRoutes()
 
@@ -152,6 +160,18 @@ public fun Application.configureRouting() {
 
             // Phase 20: Announcement management
             adminAnnouncementRoutes()
+
+            // Admin player list (with search)
+            adminPlayerRoutes()
+
+            // Admin trade listings view
+            adminTradeRoutes()
+
+            // Admin prize definitions view
+            adminPrizesRoutes()
+
+            // Admin leaderboard configuration
+            adminLeaderboardConfigRoutes()
         }
     }
 }

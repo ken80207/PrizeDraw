@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.support.SupportIntent
 import com.prizedraw.viewmodels.support.SupportViewModel
 import com.prizedraw.viewmodels.support.TicketMessageDto
@@ -87,14 +88,14 @@ public fun TicketDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = ticket?.subject ?: "Ticket",
+                        text = ticket?.subject ?: S("support.ticket"),
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
                     }
                 },
             )
@@ -151,7 +152,7 @@ public fun TicketDetailScreen(
                         if (state.messages.isEmpty()) {
                             item {
                                 Text(
-                                    text = "No messages yet.",
+                                    text = S("support.noMessages"),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -189,7 +190,7 @@ public fun TicketDetailScreen(
                             OutlinedTextField(
                                 value = replyText,
                                 onValueChange = { replyText = it },
-                                placeholder = { Text("Write a reply…") },
+                                placeholder = { Text(S("support.replyPlaceholder")) },
                                 modifier = Modifier.weight(1f),
                                 maxLines = 3,
                             )
@@ -209,7 +210,7 @@ public fun TicketDetailScreen(
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = "Send reply",
+                                    contentDescription = S("support.sendReply"),
                                     tint =
                                         if (replyText.isNotBlank()) {
                                             MaterialTheme.colorScheme.primary
@@ -254,7 +255,7 @@ private fun MessageBubble(message: TicketMessageDto) {
         ) {
             if (!isPlayer) {
                 Text(
-                    text = "Support Staff",
+                    text = S("support.staffLabel"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -299,9 +300,9 @@ private fun SatisfactionRatingRow(
             Text(
                 text =
                     if (currentScore != null) {
-                        "Thanks for your feedback! ($currentScore/5)"
+                        "${S("support.thanksFeedback")} ($currentScore/5)"
                     } else {
-                        "How satisfied are you with the resolution?"
+                        S("support.satisfactionPrompt")
                     },
                 style = MaterialTheme.typography.bodyMedium,
             )

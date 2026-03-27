@@ -1,26 +1,133 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ── Kuji Noir / The Illuminated Gallery ── */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Primary – Amber Gold (moments of "winning") */
+  --color-primary: #ffc174;
+  --color-primary-container: #f59e0b;
+  --color-primary-fixed: #ffddb8;
+  --color-primary-fixed-dim: #ffb95f;
+  --color-on-primary: #472a00;
+  --color-on-primary-container: #613b00;
+  --color-on-primary-fixed: #2a1700;
+  --color-on-primary-fixed-variant: #653e00;
+  --color-inverse-primary: #855300;
+
+  /* Secondary – Indigo Accent */
+  --color-secondary: #c0c1ff;
+  --color-secondary-container: #3131c0;
+  --color-secondary-fixed: #e1e0ff;
+  --color-secondary-fixed-dim: #c0c1ff;
+  --color-on-secondary: #1000a9;
+  --color-on-secondary-container: #b0b2ff;
+  --color-on-secondary-fixed: #07006c;
+  --color-on-secondary-fixed-variant: #2f2ebe;
+
+  /* Tertiary – Cyan/Info */
+  --color-tertiary: #8fd5ff;
+  --color-tertiary-container: #1abdff;
+  --color-tertiary-fixed: #c5e7ff;
+  --color-tertiary-fixed-dim: #7fd0ff;
+  --color-on-tertiary: #00344a;
+  --color-on-tertiary-container: #004966;
+  --color-on-tertiary-fixed: #001e2d;
+  --color-on-tertiary-fixed-variant: #004c6a;
+
+  /* Error */
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  /* Surface – 5-tier depth system */
+  --color-surface-dim: #111125;
+  --color-surface: #111125;
+  --color-surface-container-lowest: #0c0c1f;
+  --color-surface-container-low: #1a1a2e;
+  --color-surface-container: #1e1e32;
+  --color-surface-container-high: #28283d;
+  --color-surface-container-highest: #333348;
+  --color-surface-bright: #37374d;
+  --color-surface-variant: #333348;
+  --color-surface-tint: #ffb95f;
+
+  /* On-surface */
+  --color-on-surface: #e2e0fc;
+  --color-on-surface-variant: #d8c3ad;
+  --color-on-background: #e2e0fc;
+  --color-background: #111125;
+
+  /* Inverse */
+  --color-inverse-surface: #e2e0fc;
+  --color-inverse-on-surface: #2f2e43;
+
+  /* Outline */
+  --color-outline: #a08e7a;
+  --color-outline-variant: #534434;
+
+  /* Font families */
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Manrope", sans-serif;
+  --font-label: "Manrope", sans-serif;
+
+  /* Border radius */
+  --radius-DEFAULT: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Base Styles ── */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface-dim);
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* ── Utility Classes ── */
+
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
+.gold-glow {
+  box-shadow: 0 20px 40px rgba(245, 158, 11, 0.15);
+}
+
+.glass-panel {
+  background: rgba(30, 30, 50, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.amber-gradient {
+  background: linear-gradient(135deg, #ffc174 0%, #f59e0b 100%);
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Gacha Glow hover effect */
+.gacha-glow {
+  transition: box-shadow 0.3s ease, outline-color 0.3s ease;
+}
+.gacha-glow:hover {
+  box-shadow: 0 0 30px rgba(255, 193, 116, 0.15);
 }

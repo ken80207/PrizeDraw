@@ -7,6 +7,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
+import com.prizedraw.i18n.S
 
 /**
  * Confirmation dialog for the Official Buyback action.
@@ -34,26 +35,25 @@ public fun BuybackConfirmDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Official Buyback",
+                text = S("prizes.officialBuyback"),
                 style = MaterialTheme.typography.titleMedium,
             )
         },
         text = {
             Text(
                 text =
-                    "Recycle \"${prize.name}\" (${prize.grade}) for " +
-                        "$buybackPrice revenue points? This action cannot be undone.",
+                    "\"${prize.name}\" (${prize.grade}) — $buybackPrice ${S("prizes.revenuePoints")}? ${S("prizes.buybackWarning")}",
                 style = MaterialTheme.typography.bodyMedium,
             )
         },
         confirmButton = {
             Button(onClick = onConfirm) {
-                Text("Confirm Buyback")
+                Text(S("prizes.confirmBuyback"))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(S("common.cancel"))
             }
         },
     )

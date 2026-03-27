@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, startTransition } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import {
   formatProbabilityBps,
@@ -17,6 +18,7 @@ import { useAnimationMode } from "@/hooks/useAnimationMode";
 import { ReactionOverlay, useReactionQueue } from "@/components/ReactionOverlay";
 import { useChat } from "@/hooks/useChat";
 import { authStore } from "@/stores/authStore";
+import { apiClient } from "@/services/apiClient";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -41,30 +43,6 @@ interface RecentWin {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mock data generators
-// ─────────────────────────────────────────────────────────────────────────────
-
-function generateMockActiveDrawers(): ActiveDrawer[] {
-  return [
-    { playerId: "p1", nickname: "星空玩家", startedAt: new Date().toISOString() },
-    { playerId: "p2", nickname: "Lucky777", startedAt: new Date().toISOString() },
-    { playerId: "p3", nickname: "抽獎達人", startedAt: new Date().toISOString() },
-    { playerId: "p4", nickname: "CoolCat99", startedAt: new Date().toISOString() },
-  ];
-}
-
-function generateMockRecentWins(): RecentWin[] {
-  return [
-    { id: "w1", nickname: "小明", grade: "A賞", prizeName: "限定公仔", timestamp: "14:45", isNew: true },
-    { id: "w2", nickname: "小花", grade: "B賞", prizeName: "精品模型", timestamp: "14:43" },
-    { id: "w3", nickname: "阿陳", grade: "D賞", prizeName: "隨機貼紙", timestamp: "14:41" },
-    { id: "w4", nickname: "Lucky", grade: "C賞", prizeName: "造型吊飾", timestamp: "14:39" },
-    { id: "w5", nickname: "玩家168", grade: "D賞", prizeName: "隨機貼紙", timestamp: "14:37" },
-    { id: "w6", nickname: "星空", grade: "A賞", prizeName: "限定公仔", timestamp: "14:35" },
-  ];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -73,13 +51,6 @@ const MULTI_DRAW_OPTIONS = [
   { label: "×5", qty: 5 },
   { label: "×10", qty: 10 },
 ];
-
-const MOCK_COUPONS = [
-  { id: "c1", label: "新人優惠券 -10%", discount: 0.9 },
-  { id: "c2", label: "連抽特典 -20%", discount: 0.8 },
-];
-
-const MOCK_SPECTATOR_COUNT = 45;
 
 const REACTION_EMOJIS = ["🎉", "😱", "👏", "🔥", "💪", "😂", "❤️", "🎊"];
 
@@ -92,6 +63,7 @@ interface InlineChatPanelProps {
 }
 
 function InlineChatPanel({ roomId }: InlineChatPanelProps) {
+  const t = useTranslations("campaign");
   const [inputText, setInputText] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const { messages, isConnected, sendMessage, sendReaction, isCoolingDown } = useChat(roomId);
@@ -118,7 +90,7 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
       setInputText("");
       inputRef.current?.focus();
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "傳送失敗");
+      setSendError(err instanceof Error ? err.message : t("chatSendFailed"));
     }
   };
 
@@ -128,7 +100,7 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
     try {
       await sendReaction(emoji);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "傳送失敗");
+      setSendError(err instanceof Error ? err.message : t("chatSendFailed"));
     }
   };
 
@@ -136,26 +108,27 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
   const remaining = MAX_LEN - inputText.length;
 
   return (
-    <div className="flex flex-col h-full relative overflow-hidden">
+    <div className="relative flex h-full flex-col overflow-hidden">
       {/* Floating reactions */}
-      <div className="absolute inset-0 pointer-events-none z-10" aria-hidden="true">
+      <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
         <ReactionOverlay emoji={currentEmoji} />
       </div>
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">💬 聊天</span>
+      <div className="flex shrink-0 items-center gap-2 border-b border-surface-container-highest px-3 py-2">
+        <span className="material-symbols-outlined text-base text-secondary leading-none">chat</span>
+        <span className="text-sm font-semibold text-on-surface">{t("chatTitle")}</span>
         <span
-          className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-gray-400"}`}
-          title={isConnected ? "已連線" : "連線中..."}
+          className={`h-2 w-2 rounded-full ${isConnected ? "bg-tertiary animate-pulse" : "bg-on-surface-variant/40"}`}
+          title={isConnected ? t("chatConnected") : t("chatConnecting")}
         />
       </div>
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 min-h-0">
+      <div className="hide-scrollbar min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 py-2">
         {messages.length === 0 && (
-          <p className="text-center text-gray-400 dark:text-gray-500 text-xs mt-4">
-            目前沒有訊息，搶先發言！
+          <p className="mt-4 text-center text-xs text-on-surface-variant">
+            {t("chatNoMessages")}
           </p>
         )}
         {messages.map((msg) => {
@@ -163,7 +136,7 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
           if (msg.isReaction) {
             return (
               <div key={msg.id} className="flex justify-center">
-                <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/50 rounded-full px-2 py-0.5">
+                <span className="rounded-full bg-surface-container-highest px-2 py-0.5 text-xs text-on-surface-variant">
                   {msg.nickname} {msg.message}
                 </span>
               </div>
@@ -175,13 +148,13 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
               className={`flex flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}
             >
               {!isSelf && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 px-1">{msg.nickname}</span>
+                <span className="px-1 text-xs text-on-surface-variant">{msg.nickname}</span>
               )}
               <div
-                className={`max-w-[90%] px-2.5 py-1.5 rounded-xl text-xs break-words ${
+                className={`max-w-[90%] break-words rounded-xl px-2.5 py-1.5 text-xs ${
                   isSelf
-                    ? "bg-indigo-500 text-white rounded-br-sm"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-sm"
+                    ? "amber-gradient text-on-primary rounded-br-sm"
+                    : "bg-surface-container-highest text-on-surface rounded-bl-sm"
                 }`}
               >
                 {msg.message}
@@ -193,14 +166,14 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
       </div>
 
       {/* Reaction bar */}
-      <div className="px-2 py-1.5 flex gap-1 border-t border-gray-200 dark:border-gray-700 shrink-0 overflow-x-auto">
+      <div className="hide-scrollbar flex shrink-0 gap-1 overflow-x-auto border-t border-surface-container-highest px-2 py-1.5">
         {REACTION_EMOJIS.map((emoji) => (
           <button
             key={emoji}
             onClick={() => void handleReaction(emoji)}
             disabled={isCoolingDown}
-            className="text-base p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 shrink-0"
-            aria-label={`傳送 ${emoji}`}
+            className="shrink-0 rounded-lg p-1 text-base transition-colors hover:bg-surface-container-highest disabled:opacity-40"
+            aria-label={t("sendReactionLabel", { emoji })}
           >
             {emoji}
           </button>
@@ -208,10 +181,10 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
       </div>
 
       {/* Input */}
-      <div className="px-3 pb-3 pt-2 shrink-0 border-t border-gray-200 dark:border-gray-700">
-        {sendError && <p className="text-xs text-red-400 mb-1">{sendError}</p>}
+      <div className="shrink-0 border-t border-surface-container-highest px-3 pb-3 pt-2">
+        {sendError && <p className="mb-1 text-xs text-error">{sendError}</p>}
         <div className="flex items-center gap-1.5">
-          <div className="flex-1 relative">
+          <div className="relative flex-1">
             <input
               ref={inputRef}
               type="text"
@@ -223,12 +196,12 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
                   void handleSend();
                 }
               }}
-              placeholder="說點什麼..."
-              className="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-xs rounded-lg px-3 py-2 pr-8 outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder={t("chatPlaceholder")}
+              className="w-full rounded-lg bg-surface-container-highest pr-8 px-3 py-2 text-xs text-on-surface placeholder-on-surface-variant outline-none focus:ring-1 focus:ring-primary"
             />
             <span
               className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs tabular-nums ${
-                remaining < 20 ? "text-red-400" : "text-gray-400 dark:text-gray-500"
+                remaining < 20 ? "text-error" : "text-on-surface-variant"
               }`}
             >
               {remaining}
@@ -237,9 +210,9 @@ function InlineChatPanel({ roomId }: InlineChatPanelProps) {
           <button
             onClick={() => void handleSend()}
             disabled={!inputText.trim() || isCoolingDown}
-            className="shrink-0 px-2.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 amber-gradient text-on-primary hover:shadow-sm"
           >
-            {isCoolingDown ? "⏱" : "送出"}
+            {isCoolingDown ? "⏱" : t("chatSend")}
           </button>
         </div>
       </div>
@@ -258,6 +231,7 @@ type SidebarTab = "drawers" | "wins" | "chat";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function UnlimitedCampaignPage() {
+  const t = useTranslations("campaign");
   const params = useParams();
   const id =
     typeof params.id === "string"
@@ -281,24 +255,22 @@ export default function UnlimitedCampaignPage() {
 
   const { mode } = useAnimationMode("FLIP");
 
-  // ── UI state ─────────────────────────────────────────────────────────────
+  // UI state
   const [couponOpen, setCouponOpen] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<string | null>(null);
-  const [pointBalance, setPointBalance] = useState(1250);
+  const [coupons, setCoupons] = useState<{ id: string; label: string; discount: number }[]>([]);
+  const [pointBalance, setPointBalance] = useState(0);
+  const [spectatorCount, setSpectatorCount] = useState(0);
   const [rateLimited, setRateLimited] = useState(false);
-  // watchingPlayerId drives "SPECTATING" — no separate pageState enum needed
   const [watchingPlayerId, setWatchingPlayerId] = useState<string | null>(null);
-  const [activeDrawers, setActiveDrawers] = useState<ActiveDrawer[]>(() =>
-    generateMockActiveDrawers(),
-  );
-  const [recentWins, setRecentWins] = useState<RecentWin[]>(() => generateMockRecentWins());
+  const [activeDrawers, setActiveDrawers] = useState<ActiveDrawer[]>([]);
+  const [recentWins, setRecentWins] = useState<RecentWin[]>([]);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("drawers");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Rate-limit cooldown timer
   const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Derived page state — computed from hook state, no sync effects needed ─
+  // Derived page state
   const pageState: PageState = isDrawing
     ? "DRAWING"
     : lastResult
@@ -307,8 +279,7 @@ export default function UnlimitedCampaignPage() {
         ? "SPECTATING"
         : "BROWSING";
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const selectedCouponData = MOCK_COUPONS.find((c) => c.id === selectedCoupon) ?? null;
+  const selectedCouponData = coupons.find((c) => c.id === selectedCoupon) ?? null;
   const effectivePrice = campaign
     ? Math.round(campaign.pricePerDraw * (selectedCouponData?.discount ?? 1))
     : 0;
@@ -316,7 +287,7 @@ export default function UnlimitedCampaignPage() {
   const watchingDrawer = activeDrawers.find((d) => d.playerId === watchingPlayerId) ?? null;
   const isSpectating = pageState === "SPECTATING" && watchingDrawer !== null;
 
-  // ── Rate-limit detection — uses startTransition to avoid cascading renders ─
+  // Rate-limit detection
   useEffect(() => {
     if (!error) return;
     if (!(error.includes("429") || error.includes("rate") || error.includes("稍後"))) return;
@@ -330,7 +301,7 @@ export default function UnlimitedCampaignPage() {
     }, 3000);
   }, [error]);
 
-  // ── Multi-draw orchestration ──────────────────────────────────────────────
+  // Multi-draw orchestration
   const handleMultiDraw = useCallback(
     async (qty: number) => {
       if (!campaign || isDrawing || rateLimited) return;
@@ -343,7 +314,7 @@ export default function UnlimitedCampaignPage() {
     [campaign, isDrawing, rateLimited, pointBalance, effectivePrice, draw],
   );
 
-  // ── Single draw ───────────────────────────────────────────────────────────
+  // Single draw
   const handleDraw = useCallback(async () => {
     if (!campaign || isDrawing || rateLimited) return;
     if (!canAfford) return;
@@ -356,12 +327,10 @@ export default function UnlimitedCampaignPage() {
     }
   }, [campaign, isDrawing, rateLimited, canAfford, draw, effectivePrice]);
 
-  // ── Close result & return to browsing ─────────────────────────────────────
   const handleAcknowledge = useCallback(() => {
     acknowledgeResult();
   }, [acknowledgeResult]);
 
-  // ── Spectator mode ────────────────────────────────────────────────────────
   const handleWatchPlayer = useCallback((playerId: string) => {
     setWatchingPlayerId(playerId);
   }, []);
@@ -370,170 +339,130 @@ export default function UnlimitedCampaignPage() {
     setWatchingPlayerId(null);
   }, []);
 
-  // ── Simulate live data updates ────────────────────────────────────────────
+  // Load player balance + coupons from API
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly add a new recent win
-      const grades = ["A賞", "B賞", "C賞", "D賞"];
-      const names = ["限定公仔", "精品模型", "造型吊飾", "隨機貼紙"];
-      const nicknames = ["小新", "玩家456", "阿豪", "CoolKid", "NightOwl"];
-      const gradeIndex = Math.floor(Math.random() * grades.length);
-      const newWin: RecentWin = {
-        id: `w_${Date.now()}`,
-        nickname: nicknames[Math.floor(Math.random() * nicknames.length)],
-        grade: grades[gradeIndex],
-        prizeName: names[gradeIndex],
-        timestamp: new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }),
-        isNew: true,
-      };
-      setRecentWins((prev) => {
-        const updated = [newWin, ...prev.slice(0, 9)];
-        // Clear isNew after 3s
-        setTimeout(() => {
-          setRecentWins((w) => w.map((x) => (x.id === newWin.id ? { ...x, isNew: false } : x)));
-        }, 3000);
-        return updated;
-      });
-    }, 8000);
-    return () => clearInterval(interval);
+    apiClient
+      .get<{ drawPointsBalance: number }>("/api/v1/players/me/wallet")
+      .then((w) => setPointBalance(w.drawPointsBalance ?? 0))
+      .catch(() => {});
+    apiClient
+      .get<{ id: string; label: string; discount: number }[]>("/api/v1/players/me/coupons")
+      .then(setCoupons)
+      .catch(() => {});
   }, []);
 
-  // ── Simulate active drawers refreshing ───────────────────────────────────
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveDrawers((prev) => {
-        // Randomly remove one and possibly add one
-        if (prev.length > 1 && Math.random() > 0.5) {
-          return prev.filter((_, i) => i !== 0);
-        }
-        const newDrawer: ActiveDrawer = {
-          playerId: `p_${Date.now()}`,
-          nickname: `玩家${Math.floor(Math.random() * 9000) + 1000}`,
-          startedAt: new Date().toISOString(),
-        };
-        return [...prev.slice(-5), newDrawer];
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ── Cleanup ───────────────────────────────────────────────────────────────
+  // Cleanup
   useEffect(() => {
     return () => {
       if (rateLimitTimerRef.current) clearTimeout(rateLimitTimerRef.current);
     };
   }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────
   // Loading state
-  // ─────────────────────────────────────────────────────────────────────────
-
   if (isLoading) return <UnlimitedPageSkeleton />;
 
   if (!campaign && !isLoading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4">
-        <span className="text-5xl">😞</span>
-        <p className="text-gray-600 dark:text-gray-400">{error ?? "找不到此活動"}</p>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high">
+          <span className="material-symbols-outlined text-3xl text-on-surface-variant">
+            sentiment_dissatisfied
+          </span>
+        </div>
+        <p className="text-on-surface-variant">{error ?? t("notFound")}</p>
         <Link
           href="/campaigns?type=unlimited"
-          className="px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+          className="rounded-xl px-6 py-3 text-sm font-semibold transition-all amber-gradient text-on-primary hover:shadow-md"
         >
-          返回活動列表
+          {t("backToList")}
         </Link>
       </div>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   // Render
-  // ─────────────────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-surface-dim">
 
-      {/* ── Top navbar strip ─────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+      {/* Top navbar strip */}
+      <div className="sticky top-0 z-20 bg-surface-container-low shadow-sm">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           {/* Back */}
           <Link
             href="/campaigns?type=unlimited"
-            className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors shrink-0"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-            <span className="hidden sm:inline">返回</span>
+            <span className="material-symbols-outlined text-base leading-none">arrow_back</span>
+            <span className="hidden sm:inline">{t("backToList")}</span>
           </Link>
 
           {/* Title */}
-          <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
-            <StatusBadge status="無限賞" />
-            <h1 className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 truncate">
-              {campaign?.title ?? "活動"}
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            <StatusBadge status={t("unlimitedBadge")} />
+            <h1 className="truncate font-headline text-sm font-bold text-on-surface sm:text-base">
+              {campaign?.title ?? t("notFound")}
             </h1>
           </div>
 
-          {/* Right — viewer count + LIVE */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <span>👀</span>
-              <span className="font-medium">{MOCK_SPECTATOR_COUNT}</span>
-              <span className="hidden sm:inline">人</span>
+          {/* Right — viewer count + LIVE + mobile toggle */}
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="flex items-center gap-1 text-sm text-on-surface-variant">
+              <span className="material-symbols-outlined text-sm leading-none text-secondary">
+                visibility
+              </span>
+              <span className="font-medium tabular-nums">{spectatorCount}</span>
+              <span className="hidden sm:inline text-xs">{t("viewers2")}</span>
             </span>
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            <span className="flex animate-pulse items-center gap-1 rounded-full bg-error-container px-2 py-0.5 text-xs font-bold text-on-error-container">
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
               LIVE
             </span>
-            {/* Mobile sidebar toggle */}
             <button
               onClick={() => setMobileSidebarOpen((v) => !v)}
-              className="lg:hidden flex items-center gap-1 px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              aria-label="開啟側欄"
+              className="flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-1.5 text-xs font-medium text-on-surface-variant transition-colors hover:text-on-surface lg:hidden"
+              aria-label={t("openSidebar")}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-              </svg>
-              側欄
+              <span className="material-symbols-outlined text-base leading-none">menu</span>
+              {t("sidebarToggle")}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Rate limit banner ─────────────────────────────────────────────── */}
+      {/* Rate limit banner */}
       {rateLimited && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm">
-            <span>⚠️</span>
-            <span>抽太快了！稍後再試（3 秒冷卻）</span>
+        <div className="flex items-center justify-between border-b border-primary/20 bg-primary/10 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm text-primary">
+            <span className="material-symbols-outlined text-base leading-none">warning</span>
+            <span>{t("rateLimitBanner")}</span>
           </div>
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+          <div className="h-2 w-2 animate-ping rounded-full bg-primary" />
         </div>
       )}
 
-      {/* ── Error banner ──────────────────────────────────────────────────── */}
+      {/* Error banner */}
       {error && !rateLimited && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-red-700 dark:text-red-400 text-sm">
-            <span>⚠️</span>
+        <div className="flex items-center justify-between border-b border-error/20 bg-error-container/20 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm text-error">
+            <span className="material-symbols-outlined text-base leading-none">error</span>
             <span>{error}</span>
           </div>
           <button
             onClick={dismissError}
-            className="text-red-400 hover:text-red-600 text-lg leading-none"
-            aria-label="關閉"
+            className="leading-none text-error/60 transition-colors hover:text-error"
+            aria-label={t("closeSidebarLabel")}
           >
-            ×
+            <span className="material-symbols-outlined text-base">close</span>
           </button>
         </div>
       )}
 
-      {/* ── Main two-column layout ────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main two-column layout */}
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex gap-6">
 
-          {/* ── Left / Main content ──────────────────────────────────────── */}
-          <div className="flex-1 min-w-0 space-y-6">
+          {/* Left / Main content */}
+          <div className="min-w-0 flex-1 space-y-5">
 
             {/* Spectating banner */}
             {isSpectating && (
@@ -542,10 +471,10 @@ export default function UnlimitedCampaignPage() {
 
             {/* Probability table */}
             {prizes.length > 0 && (
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">賞品與機率</h2>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">每次獨立計算</span>
+              <section className="overflow-hidden rounded-2xl bg-surface-container">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-surface-container-highest">
+                  <h2 className="font-headline text-base font-bold text-on-surface">{t("prizesAndOdds")}</h2>
+                  <span className="text-xs text-on-surface-variant">{t("independentOdds")}</span>
                 </div>
                 <div className="overflow-x-auto">
                   <ProbabilityTable prizes={prizes} />
@@ -555,9 +484,9 @@ export default function UnlimitedCampaignPage() {
 
             {/* Draw area */}
             {campaign && (
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">抽獎區</h2>
+              <section className="overflow-hidden rounded-2xl bg-surface-container">
+                <div className="border-b border-surface-container-highest px-5 py-4">
+                  <h2 className="font-headline text-base font-bold text-on-surface">{t("drawArea")}</h2>
                 </div>
                 <div className="p-5">
                   <DrawArea
@@ -571,8 +500,9 @@ export default function UnlimitedCampaignPage() {
                     couponOpen={couponOpen}
                     selectedCoupon={selectedCoupon}
                     selectedCouponData={selectedCouponData}
+                    coupons={coupons}
                     onToggleCoupon={() => setCouponOpen((v) => !v)}
-                    onSelectCoupon={(id) => { setSelectedCoupon(id); setCouponOpen(false); }}
+                    onSelectCoupon={(cid) => { setSelectedCoupon(cid); setCouponOpen(false); }}
                     onClearCoupon={() => { setSelectedCoupon(null); setCouponOpen(false); }}
                     onDraw={handleDraw}
                     onMultiDraw={handleMultiDraw}
@@ -583,18 +513,18 @@ export default function UnlimitedCampaignPage() {
 
             {/* Session draw history */}
             {drawHistory.length > 0 && (
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">本次抽獎紀錄</h2>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">{drawHistory.length} 次</span>
+              <section className="overflow-hidden rounded-2xl bg-surface-container">
+                <div className="flex items-center justify-between border-b border-surface-container-highest px-5 py-4">
+                  <h2 className="font-headline text-base font-bold text-on-surface">{t("sessionHistory")}</h2>
+                  <span className="text-xs text-on-surface-variant">{t("sessionHistoryCount", { count: drawHistory.length })}</span>
                 </div>
                 <SessionHistory history={drawHistory} />
               </section>
             )}
           </div>
 
-          {/* ── Right sidebar — desktop only ─────────────────────────────── */}
-          <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 gap-4">
+          {/* Right sidebar — desktop only */}
+          <aside className="hidden w-72 shrink-0 flex-col gap-4 lg:flex xl:w-80">
             <SidebarContent
               activeDrawers={activeDrawers}
               recentWins={recentWins}
@@ -606,7 +536,7 @@ export default function UnlimitedCampaignPage() {
         </div>
       </div>
 
-      {/* ── Mobile bottom sheet sidebar ──────────────────────────────────── */}
+      {/* Mobile bottom sheet sidebar */}
       {mobileSidebarOpen && (
         <MobileSidebarSheet
           activeDrawers={activeDrawers}
@@ -620,7 +550,7 @@ export default function UnlimitedCampaignPage() {
         />
       )}
 
-      {/* ── Result reveal modal ───────────────────────────────────────────── */}
+      {/* Result reveal modal */}
       {lastResult && pageState === "RESULT" && (
         <ResultModal
           result={lastResult}
@@ -638,22 +568,23 @@ export default function UnlimitedCampaignPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProbabilityTable({ prizes }: { prizes: PrizeDefinitionDto[] }) {
+  const t = useTranslations("campaign");
   return (
     <table className="w-full">
       <thead>
-        <tr className="bg-gray-50 dark:bg-gray-700/50">
-          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            等級
+        <tr className="bg-surface-container-high">
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("gradeCol")}
           </th>
-          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            賞品
+          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("prizeCol")}
           </th>
-          <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            機率
+          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("oddsCol")}
           </th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
+      <tbody className="divide-y divide-surface-container-highest">
         {prizes.map((prize) => (
           <PrizeRow key={prize.id} prize={prize} />
         ))}
@@ -667,7 +598,7 @@ function PrizeRow({ prize }: { prize: PrizeDefinitionDto }) {
     prize.probabilityBps !== null ? formatProbabilityBps(prize.probabilityBps) : "--";
 
   return (
-    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+    <tr className="transition-colors hover:bg-surface-container-high">
       <td className="px-4 py-3">
         <GradeBadge grade={prize.grade} />
       </td>
@@ -678,20 +609,20 @@ function PrizeRow({ prize }: { prize: PrizeDefinitionDto }) {
             <img
               src={prize.photos[0]}
               alt={prize.name}
-              className="w-10 h-10 rounded-lg object-cover shrink-0"
+              className="h-10 w-10 shrink-0 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 text-sm shrink-0">
-              🏆
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-high">
+              <span className="material-symbols-outlined text-base text-on-surface-variant">
+                workspace_premium
+              </span>
             </div>
           )}
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{prize.name}</span>
+          <span className="text-sm font-medium text-on-surface">{prize.name}</span>
         </div>
       </td>
       <td className="px-4 py-3 text-right">
-        <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
-          {probabilityText}
-        </span>
+        <span className="font-bold tabular-nums text-primary text-sm">{probabilityText}</span>
       </td>
     </tr>
   );
@@ -700,6 +631,12 @@ function PrizeRow({ prize }: { prize: PrizeDefinitionDto }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Draw area
 // ─────────────────────────────────────────────────────────────────────────────
+
+interface CouponOption {
+  id: string;
+  label: string;
+  discount: number;
+}
 
 interface DrawAreaProps {
   pricePerDraw: number;
@@ -711,7 +648,8 @@ interface DrawAreaProps {
   canAfford: boolean;
   couponOpen: boolean;
   selectedCoupon: string | null;
-  selectedCouponData: { id: string; label: string; discount: number } | null;
+  selectedCouponData: CouponOption | null;
+  coupons: CouponOption[];
   onToggleCoupon: () => void;
   onSelectCoupon: (id: string) => void;
   onClearCoupon: () => void;
@@ -730,37 +668,39 @@ function DrawArea({
   couponOpen,
   selectedCoupon,
   selectedCouponData,
+  coupons,
   onToggleCoupon,
   onSelectCoupon,
   onClearCoupon,
   onDraw,
   onMultiDraw,
 }: DrawAreaProps) {
+  const t = useTranslations("campaign");
   const isDisabled = isDrawing || pageState === "DRAWING" || rateLimited || !canAfford;
 
   return (
     <div className="space-y-4">
-      {/* Balance + coupon row */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* Balance + price row */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">你的點數</p>
-          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
-            💰 {pointBalance.toLocaleString()} 點
+          <p className="mb-0.5 text-xs text-on-surface-variant">{t("yourPointsBalance")}</p>
+          <p className="text-2xl font-bold text-primary tabular-nums">
+            {pointBalance.toLocaleString()} {t("pointsUnit")}
           </p>
           {!canAfford && (
-            <p className="text-xs text-red-500 mt-0.5">點數不足，無法抽獎</p>
+            <p className="mt-0.5 text-xs text-error">{t("insufficientPointsMsg")}</p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">每抽費用</p>
+          <p className="mb-0.5 text-xs text-on-surface-variant">{t("pricePerDrawLabel")}</p>
           <div className="flex items-center gap-1.5">
             {selectedCouponData && (
-              <span className="text-sm text-gray-400 line-through tabular-nums">
+              <span className="text-sm tabular-nums text-on-surface-variant line-through">
                 {pricePerDraw.toLocaleString()}
               </span>
             )}
-            <span className="text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-              {effectivePrice.toLocaleString()} 點
+            <span className="text-xl font-bold tabular-nums text-primary">
+              {effectivePrice.toLocaleString()} {t("pointsUnit")}
             </span>
           </div>
         </div>
@@ -770,10 +710,10 @@ function DrawArea({
       <div className="relative">
         <button
           onClick={onToggleCoupon}
-          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-dashed text-sm transition-colors ${
+          className={`flex w-full items-center justify-between rounded-xl border border-dashed px-4 py-2.5 text-sm transition-colors ${
             selectedCoupon
-              ? "border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
-              : "border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400"
+              ? "border-primary/60 bg-primary/10 text-primary"
+              : "border-outline/30 text-on-surface-variant hover:border-primary hover:text-primary"
           }`}
         >
           <span>
@@ -783,30 +723,32 @@ function DrawArea({
                 {selectedCouponData.label}
               </>
             ) : (
-              "使用優惠券"
+              t("useCouponBtn")
             )}
           </span>
-          <span className="text-gray-400">{couponOpen ? "▲" : "▼"}</span>
+          <span className="material-symbols-outlined text-base leading-none">
+            {couponOpen ? "expand_less" : "expand_more"}
+          </span>
         </button>
 
         {couponOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-xl bg-surface-container-highest shadow-xl">
             {selectedCoupon && (
               <button
                 onClick={onClearCoupon}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
+                className="w-full border-b border-surface-container-high px-4 py-2.5 text-left text-sm text-on-surface-variant transition-colors hover:bg-surface-container-high"
               >
-                不使用優惠券
+                {t("noCoupon")}
               </button>
             )}
-            {MOCK_COUPONS.map((c) => (
+            {coupons.map((c) => (
               <button
                 key={c.id}
                 onClick={() => onSelectCoupon(c.id)}
-                className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/20 ${
+                className={`w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-primary/10 ${
                   selectedCoupon === c.id
-                    ? "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10"
-                    : "text-gray-700 dark:text-gray-300"
+                    ? "bg-primary/10 text-primary"
+                    : "text-on-surface"
                 }`}
               >
                 <span className="mr-2">🎫</span>
@@ -822,26 +764,24 @@ function DrawArea({
         data-testid="draw-button"
         onClick={onDraw}
         disabled={isDisabled}
-        className={`w-full py-5 rounded-2xl font-extrabold text-xl transition-all shadow-lg ${
+        className={`w-full rounded-2xl py-5 text-xl font-extrabold transition-all ${
           isDisabled
-            ? "bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none"
-            : rateLimited
-              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+            ? "cursor-not-allowed bg-surface-container-high text-on-surface-variant"
+            : "amber-gradient text-on-primary shadow-lg hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-md gold-glow"
         }`}
       >
         {rateLimited
-          ? "⏳ 稍後再試..."
+          ? t("rateLimited")
           : isDrawing
-            ? "⏳ 抽獎中..."
+            ? t("drawingNow")
             : !canAfford
-              ? "💸 點數不足"
-              : "🎲 立即抽獎"}
+              ? t("insufficientPoints")
+              : t("drawNowBtn")}
       </button>
 
       {/* Multi-draw buttons */}
       <div className="space-y-2">
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center">連抽</p>
+        <p className="text-center text-xs text-on-surface-variant">{t("multiDraw2")}</p>
         <div className="flex gap-3">
           {MULTI_DRAW_OPTIONS.map((opt) => {
             const totalCost = effectivePrice * opt.qty;
@@ -852,22 +792,22 @@ function DrawArea({
                 data-testid={`multi-draw-${opt.qty}`}
                 disabled={isDisabled || !canAffordMulti}
                 onClick={() => onMultiDraw(opt.qty)}
-                className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-colors flex flex-col items-center gap-0.5 ${
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl border py-3 text-sm font-bold transition-colors ${
                   isDisabled || !canAffordMulti
-                    ? "border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed bg-transparent"
-                    : "border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                    ? "cursor-not-allowed border-surface-container-highest text-on-surface-variant/30"
+                    : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
                 }`}
               >
                 <span>{opt.label}</span>
                 <span className="text-xs font-normal opacity-70 tabular-nums">
-                  {totalCost.toLocaleString()} 點
+                  {totalCost.toLocaleString()} {t("pointsUnit")}
                 </span>
               </button>
             );
           })}
         </div>
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-          連抽每次獨立計算機率，無保底
+        <p className="text-center text-xs text-on-surface-variant">
+          {t("multiDrawNote")}
         </p>
       </div>
     </div>
@@ -880,7 +820,7 @@ function DrawArea({
 
 function SessionHistory({ history }: { history: UnlimitedDrawResultDto[] }) {
   return (
-    <div data-testid="draw-history" className="divide-y divide-gray-100 dark:divide-gray-700/60 max-h-64 overflow-y-auto">
+    <div data-testid="draw-history" className="hide-scrollbar max-h-64 divide-y divide-surface-container-highest overflow-y-auto">
       {history.map((result, i) => (
         <SessionHistoryRow key={`${result.prizeInstanceId}-${i}`} result={result} />
       ))}
@@ -889,13 +829,14 @@ function SessionHistory({ history }: { history: UnlimitedDrawResultDto[] }) {
 }
 
 function SessionHistoryRow({ result }: { result: UnlimitedDrawResultDto }) {
+  const t = useTranslations("campaign");
   const time = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
   return (
     <div
       data-testid="draw-history-item"
-      className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+      className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-container-high"
     >
-      <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums w-10 shrink-0">
+      <span className="w-10 shrink-0 text-xs tabular-nums text-on-surface-variant">
         {time}
       </span>
       {result.prizePhotoUrl ? (
@@ -903,19 +844,21 @@ function SessionHistoryRow({ result }: { result: UnlimitedDrawResultDto }) {
         <img
           src={result.prizePhotoUrl}
           alt={result.prizeName}
-          className="w-8 h-8 rounded-md object-cover shrink-0"
+          className="h-8 w-8 shrink-0 rounded-md object-cover"
         />
       ) : (
-        <div className="w-8 h-8 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-400 shrink-0">
-          🏆
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-container-high">
+          <span className="material-symbols-outlined text-sm text-on-surface-variant">
+            workspace_premium
+          </span>
         </div>
       )}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <GradeBadge grade={result.grade} />
-        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{result.prizeName}</span>
+        <span className="truncate text-sm text-on-surface">{result.prizeName}</span>
       </div>
-      <span className="text-sm font-medium text-red-500 dark:text-red-400 shrink-0 tabular-nums">
-        -{result.pointsCharged.toLocaleString()} 點
+      <span className="shrink-0 text-sm font-medium tabular-nums text-error">
+        -{result.pointsCharged.toLocaleString()} {t("pointsUnit")}
       </span>
     </div>
   );
@@ -940,41 +883,44 @@ function SidebarContent({
   onWatchPlayer,
   watchingPlayerId,
 }: SidebarContentProps) {
+  const t = useTranslations("campaign");
   return (
     <>
       {/* Active drawers */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">目前在抽</h3>
-          <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+      <div className="overflow-hidden rounded-2xl bg-surface-container">
+        <div className="flex items-center gap-2 border-b border-surface-container-highest px-4 py-3">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-error" />
+          <h3 className="text-sm font-bold text-on-surface">{t("activeDrawersTitle")}</h3>
+          <span className="ml-auto rounded-full bg-surface-container-highest px-2 py-0.5 text-xs text-on-surface-variant">
             {activeDrawers.length}
           </span>
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-700/60 max-h-52 overflow-y-auto">
+        <div className="hide-scrollbar max-h-52 divide-y divide-surface-container-highest overflow-y-auto">
           {activeDrawers.length === 0 && (
-            <p className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500">目前沒有人在抽</p>
+            <p className="px-4 py-3 text-xs text-on-surface-variant">{t("noActiveDrawers")}</p>
           )}
           {activeDrawers.map((drawer) => (
             <div
               key={drawer.playerId}
-              className={`flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${
-                watchingPlayerId === drawer.playerId ? "bg-indigo-50 dark:bg-indigo-900/20" : ""
+              className={`flex items-center gap-2.5 px-4 py-2.5 transition-colors ${
+                watchingPlayerId === drawer.playerId
+                  ? "bg-primary/10"
+                  : "hover:bg-surface-container-high"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1 min-w-0 truncate">
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-error" />
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-on-surface">
                 {drawer.nickname}
               </span>
               <button
                 onClick={() => onWatchPlayer(drawer.playerId)}
-                className={`text-xs shrink-0 transition-colors ${
+                className={`shrink-0 text-xs transition-colors ${
                   watchingPlayerId === drawer.playerId
-                    ? "text-indigo-600 dark:text-indigo-400 font-semibold"
-                    : "text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline"
+                    ? "font-semibold text-primary"
+                    : "text-secondary hover:text-primary"
                 }`}
               >
-                {watchingPlayerId === drawer.playerId ? "觀看中" : "觀看"}
+                {watchingPlayerId === drawer.playerId ? t("watching") : t("watch")}
               </button>
             </div>
           ))}
@@ -982,25 +928,27 @@ function SidebarContent({
       </div>
 
       {/* Recent wins */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-          <span className="text-base">🏆</span>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">最近中獎</h3>
+      <div className="overflow-hidden rounded-2xl bg-surface-container">
+        <div className="flex items-center gap-2 border-b border-surface-container-highest px-4 py-3">
+          <span className="material-symbols-outlined text-base text-primary leading-none">
+            emoji_events
+          </span>
+          <h3 className="text-sm font-bold text-on-surface">{t("recentWins")}</h3>
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-700/60 max-h-52 overflow-y-auto">
+        <div className="hide-scrollbar max-h-52 divide-y divide-surface-container-highest overflow-y-auto">
           {recentWins.map((win) => (
             <div
               key={win.id}
               className={`flex items-center gap-2 px-4 py-2 transition-all ${
-                win.isNew ? "bg-amber-50 dark:bg-amber-900/10" : "hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                win.isNew ? "bg-primary/10" : "hover:bg-surface-container-high"
               }`}
             >
               {win.isNew && (
-                <span className="shrink-0 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded px-1 py-0.5">
+                <span className="shrink-0 rounded bg-primary/20 px-1 py-0.5 text-xs font-bold text-primary">
                   NEW
                 </span>
               )}
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0">
+              <span className="min-w-0 flex-1 truncate text-xs font-medium text-on-surface">
                 {win.nickname}
               </span>
               <GradeBadge grade={win.grade} />
@@ -1010,7 +958,10 @@ function SidebarContent({
       </div>
 
       {/* Chat panel */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col" style={{ minHeight: "280px", maxHeight: "400px" }}>
+      <div
+        className="overflow-hidden rounded-2xl bg-surface-container flex flex-col"
+        style={{ minHeight: "280px", maxHeight: "400px" }}
+      >
         <InlineChatPanel roomId={`unlimited:${campaignId}`} />
       </div>
     </>
@@ -1027,11 +978,7 @@ interface MobileSidebarSheetProps extends SidebarContentProps {
   onClose: () => void;
 }
 
-const SIDEBAR_TABS: { id: SidebarTab; label: string }[] = [
-  { id: "drawers", label: "目前在抽" },
-  { id: "wins", label: "最近中獎" },
-  { id: "chat", label: "聊天" },
-];
+// SIDEBAR_TABS labels are resolved via i18n inside MobileSidebarSheet
 
 function MobileSidebarSheet({
   activeDrawers,
@@ -1043,40 +990,46 @@ function MobileSidebarSheet({
   onTabChange,
   onClose,
 }: MobileSidebarSheetProps) {
+  const t = useTranslations("campaign");
+  const SIDEBAR_TABS: { id: SidebarTab; label: string }[] = [
+    { id: "drawers", label: t("sidebarDrawers") },
+    { id: "wins", label: t("sidebarWins") },
+    { id: "chat", label: t("sidebarChat") },
+  ];
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/40"
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
-        aria-label="關閉側欄"
+        aria-label={t("closeSidebarLabel")}
       />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl flex flex-col max-h-[70vh]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[70vh] flex-col rounded-t-2xl bg-surface-container-low shadow-2xl">
         {/* Handle + close */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
+        <div className="relative flex shrink-0 items-center justify-between px-4 pb-2 pt-4">
+          <div className="absolute left-1/2 top-3 h-1 w-10 -translate-x-1/2 rounded-full bg-surface-container-highest" />
           <div />
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none"
-            aria-label="關閉"
+            className="text-on-surface-variant transition-colors hover:text-on-surface"
+            aria-label={t("closeSidebarLabel")}
           >
-            ×
+            <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-4 pb-3 shrink-0">
+        <div className="flex shrink-0 gap-1 px-4 pb-3">
           {SIDEBAR_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
                 activeTab === tab.id
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  ? "amber-gradient text-on-primary"
+                  : "bg-surface-container-high text-on-surface-variant hover:text-on-surface"
               }`}
             >
               {tab.label}
@@ -1085,32 +1038,32 @@ function MobileSidebarSheet({
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-6 min-h-0">
+        <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-6">
           {activeTab === "drawers" && (
             <div className="space-y-2">
               {activeDrawers.length === 0 && (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
-                  目前沒有人在抽
+                <p className="py-8 text-center text-sm text-on-surface-variant">
+                  {t("noActiveDrawers")}
                 </p>
               )}
               {activeDrawers.map((drawer) => (
                 <div
                   key={drawer.playerId}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                  className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
                     watchingPlayerId === drawer.playerId
-                      ? "bg-indigo-50 dark:bg-indigo-900/20"
-                      : "bg-gray-50 dark:bg-gray-800/50"
+                      ? "bg-primary/10"
+                      : "bg-surface-container-high"
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                  <span className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">
+                  <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-error" />
+                  <span className="flex-1 truncate font-semibold text-sm text-on-surface">
                     {drawer.nickname}
                   </span>
                   <button
                     onClick={() => onWatchPlayer(drawer.playerId)}
-                    className="text-xs text-indigo-500 dark:text-indigo-400 hover:underline shrink-0 font-medium"
+                    className="shrink-0 text-xs font-medium text-secondary hover:text-primary"
                   >
-                    {watchingPlayerId === drawer.playerId ? "觀看中" : "[觀看他的抽獎]"}
+                    {watchingPlayerId === drawer.playerId ? t("watching") : t("watchDraw")}
                   </button>
                 </div>
               ))}
@@ -1122,29 +1075,29 @@ function MobileSidebarSheet({
               {recentWins.map((win) => (
                 <div
                   key={win.id}
-                  className={`flex items-center gap-2 p-3 rounded-xl transition-all ${
+                  className={`flex items-center gap-2 rounded-xl p-3 transition-all ${
                     win.isNew
-                      ? "bg-amber-50 dark:bg-amber-900/10"
-                      : "bg-gray-50 dark:bg-gray-800/50"
+                      ? "bg-primary/10"
+                      : "bg-surface-container-high"
                   }`}
                 >
                   {win.isNew && (
-                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded px-1 py-0.5 shrink-0">
+                    <span className="shrink-0 rounded bg-primary/20 px-1 py-0.5 text-xs font-bold text-primary">
                       NEW
                     </span>
                   )}
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1 truncate">
+                  <span className="flex-1 truncate text-sm font-medium text-on-surface">
                     {win.nickname}
                   </span>
                   <GradeBadge grade={win.grade} />
-                  <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{win.timestamp}</span>
+                  <span className="shrink-0 text-xs text-on-surface-variant">{win.timestamp}</span>
                 </div>
               ))}
             </div>
           )}
 
           {activeTab === "chat" && (
-            <div className="h-80 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="h-80 overflow-hidden rounded-xl bg-surface-container">
               <InlineChatPanel roomId={`unlimited:${campaignId}`} />
             </div>
           )}
@@ -1165,24 +1118,25 @@ function SpectatingBanner({
   drawer: ActiveDrawer;
   onStop: () => void;
 }) {
+  const t = useTranslations("campaign");
   return (
-    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container px-5 py-4">
       <div className="flex items-center gap-3">
-        <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shrink-0" />
+        <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-error" />
         <div>
-          <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
-            正在觀看 {drawer.nickname} 的抽獎
+          <p className="text-sm font-bold text-on-surface">
+            {t("spectatingBannerTitle", { nickname: drawer.nickname })}
           </p>
-          <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
-            觀戰模式 · 不消耗點數
+          <p className="mt-0.5 text-xs text-on-surface-variant">
+            {t("spectatingBannerNote")}
           </p>
         </div>
       </div>
       <button
         onClick={onStop}
-        className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-100 dark:bg-indigo-800/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors"
+        className="shrink-0 rounded-lg bg-surface-container-high px-3 py-1.5 text-xs font-medium text-on-surface-variant transition-colors hover:text-on-surface"
       >
-        停止觀看
+        {t("stopWatching")}
       </button>
     </div>
   );
@@ -1201,6 +1155,7 @@ function ResultModal({
   mode: ReturnType<typeof useAnimationMode>["mode"];
   onClose: () => void;
 }) {
+  const t = useTranslations("campaign");
   const [animationDone, setAnimationDone] = useState(false);
 
   return (
@@ -1221,18 +1176,20 @@ function ResultModal({
       {(animationDone || !result.prizePhotoUrl) && (
         <div
           data-testid="animation-overlay"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={onClose}
         >
           <div
             data-testid="prize-result"
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
+            className="w-full max-w-sm overflow-hidden rounded-2xl bg-surface-container shadow-2xl gold-glow"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Celebration header */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 text-center text-white">
-              <p className="text-2xl mb-1">🎉</p>
-              <p className="font-bold text-lg">恭喜獲得！</p>
+            <div className="amber-gradient px-6 py-5 text-center">
+              <span className="material-symbols-outlined mb-1 block text-3xl text-on-primary">
+                celebration
+              </span>
+              <p className="font-headline font-bold text-lg text-on-primary">{t("congratsWon")}</p>
             </div>
 
             <div className="p-6 text-center">
@@ -1241,11 +1198,13 @@ function ResultModal({
                 <img
                   src={result.prizePhotoUrl}
                   alt={result.prizeName}
-                  className="w-full h-48 object-cover rounded-xl mb-4 mx-auto"
+                  className="mx-auto mb-4 h-48 w-full rounded-xl object-cover"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-5xl">🏆</span>
+                <div className="mx-auto mb-4 flex h-32 w-32 items-center justify-center rounded-full bg-surface-container-high">
+                  <span className="material-symbols-outlined text-5xl text-primary">
+                    workspace_premium
+                  </span>
                 </div>
               )}
 
@@ -1256,31 +1215,27 @@ function ResultModal({
               />
               <h3
                 data-testid="prize-name"
-                className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1"
+                className="mb-1 font-headline text-xl font-bold text-on-surface"
               >
                 {result.prizeName}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                已存入賞品庫 · 消費{" "}
-                <span className="font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
-                  {result.pointsCharged.toLocaleString()}
-                </span>{" "}
-                點
+              <p className="mb-6 text-sm text-on-surface-variant">
+                {t("prizeStored", { points: result.pointsCharged.toLocaleString() })}
               </p>
 
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors"
+                  className="flex-1 rounded-xl py-3.5 font-bold transition-all amber-gradient text-on-primary hover:shadow-md"
                 >
-                  繼續抽獎
+                  {t("continueDrawBtn")}
                 </button>
                 <Link
                   href="/prizes"
-                  className="px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="rounded-xl bg-surface-container-high px-4 py-3.5 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
                   onClick={onClose}
                 >
-                  我的賞品
+                  {t("myPrizesBtn")}
                 </Link>
               </div>
             </div>
@@ -1297,50 +1252,50 @@ function ResultModal({
 
 function UnlimitedPageSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-surface-dim">
       {/* Sticky nav skeleton */}
-      <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-14 flex items-center px-6 gap-4">
-        <Skeleton className="w-16 h-5" />
-        <Skeleton className="flex-1 h-5 max-w-xs mx-auto" />
-        <Skeleton className="w-24 h-5" />
+      <div className="sticky top-0 z-20 flex h-14 items-center gap-4 bg-surface-container-low px-6">
+        <Skeleton className="h-5 w-16 rounded-lg bg-surface-container-high" />
+        <Skeleton className="mx-auto h-5 max-w-xs flex-1 rounded-lg bg-surface-container-high" />
+        <Skeleton className="h-5 w-24 rounded-lg bg-surface-container-high" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex gap-6">
           {/* Main content */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-5">
             {/* Probability table skeleton */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <Skeleton className="h-5 w-28" />
+            <div className="overflow-hidden rounded-2xl bg-surface-container">
+              <div className="border-b border-surface-container-highest px-5 py-4">
+                <Skeleton className="h-5 w-28 rounded-lg bg-surface-container-high" />
               </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="divide-y divide-surface-container-highest">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <Skeleton className="w-12 h-6 rounded-full" />
-                    <Skeleton className="w-10 h-10 rounded-lg" />
-                    <Skeleton className="flex-1 h-4" />
-                    <Skeleton className="w-14 h-4" />
+                    <Skeleton className="h-6 w-12 rounded-full bg-surface-container-high" />
+                    <Skeleton className="h-10 w-10 rounded-lg bg-surface-container-high" />
+                    <Skeleton className="h-4 flex-1 rounded bg-surface-container-high" />
+                    <Skeleton className="h-4 w-14 rounded bg-surface-container-high" />
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Draw area skeleton */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                <Skeleton className="h-5 w-16" />
+            <div className="overflow-hidden rounded-2xl bg-surface-container">
+              <div className="border-b border-surface-container-highest px-5 py-4">
+                <Skeleton className="h-5 w-16 rounded-lg bg-surface-container-high" />
               </div>
-              <div className="p-5 space-y-4">
+              <div className="space-y-4 p-5">
                 <div className="flex justify-between">
-                  <Skeleton className="w-32 h-8" />
-                  <Skeleton className="w-20 h-8" />
+                  <Skeleton className="h-8 w-32 rounded-lg bg-surface-container-high" />
+                  <Skeleton className="h-8 w-20 rounded-lg bg-surface-container-high" />
                 </div>
-                <Skeleton className="w-full h-12 rounded-xl" />
-                <Skeleton className="w-full h-16 rounded-2xl" />
+                <Skeleton className="h-12 w-full rounded-xl bg-surface-container-high" />
+                <Skeleton className="h-16 w-full rounded-2xl bg-surface-container-high" />
                 <div className="flex gap-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="flex-1 h-12 rounded-xl" />
+                    <Skeleton key={i} className="h-12 flex-1 rounded-xl bg-surface-container-high" />
                   ))}
                 </div>
               </div>
@@ -1348,10 +1303,10 @@ function UnlimitedPageSkeleton() {
           </div>
 
           {/* Sidebar skeleton — desktop only */}
-          <aside className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 gap-4">
-            <Skeleton className="w-full rounded-2xl h-44" />
-            <Skeleton className="w-full rounded-2xl h-52" />
-            <Skeleton className="w-full rounded-2xl h-72" />
+          <aside className="hidden w-72 shrink-0 flex-col gap-4 lg:flex xl:w-80">
+            <Skeleton className="h-44 w-full rounded-2xl bg-surface-container" />
+            <Skeleton className="h-52 w-full rounded-2xl bg-surface-container" />
+            <Skeleton className="h-72 w-full rounded-2xl bg-surface-container" />
           </aside>
         </div>
       </div>

@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
-import { GradeBadge } from "@/components/GradeBadge";
-import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/LoadingSkeleton";
 import { toast } from "@/components/Toast";
 
@@ -22,25 +21,50 @@ interface PrizeInstanceDto {
   buybackPrice?: number;
 }
 
-const STATE_ZH: Record<string, string> = {
-  HOLDING: "持有中",
-  TRADING: "交易中",
-  PENDING_SHIPMENT: "寄送中",
-  SHIPPED: "已寄送",
-  EXCHANGING: "交換中",
-  RECYCLED: "已回收",
-};
+/** Returns styling for the grade badge */
+function gradeStyle(grade: string): string {
+  const g = grade.toUpperCase();
+  if (g === "SSR" || g === "LAST") return "amber-gradient text-on-primary";
+  if (g === "SR") return "bg-secondary text-on-secondary";
+  return "bg-surface-container-highest text-on-surface";
+}
 
-const ACQUISITION_ZH: Record<string, string> = {
-  DRAW: "抽獎",
-  PURCHASE: "購買",
-  EXCHANGE: "交換",
-};
+function stateStyle(state: string) {
+  switch (state) {
+    case "HOLDING":
+      return { bg: "bg-primary/10", text: "text-primary" };
+    case "TRADING":
+      return { bg: "bg-secondary/10", text: "text-secondary" };
+    case "PENDING_SHIPMENT":
+    case "SHIPPED":
+      return { bg: "bg-tertiary/10", text: "text-tertiary" };
+    default:
+      return { bg: "bg-surface-container-highest", text: "text-on-surface-variant" };
+  }
+}
 
 export default function PrizeDetailPage() {
+  const t = useTranslations("prizes");
+  const tCommon = useTranslations("common");
+
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+
+  const STATE_LABELS: Record<string, string> = {
+    HOLDING: t("stateHolding"),
+    TRADING: t("stateTrading"),
+    PENDING_SHIPMENT: t("stateShipping"),
+    SHIPPED: t("stateShipped"),
+    EXCHANGING: t("stateExchanging"),
+    RECYCLED: t("stateRecycled"),
+  };
+
+  const ACQUISITION_LABELS: Record<string, string> = {
+    DRAW: t("acquiredViaDraw"),
+    PURCHASE: t("acquiredViaPurchase"),
+    EXCHANGE: t("acquiredViaExchange"),
+  };
 
   const [prize, setPrize] = useState<PrizeInstanceDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,9 +82,9 @@ export default function PrizeDetailPage() {
         setPrize(data);
         setBuybackPrice(data.buybackPrice ?? null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "載入賞品詳情失敗"))
+      .catch((err) => setError(err instanceof Error ? err.message : tCommon("error")))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, tCommon]);
 
   async function handlePreviewBuyback() {
     if (buybackPrice !== null) {
@@ -74,7 +98,7 @@ export default function PrizeDetailPage() {
       setBuybackPrice(result.buybackPrice);
       setShowBuybackModal(true);
     } catch {
-      toast.error("無法取得回收價格");
+      toast.error(tCommon("error"));
     }
   }
 
@@ -83,10 +107,10 @@ export default function PrizeDetailPage() {
     setBuybackError(null);
     try {
       await apiClient.post(`/api/v1/prizes/${id}/buyback`, {});
-      toast.success("官方回收成功！點數已存入收益帳戶");
+      toast.success(t("buybackSuccessMsg"));
       router.push("/prizes");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "回收失敗";
+      const msg = err instanceof Error ? err.message : tCommon("error");
       setBuybackError(msg);
       toast.error(msg);
     } finally {
@@ -100,36 +124,43 @@ export default function PrizeDetailPage() {
   if (error || !prize) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4">
-        <span className="text-5xl">😞</span>
-        <p className="text-gray-600 dark:text-gray-400">{error ?? "找不到此賞品"}</p>
+        <span className="material-symbols-outlined text-6xl text-on-surface-variant opacity-20">
+          inventory_2
+        </span>
+        <p className="text-on-surface-variant">{error ?? t("notFound")}</p>
         <button
           onClick={() => router.push("/prizes")}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+          className="px-6 py-3 rounded-full amber-gradient text-on-primary font-bold text-sm"
         >
-          返回賞品庫
+          {t("backToPrizes")}
         </button>
       </div>
     );
   }
 
-  const stateLabel = STATE_ZH[prize.state] ?? prize.state;
+  const stateLabel = STATE_LABELS[prize.state] ?? prize.state;
+  const stateSty = stateStyle(prize.state);
   const isHolding = prize.state === "HOLDING";
   const isTrading = prize.state === "TRADING";
   const isShipping = prize.state === "PENDING_SHIPMENT" || prize.state === "SHIPPED";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+
         {/* Back */}
         <Link
           href="/prizes"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary mb-8 transition-colors group"
         >
-          ← 返回賞品庫
+          <span className="material-symbols-outlined text-base group-hover:-translate-x-0.5 transition-transform">
+            arrow_back
+          </span>
+          {t("backToPrizes")}
         </Link>
 
-        {/* Large product image */}
-        <div className="relative w-full aspect-square max-h-96 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 mb-6 shadow-lg">
+        {/* Hero image */}
+        <div className="relative w-full aspect-square max-h-96 rounded-2xl overflow-hidden bg-surface-container mb-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
           {prize.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -139,54 +170,79 @@ export default function PrizeDetailPage() {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-8xl">{prize.grade}</span>
+              <span className="material-symbols-outlined text-8xl text-on-surface-variant opacity-20">
+                emoji_events
+              </span>
             </div>
           )}
-          <div className="absolute top-3 left-3">
-            <GradeBadge grade={prize.grade} className="text-sm px-3 py-1" />
+
+          {/* Grade badge overlay */}
+          <div className="absolute top-4 left-4">
+            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest shadow-xl ${gradeStyle(prize.grade)}`}>
+              {prize.grade} TIER
+            </span>
           </div>
+
+          {/* Bottom gradient */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-surface-container-lowest to-transparent pointer-events-none" />
         </div>
 
-        {/* Prize info */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-5">
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{prize.name}</h1>
-            <StatusBadge status={stateLabel} />
+        {/* Prize info card */}
+        <div className="bg-surface-container rounded-2xl p-6 mb-5 shadow-xl">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <h1 className="font-headline font-extrabold text-2xl text-on-surface leading-tight">
+              {prize.name}
+            </h1>
+            <span className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${stateSty.bg} ${stateSty.text}`}>
+              {stateLabel}
+            </span>
           </div>
 
-          <dl className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400">來源活動</dt>
-              <dd className="font-medium text-gray-900 dark:text-gray-100 mt-0.5">
+          {/* Details grid */}
+          <dl className="grid grid-cols-2 gap-4">
+            <div className="bg-surface-container-high rounded-xl p-4">
+              <dt className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-60 mb-1">
+                {t("sourceCampaign")}
+              </dt>
+              <dd className="text-sm font-bold text-on-surface">
                 {prize.sourceCampaignId ? (
                   <Link
                     href={`/campaigns/${prize.sourceCampaignId}`}
-                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                    className="text-primary hover:opacity-80 transition-opacity"
                   >
-                    {prize.sourceCampaignTitle ?? "未知活動"}
+                    {prize.sourceCampaignTitle ?? tCommon("unknownCampaign")}
                   </Link>
                 ) : (
-                  prize.sourceCampaignTitle ?? "未知活動"
+                  prize.sourceCampaignTitle ?? tCommon("unknownCampaign")
                 )}
               </dd>
             </div>
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400">取得方式</dt>
-              <dd className="font-medium text-gray-900 dark:text-gray-100 mt-0.5">
-                {ACQUISITION_ZH[prize.acquisitionMethod] ?? prize.acquisitionMethod}
+
+            <div className="bg-surface-container-high rounded-xl p-4">
+              <dt className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-60 mb-1">
+                {t("acquisitionMethod")}
+              </dt>
+              <dd className="text-sm font-bold text-on-surface">
+                {ACQUISITION_LABELS[prize.acquisitionMethod] ?? prize.acquisitionMethod}
               </dd>
             </div>
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400">取得時間</dt>
-              <dd className="font-medium text-gray-900 dark:text-gray-100 mt-0.5">
+
+            <div className="bg-surface-container-high rounded-xl p-4">
+              <dt className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-60 mb-1">
+                {t("acquiredAt")}
+              </dt>
+              <dd className="text-sm font-bold text-on-surface">
                 {new Date(prize.acquiredAt).toLocaleString("zh-TW")}
               </dd>
             </div>
+
             {buybackPrice !== null && (
-              <div>
-                <dt className="text-gray-500 dark:text-gray-400">官方回收價格</dt>
-                <dd className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {buybackPrice.toLocaleString()} 點（收益點數）
+              <div className="bg-surface-container-high rounded-xl p-4">
+                <dt className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-60 mb-1">
+                  {t("buybackPrice")}
+                </dt>
+                <dd className="text-sm font-headline font-extrabold text-primary">
+                  {buybackPrice.toLocaleString()} pts
                 </dd>
               </div>
             )}
@@ -199,37 +255,44 @@ export default function PrizeDetailPage() {
             <>
               <Link
                 href={`/trade/new?prizeId=${prize.id}`}
-                className="flex items-center justify-center w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-4 rounded-full amber-gradient text-on-primary font-bold text-sm uppercase tracking-widest shadow-lg hover:opacity-90 transition-opacity"
               >
-                🛒 上架交易
+                <span className="material-symbols-outlined text-lg">swap_horiz</span>
+                {t("tradeListing")}
               </Link>
               <Link
                 href={`/shipping/new?prizeId=${prize.id}`}
-                className="flex items-center justify-center w-full py-3.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-4 rounded-full bg-surface-container text-on-surface font-bold text-sm uppercase tracking-widest hover:bg-surface-container-high transition-colors"
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                📦 申請寄送
+                <span className="material-symbols-outlined text-lg">local_shipping</span>
+                {t("requestShipping")}
               </Link>
               <button
                 onClick={handlePreviewBuyback}
-                className="flex items-center justify-center w-full py-3.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-4 rounded-full bg-surface-container text-on-surface-variant font-bold text-sm uppercase tracking-widest hover:bg-surface-container-high hover:text-on-surface transition-all"
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                ♻️ 官方回收
+                <span className="material-symbols-outlined text-lg">recycling</span>
+                {t("officialBuyback")}
               </button>
             </>
           )}
 
           {isTrading && (
-            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
-                此賞品目前正在交易中，其他操作暫時停用
+            <div className="p-5 rounded-2xl bg-surface-container flex items-center gap-3">
+              <span className="material-symbols-outlined text-secondary text-xl">info</span>
+              <p className="text-sm text-on-surface-variant font-medium">
+                {t("tradingInfo")}
               </p>
             </div>
           )}
 
           {isShipping && (
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
-                此賞品正在寄送中，請稍待
+            <div className="p-5 rounded-2xl bg-surface-container flex items-center gap-3">
+              <span className="material-symbols-outlined text-tertiary text-xl">local_shipping</span>
+              <p className="text-sm text-on-surface-variant font-medium">
+                {t("shippingInfo")}
               </p>
             </div>
           )}
@@ -238,32 +301,39 @@ export default function PrizeDetailPage() {
 
       {/* Buyback confirmation modal */}
       {showBuybackModal && buybackPrice !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">官方回收確認</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              確定要將「<span className="font-semibold text-gray-900 dark:text-gray-100">{prize.name}</span>」（{prize.grade}）以{" "}
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                {buybackPrice.toLocaleString()} 收益點數
-              </span>{" "}
-              回收？此操作無法復原。
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-surface-container rounded-2xl max-w-sm w-full shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-primary text-2xl">recycling</span>
+              <h3 className="font-headline font-bold text-lg text-on-surface">{t("buybackConfirmModal")}</h3>
+            </div>
+            <p className="text-sm text-on-surface-variant mb-4 leading-relaxed">
+              {t("buybackConfirmText", {
+                name: prize.name,
+                grade: prize.grade,
+                price: buybackPrice.toLocaleString(),
+              })}
             </p>
             {buybackError && (
-              <p className="text-sm text-red-600 dark:text-red-400 mb-3">{buybackError}</p>
+              <p className="text-sm text-error mb-3 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">error</span>
+                {buybackError}
+              </p>
             )}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowBuybackModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                className="flex-1 py-3 rounded-full text-on-surface-variant font-bold text-sm hover:bg-surface-container-high transition-colors"
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                取消
+                {tCommon("cancel")}
               </button>
               <button
                 onClick={handleConfirmBuyback}
                 disabled={isBuyingBack}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-50 transition-colors text-sm"
+                className="flex-1 py-3 rounded-full amber-gradient text-on-primary font-bold text-sm disabled:opacity-40 transition-opacity"
               >
-                {isBuyingBack ? "處理中..." : "確認回收"}
+                {isBuyingBack ? tCommon("processing") : t("confirmBuyback")}
               </button>
             </div>
           </div>
@@ -276,15 +346,19 @@ export default function PrizeDetailPage() {
 function PrizeDetailSkeleton() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <Skeleton className="h-4 w-20 mb-6" />
+      <Skeleton className="h-4 w-20 mb-8 rounded-full" />
       <Skeleton className="w-full aspect-square max-h-96 rounded-2xl mb-6" />
-      <div className="rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 mb-5 space-y-3">
-        <Skeleton className="h-7 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-2/3" />
+      <div className="bg-surface-container rounded-2xl p-6 mb-5 space-y-4">
+        <Skeleton className="h-8 w-3/4" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
       </div>
-      <Skeleton className="h-12 rounded-xl mb-3" />
-      <Skeleton className="h-12 rounded-xl mb-3" />
+      <Skeleton className="h-14 rounded-full mb-3" />
+      <Skeleton className="h-14 rounded-full mb-3" />
     </div>
   );
 }

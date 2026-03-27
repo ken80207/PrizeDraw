@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
+import com.prizedraw.i18n.S
 
 /**
  * Counter-propose screen for re-selecting prizes to offer in response to an exchange.
@@ -46,11 +47,11 @@ public fun ExchangeCounterProposeScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "Counter-Propose",
+            text = S("exchange.counterProposeTitle"),
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Select prizes to offer in your counter-proposal:",
+            text = S("exchange.counterProposePrompt"),
             style = MaterialTheme.typography.bodyMedium,
         )
         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -81,12 +82,12 @@ public fun ExchangeCounterProposeScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Cancel") }
+            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text(S("common.cancel")) }
             Button(
                 onClick = { onSubmit(selected.value.toList()) },
                 enabled = selected.value.isNotEmpty(),
                 modifier = Modifier.weight(1f),
-            ) { Text("Submit Counter") }
+            ) { Text(S("exchange.submitCounter")) }
         }
     }
 }

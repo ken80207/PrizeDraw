@@ -50,7 +50,7 @@ public class ShippingRepositoryImpl : IShippingRepository {
                 .where {
                     val base = ShippingOrdersTable.playerId eq playerId.value
                     if (status != null) {
-                        base and (ShippingOrdersTable.status eq status.name)
+                        base and (ShippingOrdersTable.status eq status)
                     } else {
                         base
                     }
@@ -67,7 +67,7 @@ public class ShippingRepositoryImpl : IShippingRepository {
         newSuspendedTransaction {
             ShippingOrdersTable
                 .selectAll()
-                .where { ShippingOrdersTable.status eq status.name }
+                .where { ShippingOrdersTable.status eq status }
                 .orderBy(ShippingOrdersTable.createdAt, org.jetbrains.exposed.sql.SortOrder.ASC)
                 .limit(limit, offset.toLong())
                 .map { it.toShippingOrder() }
@@ -95,7 +95,7 @@ public class ShippingRepositoryImpl : IShippingRepository {
                     it[countryCode] = order.countryCode
                     it[trackingNumber] = order.trackingNumber
                     it[carrier] = order.carrier
-                    it[status] = order.status.name
+                    it[status] = order.status
                     it[shippedAt] = order.shippedAt?.toOffsetDateTime()
                     it[deliveredAt] = order.deliveredAt?.toOffsetDateTime()
                     it[cancelledAt] = order.cancelledAt?.toOffsetDateTime()
@@ -107,7 +107,7 @@ public class ShippingRepositoryImpl : IShippingRepository {
                 ShippingOrdersTable.update({ ShippingOrdersTable.id eq order.id }) {
                     it[trackingNumber] = order.trackingNumber
                     it[carrier] = order.carrier
-                    it[status] = order.status.name
+                    it[status] = order.status
                     it[shippedAt] = order.shippedAt?.toOffsetDateTime()
                     it[deliveredAt] = order.deliveredAt?.toOffsetDateTime()
                     it[cancelledAt] = order.cancelledAt?.toOffsetDateTime()
@@ -137,7 +137,7 @@ public class ShippingRepositoryImpl : IShippingRepository {
             countryCode = this[ShippingOrdersTable.countryCode].trim(),
             trackingNumber = this[ShippingOrdersTable.trackingNumber],
             carrier = this[ShippingOrdersTable.carrier],
-            status = ShippingOrderStatus.valueOf(this[ShippingOrdersTable.status]),
+            status = this[ShippingOrdersTable.status],
             shippedAt = this[ShippingOrdersTable.shippedAt]?.toInstant()?.toKotlinInstant(),
             deliveredAt = this[ShippingOrdersTable.deliveredAt]?.toInstant()?.toKotlinInstant(),
             cancelledAt = this[ShippingOrdersTable.cancelledAt]?.toInstant()?.toKotlinInstant(),

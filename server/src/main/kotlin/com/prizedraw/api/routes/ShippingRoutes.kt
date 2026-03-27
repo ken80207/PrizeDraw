@@ -26,7 +26,6 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /**
@@ -65,7 +64,7 @@ public fun Route.shippingRoutes() {
         }
     }
 
-    authenticate("admin") {
+    authenticate("staff") {
         get(AdminEndpoints.SHIPPING_ORDERS) {
             handleAdminListOrders(shippingRepository)
         }

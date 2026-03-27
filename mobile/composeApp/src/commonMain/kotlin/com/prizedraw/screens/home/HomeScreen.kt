@@ -27,26 +27,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.prizedraw.i18n.S
 
 /**
  * Describes one tab in the bottom navigation bar.
  *
- * @property label Text label displayed below the icon.
+ * @property labelKey i18n key for the text label displayed below the icon.
  * @property icon Material 3 [ImageVector] for the icon slot.
  * @property route Destination route string consumed by the nav graph.
  */
 private data class BottomTab(
-    val label: String,
+    val labelKey: String,
     val icon: ImageVector,
     val route: String,
 )
 
 private val TABS =
     listOf(
-        BottomTab(label = "Campaigns", icon = Icons.Outlined.Home, route = "campaigns"),
-        BottomTab(label = "My Prizes", icon = Icons.Outlined.Star, route = "prizes"),
-        BottomTab(label = "Marketplace", icon = Icons.Outlined.ShoppingCart, route = "trade"),
-        BottomTab(label = "Wallet", icon = Icons.Outlined.List, route = "wallet"),
+        BottomTab(labelKey = "nav.campaigns", icon = Icons.Outlined.Home, route = "campaigns"),
+        BottomTab(labelKey = "nav.prizes", icon = Icons.Outlined.Star, route = "prizes"),
+        BottomTab(labelKey = "nav.marketplace", icon = Icons.Outlined.ShoppingCart, route = "trade"),
+        BottomTab(labelKey = "nav.wallet", icon = Icons.Outlined.List, route = "wallet"),
     )
 
 /**
@@ -80,7 +81,7 @@ public fun HomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = currentTab.label,
+                        text = S(currentTab.labelKey),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -88,13 +89,13 @@ public fun HomeScreen(
                     IconButton(onClick = onNavigateToNotifications) {
                         Icon(
                             Icons.Filled.Notifications,
-                            contentDescription = "Notifications",
+                            contentDescription = S("nav.notifications"),
                         )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             Icons.Filled.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = S("nav.settings"),
                         )
                     }
                 },
@@ -109,10 +110,10 @@ public fun HomeScreen(
                         icon = {
                             Icon(
                                 imageVector = tab.icon,
-                                contentDescription = tab.label,
+                                contentDescription = S(tab.labelKey),
                             )
                         },
-                        label = { Text(tab.label) },
+                        label = { Text(S(tab.labelKey)) },
                     )
                 }
             }

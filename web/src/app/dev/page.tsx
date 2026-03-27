@@ -53,47 +53,43 @@ const DEV_TOOLS: DevTool[] = [
 
 export default function DevIndexPage() {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="p-6 lg:p-10">
       {/* Header */}
-      <div className="border-b border-gray-800 bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🛠</span>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Developer Tools</h1>
-              <p className="text-sm text-gray-400 mt-0.5">
-                Internal tooling for the PrizeDraw team — not visible in production.
-              </p>
-            </div>
+      <div className="mb-8">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-3xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>build</span>
+          <div>
+            <h1 className="text-2xl font-black text-on-surface font-headline">Developer Tools</h1>
+            <p className="text-sm text-on-surface-variant mt-0.5">
+              Internal tooling for the PrizeDraw team — not visible in production.
+            </p>
           </div>
+        </div>
 
-          {/* Environment badge */}
-          <div className="mt-4 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              NODE_ENV: development
-            </span>
-            <span className="text-xs text-gray-500">
-              This route group is only linked in dev mode.
-            </span>
-          </div>
+        {/* Environment badge */}
+        <div className="mt-4 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-primary/10 text-primary">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            NODE_ENV: development
+          </span>
+          <span className="text-xs text-on-surface-variant/50">
+            This route group is only linked in dev mode.
+          </span>
         </div>
       </div>
 
       {/* Tool cards */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {DEV_TOOLS.map((tool) => (
-            <ToolCard key={tool.href} tool={tool} />
-          ))}
-        </div>
-
-        {/* Footer note */}
-        <p className="mt-10 text-xs text-gray-600 text-center">
-          These pages are excluded from the production sitemap and are protected by{" "}
-          <code className="text-gray-500">NODE_ENV</code> gating. Do not deploy to production without review.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2 max-w-4xl">
+        {DEV_TOOLS.map((tool) => (
+          <ToolCard key={tool.href} tool={tool} />
+        ))}
       </div>
+
+      {/* Footer note */}
+      <p className="mt-10 text-xs text-on-surface-variant/30 text-center max-w-4xl">
+        These pages are excluded from the production sitemap and are protected by{" "}
+        <code className="text-on-surface-variant/50">NODE_ENV</code> gating.
+      </p>
     </div>
   );
 }
@@ -104,20 +100,20 @@ function ToolCard({ tool }: { tool: DevTool }) {
   const card = (
     <div
       className={[
-        "group relative rounded-xl border p-5 transition-all duration-200",
+        "group relative rounded-lg p-5 transition-all duration-200",
         isReady
-          ? "border-gray-700 bg-gray-900 hover:border-indigo-500/60 hover:bg-gray-800/80 cursor-pointer"
-          : "border-gray-800 bg-gray-900/50 opacity-60 cursor-not-allowed",
+          ? "bg-surface-container hover:bg-surface-container-high cursor-pointer gacha-glow"
+          : "bg-surface-container/50 opacity-60 cursor-not-allowed",
       ].join(" ")}
     >
       {/* Status pill */}
       <div className="absolute top-4 right-4">
         {isReady ? (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-medium">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">
             Ready
           </span>
         ) : (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/60 text-gray-500 border border-gray-700 font-medium">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant/50 font-medium">
             TODO
           </span>
         )}
@@ -127,27 +123,19 @@ function ToolCard({ tool }: { tool: DevTool }) {
       <div className="text-3xl mb-3">{tool.icon}</div>
 
       {/* Titles */}
-      <h2 className="font-bold text-white text-base leading-snug">
+      <h2 className="font-bold text-on-surface text-base leading-snug font-headline">
         {tool.titleZh}
-        <span className="ml-2 text-gray-400 font-normal text-sm">— {tool.title}</span>
+        <span className="ml-2 text-on-surface-variant font-normal text-sm">— {tool.title}</span>
       </h2>
 
       {/* Description */}
-      <p className="mt-2 text-sm text-gray-400 leading-relaxed">{tool.description}</p>
+      <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">{tool.description}</p>
 
       {/* Arrow indicator for ready items */}
       {isReady && (
-        <div className="mt-4 flex items-center gap-1 text-xs text-indigo-400 font-medium group-hover:gap-2 transition-all">
+        <div className="mt-4 flex items-center gap-1 text-xs text-primary font-bold group-hover:gap-2 transition-all">
           <span>Open tool</span>
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">arrow_forward</span>
         </div>
       )}
     </div>

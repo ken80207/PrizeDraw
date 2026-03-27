@@ -10,10 +10,10 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 interface Player {
   id: string;
   nickname: string;
-  phone: string;
-  consumePoints: number;
-  revenuePoints: number;
-  status: string;
+  phoneNumber: string | null;
+  drawPointsBalance: string | number;
+  revenuePointsBalance: string | number;
+  isActive: string | boolean;
   createdAt: string;
 }
 
@@ -133,11 +133,11 @@ export default function PlayersPage() {
                       {player.nickname}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{player.phone}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">{player.consumePoints.toLocaleString()}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">{player.revenuePoints.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-slate-600">{player.phoneNumber ?? "-"}</td>
+                  <td className="px-4 py-3 tabular-nums text-slate-700">{Number(player.drawPointsBalance).toLocaleString()}</td>
+                  <td className="px-4 py-3 tabular-nums text-slate-700">{Number(player.revenuePointsBalance).toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={player.status} />
+                    <StatusBadge status={String(player.isActive) === "true" ? "啟用" : "停用"} />
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {player.createdAt ? new Date(player.createdAt).toLocaleDateString("zh-TW") : "—"}

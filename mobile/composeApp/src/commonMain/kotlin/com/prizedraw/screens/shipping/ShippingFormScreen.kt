@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 
 /**
  * Shipping address form screen.
@@ -53,48 +54,48 @@ public fun ShippingFormScreen(
                 .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = "Shipping Address", style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
+        Text(text = S("shipping.addressTitle"), style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
 
         OutlinedTextField(
             value = recipientName,
             onValueChange = { recipientName = it },
-            label = { Text("Recipient Name") },
+            label = { Text(S("shipping.recipientName")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = recipientPhone,
             onValueChange = { recipientPhone = it },
-            label = { Text("Phone Number") },
+            label = { Text(S("shipping.phoneNumber")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = addressLine1,
             onValueChange = { addressLine1 = it },
-            label = { Text("Address Line 1") },
+            label = { Text(S("shipping.addressLine1")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = addressLine2,
             onValueChange = { addressLine2 = it },
-            label = { Text("Address Line 2 (optional)") },
+            label = { Text(S("shipping.addressLine2Optional")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = city,
             onValueChange = { city = it },
-            label = { Text("City") },
+            label = { Text(S("shipping.city")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = postalCode,
             onValueChange = { postalCode = it },
-            label = { Text("Postal Code") },
+            label = { Text(S("shipping.postalCode")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = countryCode,
             onValueChange = { countryCode = it.uppercase().take(2) },
-            label = { Text("Country Code (e.g. TW)") },
+            label = { Text(S("shipping.countryCode")) },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -122,7 +123,7 @@ public fun ShippingFormScreen(
                 )
             },
         ) {
-            Text("Request Shipping")
+            Text(S("shipping.requestShipping"))
         }
     }
 }

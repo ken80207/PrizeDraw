@@ -30,6 +30,8 @@ import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
@@ -200,6 +202,7 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             grade = grade,
             name = "Prize $grade",
             photos = listOf("https://cdn.example.com/img.jpg"),
+            prizeValue = 0,
             buybackPrice = 50,
             buybackEnabled = true,
             probabilityBps = null,
@@ -218,6 +221,7 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             grade = grade,
             name = "Prize $grade",
             photos = listOf("https://cdn.example.com/img.jpg"),
+            prizeValue = 0,
             buybackPrice = 10,
             buybackEnabled = true,
             probabilityBps = probabilityBps,
@@ -377,7 +381,6 @@ class CampaignDrawIntegrationTest : DescribeSpec({
                 prizeInstanceId = instanceId,
             )
             ticketIndex[ticketId] = drawn
-            state.boxRemaining[original.ticketBoxId]?.decrementAndGet()
 
             val def = defsByGrade.values.find { it.id == original.prizeDefinitionId }
             if (def != null) state.savedGrades[instanceId.value] = def.grade
@@ -495,11 +498,11 @@ class CampaignDrawIntegrationTest : DescribeSpec({
                 playerRepository = fakes.playerRepo,
                 campaignRepository = fakes.campaignRepo,
                 queueRepository = fakes.queueRepo,
-                drawPointTxRepository = fakes.drawPointTxRepo,
                 outboxRepository = fakes.outboxRepo,
                 auditRepository = fakes.auditRepo,
                 domainService = KujiDrawDomainService(),
                 redisPubSub = fakes.redisPubSub,
+                drawCore = DrawCore(DrawCoreDeps(playerRepository = fakes.playerRepo, prizeRepository = fakes.prizeRepo, drawPointTxRepository = fakes.drawPointTxRepo, outboxRepository = fakes.outboxRepo)),
             ),
         )
 
@@ -570,7 +573,9 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             }
             every { createAuditRepo.record(any()) } just runs
 
-            val createUseCase = CreateKujiCampaignUseCase(createCampaignRepo, createAuditRepo)
+            val createTicketBoxRepo = mockk<ITicketBoxRepository>()
+            val createPrizeRepo = mockk<IPrizeRepository>()
+            val createUseCase = CreateKujiCampaignUseCase(createCampaignRepo, createTicketBoxRepo, createPrizeRepo, createAuditRepo)
             val createdCampaign = createUseCase.execute(
                 staffId = staffId,
                 title = "Re:Zero 一番賞",
@@ -826,6 +831,10 @@ class CampaignDrawIntegrationTest : DescribeSpec({
 
             coEvery { campaignRepo.findUnlimitedById(any()) } returns activeCampaign
             coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns definitions
+            coEvery { prizeRepo.findDefinitionById(any()) } coAnswers {
+                val rawUuid = args[0] as UUID
+                definitions.find { it.id == PrizeDefinitionId(rawUuid) }
+            }
             coEvery { playerRepo.findById(any()) } coAnswers {
                 val pid = PlayerId(args[0] as UUID)
                 val snapshot = players.find { it.id == pid } ?: return@coAnswers null
@@ -853,12 +862,11 @@ class CampaignDrawIntegrationTest : DescribeSpec({
                 DrawUnlimitedDeps(
                     campaignRepository = campaignRepo,
                     prizeRepository = prizeRepo,
-                    playerRepository = playerRepo,
-                    drawPointTxRepository = drawPointTxRepo,
                     outboxRepository = outboxRepo,
                     auditRepository = auditRepo,
                     domainService = UnlimitedDrawDomainService(),
                     redisClient = redisClient,
+                    drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                 ),
             )
 

@@ -39,31 +39,22 @@ export function AnnouncementBanner({ announcementId, title, message }: Announcem
   if (isDismissed) return null;
 
   return (
-    <div className="flex items-start gap-3 bg-indigo-50 px-4 py-3 text-sm dark:bg-indigo-950/40">
-      <span className="mt-0.5 shrink-0 text-indigo-500" aria-hidden="true">
-        ℹ
+    <div className="flex items-start gap-3 bg-primary/10 px-4 py-3 text-sm">
+      <span className="material-symbols-outlined mt-0.5 shrink-0 text-primary text-base" aria-hidden="true">
+        info
       </span>
 
       <div className="flex-1 min-w-0">
-        <span className="font-semibold text-indigo-900 dark:text-indigo-300">{title} </span>
-        <span className="text-indigo-800 dark:text-indigo-400">{message}</span>
+        <span className="font-semibold text-primary">{title} </span>
+        <span className="text-on-surface-variant">{message}</span>
       </div>
 
       <button
         onClick={handleDismiss}
         aria-label="關閉公告"
-        className="shrink-0 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+        className="shrink-0 text-on-surface-variant hover:text-on-surface transition-colors"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <span className="material-symbols-outlined text-base">close</span>
       </button>
     </div>
   );

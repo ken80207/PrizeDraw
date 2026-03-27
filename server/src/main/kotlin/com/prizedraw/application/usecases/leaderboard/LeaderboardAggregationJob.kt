@@ -32,6 +32,9 @@ public class LeaderboardAggregationJob(
     }
 
     private suspend fun runLoop() {
+        // Initial delay to let DB connect before first aggregation
+        @Suppress("MagicNumber")
+        delay(10_000L)
         while (coroutineContext[kotlinx.coroutines.Job]?.isActive != false) {
             runCatching { aggregate() }
                 .onFailure { e -> log.error("Leaderboard aggregation failed", e) }

@@ -58,7 +58,7 @@ public class StaffRepositoryImpl : IStaffRepository {
                     it[name] = staff.name
                     it[email] = staff.email.value
                     it[hashedPassword] = staff.hashedPassword
-                    it[role] = staff.role.name
+                    it[role] = staff.role
                     it[isActive] = staff.isActive
                     it[lastLoginAt] = staff.lastLoginAt?.toOffsetDateTime()
                     it[createdByStaffId] = staff.createdByStaffId
@@ -69,7 +69,7 @@ public class StaffRepositoryImpl : IStaffRepository {
             } else {
                 StaffTable.update({ StaffTable.id eq staff.id }) {
                     it[name] = staff.name
-                    it[role] = staff.role.name
+                    it[role] = staff.role
                     it[isActive] = staff.isActive
                     it[deletedAt] = staff.deletedAt?.toOffsetDateTime()
                     it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
@@ -105,7 +105,7 @@ public class StaffRepositoryImpl : IStaffRepository {
             name = this[StaffTable.name],
             email = EmailAddress(this[StaffTable.email]),
             hashedPassword = this[StaffTable.hashedPassword],
-            role = StaffRole.valueOf(this[StaffTable.role]),
+            role = this[StaffTable.role],
             isActive = this[StaffTable.isActive],
             lastLoginAt = this[StaffTable.lastLoginAt]?.toInstant()?.toKotlinInstant(),
             createdByStaffId = this[StaffTable.createdByStaffId],

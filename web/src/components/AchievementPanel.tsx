@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { achievements } from "@/lib/achievements";
 import type { Achievement } from "@/lib/achievements";
 
@@ -12,6 +13,7 @@ interface AchievementPanelProps {
 
 /** Collapsible achievement panel showing all achievements and progress. */
 export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
+  const t = useTranslations("achievement");
   // Lazily initialise so first render is populated without a synchronous setState in an effect
   const [all, setAll] = useState<Achievement[]>(() => achievements.getAll());
   const [stats, setStats] = useState(() => achievements.getStats());
@@ -28,43 +30,37 @@ export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
   }, [refresh]);
 
   const handleReset = useCallback(() => {
-    if (!confirm("確定要重置所有成就嗎？")) return;
+    if (!confirm(t("resetConfirm"))) return;
     achievements.reset();
     refresh();
-  }, [refresh]);
+  }, [refresh, t]);
 
   return (
-    <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 overflow-hidden">
+    <div className="rounded-lg bg-surface-container overflow-hidden">
       {/* Header / toggle */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-900/20 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-container-high transition-colors"
       >
-        <span className="flex items-center gap-2 text-sm font-bold text-amber-300">
-          <span>🏆</span>
-          <span>成就</span>
-          <span className="text-amber-400 text-xs font-normal">
-            {stats.unlocked}/{stats.total} 已解鎖
+        <span className="flex items-center gap-2 text-sm font-bold text-primary">
+          <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
+          <span className="font-headline">{t("title")}</span>
+          <span className="text-on-surface-variant text-xs font-normal">
+            {stats.unlocked}/{stats.total}
           </span>
         </span>
-        <svg
-          className={`w-4 h-4 text-amber-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
-        </svg>
+        <span className={`material-symbols-outlined text-sm text-primary transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          expand_more
+        </span>
       </button>
 
       {open && (
         <div className="px-4 pb-4 space-y-3">
           {/* Progress bar */}
           <div>
-            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full transition-all duration-500"
                 style={{ width: `${stats.total > 0 ? (stats.unlocked / stats.total) * 100 : 0}%` }}
               />
             </div>
@@ -77,12 +73,14 @@ export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
               return (
                 <div
                   key={a.id}
-                  title={unlocked ? `解鎖於 ${new Date(a.unlockedAt!).toLocaleDateString("zh-TW")}` : "尚未解鎖"}
+                  title={unlocked
+                    ? t("unlockedAt", { date: new Date(a.unlockedAt!).toLocaleDateString("zh-TW") })
+                    : t("notYetUnlocked")}
                   className={[
-                    "rounded-xl border p-3 flex flex-col items-center gap-1 text-center transition-all",
+                    "rounded-lg p-3 flex flex-col items-center gap-1 text-center transition-all",
                     unlocked
-                      ? "border-amber-600/50 bg-amber-900/20"
-                      : "border-gray-700/50 bg-gray-800/30 opacity-45 grayscale",
+                      ? "bg-primary/10"
+                      : "bg-surface-container-high opacity-45 grayscale",
                   ].join(" ")}
                 >
                   <span
@@ -92,12 +90,12 @@ export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
                   >
                     {a.icon}
                   </span>
-                  <span className={`text-xs font-bold leading-tight ${unlocked ? "text-amber-200" : "text-gray-500"}`}>
+                  <span className={`text-xs font-bold leading-tight ${unlocked ? "text-primary" : "text-on-surface-variant/50"}`}>
                     {a.title}
                   </span>
-                  <span className="text-[10px] text-gray-500 leading-tight">{a.description}</span>
+                  <span className="text-[10px] text-on-surface-variant/50 leading-tight">{a.description}</span>
                   {unlocked && a.unlockedAt && (
-                    <span className="text-[9px] text-amber-600 mt-0.5">
+                    <span className="text-[9px] text-primary-container mt-0.5">
                       {new Date(a.unlockedAt).toLocaleDateString("zh-TW")}
                     </span>
                   )}
@@ -110,9 +108,9 @@ export function AchievementPanel({ open, onToggle }: AchievementPanelProps) {
           <div className="flex justify-end pt-1">
             <button
               onClick={handleReset}
-              className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 rounded"
+              className="text-xs text-on-surface-variant/40 hover:text-error transition-colors px-2 py-1 rounded"
             >
-              重置所有成就
+              {t("resetAll")}
             </button>
           </div>
         </div>

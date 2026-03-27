@@ -30,22 +30,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.support.SupportIntent
 import com.prizedraw.viewmodels.support.SupportViewModel
 
 private data class TicketCategory(
     val value: String,
-    val label: String,
+    val labelKey: String,
 )
 
 private val CATEGORIES =
     listOf(
-        TicketCategory("TRADE_DISPUTE", "Trade Dispute"),
-        TicketCategory("DRAW_ISSUE", "Draw Issue"),
-        TicketCategory("ACCOUNT_ISSUE", "Account Issue"),
-        TicketCategory("SHIPPING_ISSUE", "Shipping Issue"),
-        TicketCategory("PAYMENT_ISSUE", "Payment Issue"),
-        TicketCategory("OTHER", "Other"),
+        TicketCategory("TRADE_DISPUTE", "support.categoryTradeDispute"),
+        TicketCategory("DRAW_ISSUE", "support.categoryDrawIssue"),
+        TicketCategory("ACCOUNT_ISSUE", "support.categoryAccountIssue"),
+        TicketCategory("SHIPPING_ISSUE", "support.categoryShippingIssue"),
+        TicketCategory("PAYMENT_ISSUE", "support.categoryPaymentIssue"),
+        TicketCategory("OTHER", "support.categoryOther"),
     )
 
 /**
@@ -83,10 +84,10 @@ public fun CreateTicketScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Support Ticket") },
+                title = { Text(S("support.newTicket")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
                     }
                 },
             )
@@ -119,10 +120,10 @@ public fun CreateTicketScreen(
                 onExpandedChange = { categoryExpanded = !categoryExpanded },
             ) {
                 OutlinedTextField(
-                    value = selectedCategory.label,
+                    value = S(selectedCategory.labelKey),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Category") },
+                    label = { Text(S("support.category")) },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
                     },
@@ -137,7 +138,7 @@ public fun CreateTicketScreen(
                 ) {
                     CATEGORIES.forEach { category ->
                         DropdownMenuItem(
-                            text = { Text(category.label) },
+                            text = { Text(S(category.labelKey)) },
                             onClick = {
                                 selectedCategory = category
                                 categoryExpanded = false
@@ -152,8 +153,8 @@ public fun CreateTicketScreen(
             OutlinedTextField(
                 value = subject,
                 onValueChange = { subject = it },
-                label = { Text("Subject") },
-                placeholder = { Text("Brief description of the issue") },
+                label = { Text(S("support.subject")) },
+                placeholder = { Text(S("support.subjectPlaceholder")) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -162,8 +163,8 @@ public fun CreateTicketScreen(
             OutlinedTextField(
                 value = body,
                 onValueChange = { body = it },
-                label = { Text("Description") },
-                placeholder = { Text("Please provide as much detail as possible…") },
+                label = { Text(S("support.description")) },
+                placeholder = { Text(S("support.descriptionPlaceholder")) },
                 minLines = 5,
                 maxLines = 10,
                 modifier = Modifier.fillMaxWidth(),
@@ -190,7 +191,7 @@ public fun CreateTicketScreen(
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Submit Ticket")
+                Text(S("support.submitTicket"))
             }
         }
     }

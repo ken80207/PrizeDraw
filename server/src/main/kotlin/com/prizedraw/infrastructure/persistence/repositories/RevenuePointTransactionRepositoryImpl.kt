@@ -23,7 +23,7 @@ public class RevenuePointTransactionRepositoryImpl : IRevenuePointTransactionRep
         RevenuePointTransactionsTable.insert {
             it[id] = transaction.id
             it[playerId] = transaction.playerId.value
-            it[type] = transaction.type.name
+            it[type] = transaction.type
             it[amount] = transaction.amount
             it[balanceAfter] = transaction.balanceAfter
             it[tradeOrderId] = transaction.tradeOrderId
@@ -50,7 +50,7 @@ public class RevenuePointTransactionRepositoryImpl : IRevenuePointTransactionRep
         RevenuePointTransaction(
             id = this[RevenuePointTransactionsTable.id],
             playerId = PlayerId(this[RevenuePointTransactionsTable.playerId]),
-            type = RevenuePointTxType.valueOf(this[RevenuePointTransactionsTable.type]),
+            type = this[RevenuePointTransactionsTable.type],
             amount = this[RevenuePointTransactionsTable.amount],
             balanceAfter = this[RevenuePointTransactionsTable.balanceAfter],
             tradeOrderId = this[RevenuePointTransactionsTable.tradeOrderId],

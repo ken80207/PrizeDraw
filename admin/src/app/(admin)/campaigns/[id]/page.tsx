@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Modal } from "@/components/Modal";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+
+interface DrawRecord {
+  ticketId: string;
+  position: number;
+  grade: string;
+  prizeName: string;
+  prizePhotoUrl: string | null;
+  playerNickname: string;
+  drawnAt: string;
+}
 
 interface PrizeDefinition {
   id: string;
@@ -48,16 +58,38 @@ export default function CampaignDetailPage() {
   const [editDesc, setEditDesc] = useState("");
   const [probRows, setProbRows] = useState<PrizeDefinition[]>([]);
   const [probDirty, setProbDirty] = useState(false);
+  const [drawRecords, setDrawRecords] = useState<DrawRecord[]>([]);
 
   useEffect(() => {
     apiClient
-      .get<Campaign>(`/api/v1/admin/campaigns/${id}`)
-      .then((data) => {
+      .get<Record<string, unknown>>(`/api/v1/admin/campaigns/${id}`)
+      .then((raw) => {
+        // The API returns a nested structure: { campaign: {...}, boxes: [...], prizes: [...] }
+        // Flatten it into our Campaign interface.
+        const inner = (raw.campaign ?? raw) as Record<string, unknown>;
+        const data: Campaign = {
+          id: inner.id as string,
+          title: inner.title as string,
+          type: (inner.type ?? (inner.drawSessionSeconds != null ? "KUJI" : "UNLIMITED")) as Campaign["type"],
+          description: (inner.description ?? "") as string,
+          pricePerDraw: inner.pricePerDraw as number,
+          drawSessionSeconds: inner.drawSessionSeconds as number | undefined,
+          status: inner.status as string,
+          createdAt: (inner.createdAt ?? inner.activatedAt ?? "") as string,
+          coverImageUrl: inner.coverImageUrl as string | undefined,
+          prizePool: (raw.prizes ?? []) as PrizeDefinition[],
+          boxes: (raw.boxes ?? []) as TicketBox[],
+        };
         setCampaign(data);
         setEditName(data.title);
         setEditDesc(data.description ?? "");
         setProbRows(data.prizePool ?? []);
         setIsLoading(false);
+
+        apiClient
+          .get<DrawRecord[]>(`/api/v1/admin/campaigns/${id}/draw-records?limit=50`)
+          .then(setDrawRecords)
+          .catch(() => {}); // silently fail if not available yet
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "載入失敗");
@@ -103,6 +135,25 @@ export default function CampaignDetailPage() {
   const updateProbRow = (rowId: string, field: keyof PrizeDefinition, value: unknown) => {
     setProbRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, [field]: value } : r)));
     setProbDirty(true);
+  };
+
+  const timeAgo = (iso: string): string => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return `${diff} 秒前`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} 分鐘前`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} 小時前`;
+    return `${Math.floor(diff / 86400)} 天前`;
+  };
+
+  const gradeBadgeStyle = (grade: string): React.CSSProperties => {
+    const g = grade.toUpperCase();
+    if (g.startsWith("A")) return { backgroundColor: "#fef3c7", color: "#92400e" };
+    if (g.startsWith("B")) return { backgroundColor: "#dbeafe", color: "#1e40af" };
+    if (g.startsWith("C")) return { backgroundColor: "#dcfce7", color: "#166534" };
+    if (g.startsWith("D")) return { backgroundColor: "#f3e8ff", color: "#6b21a8" };
+    if (g.startsWith("E")) return { backgroundColor: "#fce7f3", color: "#9d174d" };
+    if (g.toLowerCase().includes("last")) return { backgroundColor: "#fee2e2", color: "#991b1b" };
+    return { backgroundColor: "#f1f5f9", color: "#475569" };
   };
 
   const totalProb = probRows.reduce((s, r) => s + (r.probability ?? 0), 0);
@@ -327,6 +378,55 @@ export default function CampaignDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Draw records */}
+      <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-800">中獎紀錄</h2>
+        {drawRecords.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-6">尚無中獎紀錄</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {["位置", "等級", "賞品名稱", "玩家", "中獎時間"].map((h) => (
+                    <th key={h} className="pb-2 text-left text-xs font-medium text-slate-500 pr-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {drawRecords.map((rec) => (
+                  <tr key={rec.ticketId} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-2 pr-4 text-slate-600 font-mono text-xs">#{rec.position}</td>
+                    <td className="py-2 pr-4">
+                      <span
+                        className="inline-block rounded px-2 py-0.5 text-xs font-semibold"
+                        style={gradeBadgeStyle(rec.grade)}
+                      >
+                        {rec.grade}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4">
+                      <div className="flex items-center gap-2">
+                        {rec.prizePhotoUrl && (
+                          <img
+                            src={rec.prizePhotoUrl}
+                            alt={rec.prizeName}
+                            className="h-8 w-8 rounded object-cover border border-slate-200 flex-shrink-0"
+                          />
+                        )}
+                        <span className="text-slate-700">{rec.prizeName}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-4 text-slate-700">{rec.playerNickname}</td>
+                    <td className="py-2 pr-4 text-slate-400 text-xs whitespace-nowrap">{timeAgo(rec.drawnAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Confirm modal */}
       <Modal

@@ -1,6 +1,5 @@
 package com.prizedraw.screens.status
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.prizedraw.i18n.S
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -116,7 +116,7 @@ public fun MaintenanceScreen(
                     val timeString =
                         "%02d:%02d".format(localTime.hour, localTime.minute)
                     Text(
-                        text = "預計 $timeString 恢復服務",
+                        text = "${S("status.scheduledRestorationAt")} $timeString",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
@@ -137,14 +137,14 @@ public fun MaintenanceScreen(
                             onRetry()
                         },
                     ) {
-                        Text("重新連線")
+                        Text(S("status.reconnect"))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "每 30 秒自動重試",
+                    text = S("status.autoRetryEvery30s"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )

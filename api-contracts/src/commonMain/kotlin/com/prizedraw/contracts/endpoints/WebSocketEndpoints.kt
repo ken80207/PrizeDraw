@@ -20,4 +20,13 @@ public object WebSocketEndpoints {
 
     /** WebSocket for real-time chat; room key mirrors the REST `{roomId}` path parameter. */
     public const val CHAT_ROOM: String = "/ws/chat/{roomId}"
+
+    /**
+     * Per-player notification channel. Requires JWT access token as query param `token`.
+     *
+     * Note: The token will appear in server access logs (query strings are typically logged).
+     * Short-lived access tokens (15 min) mitigate the risk. Consider configuring
+     * Ktor/reverse-proxy log filters to redact the `token` query param in production.
+     */
+    public const val PLAYER_NOTIFICATIONS: String = "/ws/player/notifications"
 }

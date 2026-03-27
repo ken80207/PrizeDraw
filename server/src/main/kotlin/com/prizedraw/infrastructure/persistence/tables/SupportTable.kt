@@ -2,6 +2,10 @@
 
 package com.prizedraw.infrastructure.persistence.tables
 
+import com.prizedraw.contracts.enums.SupportTicketCategory
+import com.prizedraw.contracts.enums.SupportTicketStatus
+import com.prizedraw.domain.entities.MessageChannel
+import com.prizedraw.domain.entities.SupportTicketPriority
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.json.jsonb
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
@@ -11,15 +15,23 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
  *
  * Covers `support_tickets` and `support_ticket_messages`.
  * [SupportTicketMessagesTable.attachments] is stored as `jsonb` for attachment metadata.
+ *
+ * Enum column type notes:
+ * - [SupportTicketsTable.status] and [SupportTicketsTable.category] use the api-contracts
+ *   enums ([SupportTicketStatus], [SupportTicketCategory]) since the domain entity references them.
+ * - [SupportTicketsTable.priority] and [SupportTicketMessagesTable.channel] use the
+ *   domain-layer enums ([SupportTicketPriority], [MessageChannel]) that the repository imports.
  */
 public object SupportTicketsTable : Table("support_tickets") {
     public val id = uuid("id").autoGenerate()
     public val playerId = uuid("player_id")
     public val assignedToStaffId = uuid("assigned_to_staff_id").nullable()
-    public val category = varchar("category", 64)
+    public val category = pgEnum<SupportTicketCategory>("category", "support_ticket_category")
     public val subject = varchar("subject", 255)
-    public val status = varchar("status", 32).default("OPEN")
-    public val priority = varchar("priority", 32).default("NORMAL")
+    public val status = pgEnum<SupportTicketStatus>("status", "support_ticket_status")
+        .default(SupportTicketStatus.OPEN)
+    public val priority = pgEnum<SupportTicketPriority>("priority", "support_ticket_priority")
+        .default(SupportTicketPriority.NORMAL)
     public val satisfactionScore = short("satisfaction_score").nullable()
     public val lineThreadId = varchar("line_thread_id", 255).nullable()
     public val contextTradeOrderId = uuid("context_trade_order_id").nullable()
@@ -41,7 +53,8 @@ public object SupportTicketMessagesTable : Table("support_ticket_messages") {
     public val authorStaffId = uuid("author_staff_id").nullable()
     public val body = text("body")
     public val attachments = jsonb("attachments", { it }, { it })
-    public val channel = varchar("channel", 32).default("PLATFORM")
+    public val channel = pgEnum<MessageChannel>("channel", "message_channel")
+        .default(MessageChannel.PLATFORM)
     public val lineMessageId = varchar("line_message_id", 255).nullable()
     public val createdAt = timestampWithTimeZone("created_at")
 

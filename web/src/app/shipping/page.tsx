@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/LoadingSkeleton";
@@ -23,14 +24,23 @@ interface ShippingOrderDto {
   deliveredAt: string | null;
 }
 
-const STATUS_ZH: Record<string, string> = {
-  PENDING_SHIPMENT: "待寄送",
-  SHIPPED: "已寄出",
-  DELIVERED: "已送達",
-  CANCELLED: "已取消",
+const STATUS_ICON: Record<string, string> = {
+  PENDING_SHIPMENT: "schedule",
+  SHIPPED: "local_shipping",
+  DELIVERED: "check_circle",
+  CANCELLED: "cancel",
 };
 
 export default function ShippingListPage() {
+  const t = useTranslations("shipping");
+
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING_SHIPMENT: t("statusPending"),
+    SHIPPED: t("statusShipped"),
+    DELIVERED: t("statusDelivered"),
+    CANCELLED: t("statusCancelled"),
+  };
+
   const [orders, setOrders] = useState<ShippingOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,86 +49,125 @@ export default function ShippingListPage() {
     apiClient
       .get<ShippingOrderDto[]>("/api/v1/shipping/orders")
       .then(setOrders)
-      .catch((err) => setError(err instanceof Error ? err.message : "無法載入寄送訂單"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("loadError")))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   if (loading) return <ShippingListSkeleton />;
 
-  if (error) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-gray-600 dark:text-gray-400">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-surface-dim">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">我的寄送訂單</h1>
+
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-error-container/20">
+            <span className="text-sm text-on-surface-variant">{error}</span>
+            <button onClick={() => window.location.reload()} className="text-xs text-primary font-bold shrink-0">{t("retryBtn")}</button>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-3xl">
+                local_shipping
+              </span>
+              <h1 className="font-headline text-3xl font-extrabold text-on-surface tracking-tight">
+                {t("title")}
+              </h1>
+            </div>
+            <p className="font-body text-sm text-on-surface-variant">
+              {t("subtitle")}
+            </p>
+          </div>
           <Link
             href="/prizes"
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+            className="flex items-center gap-1.5 text-sm font-label text-primary hover:underline"
           >
-            申請新寄送
+            {t("newShipping")}
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </Link>
         </div>
 
         {orders.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">目前沒有寄送訂單</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant">
+                local_shipping
+              </span>
+            </div>
+            <h3 className="font-headline text-lg font-bold text-on-surface mb-2">
+              {t("noOrders")}
+            </h3>
+            <p className="font-body text-sm text-on-surface-variant mb-8">
+              {t("noOrdersDesc")}
+            </p>
             <Link
               href="/prizes"
-              className="inline-flex items-center px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary text-sm font-bold font-label shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 active:scale-95"
             >
-              前往賞品庫
+              <span className="material-symbols-outlined text-lg">trophy</span>
+              {t("goToPrizes")}
             </Link>
           </div>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {orders.map((order) => (
               <li key={order.id}>
                 <Link
                   href={`/shipping/${order.id}`}
-                  className="block bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors"
+                  className="group block bg-surface-container rounded-lg p-5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all duration-300"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {order.recipientName}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                        {order.addressLine1}
-                        {order.addressLine2 ? `, ${order.addressLine2}` : ""}, {order.city}{" "}
-                        {order.postalCode}
-                      </p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-lg text-on-surface-variant">
+                          {STATUS_ICON[order.status] ?? "local_shipping"}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-headline text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                          {order.recipientName}
+                        </p>
+                        <p className="font-body text-xs text-on-surface-variant mt-0.5 truncate">
+                          {order.addressLine1}
+                          {order.addressLine2 ? `, ${order.addressLine2}` : ""}, {order.city}{" "}
+                          {order.postalCode}
+                        </p>
+                      </div>
                     </div>
-                    <StatusBadge status={STATUS_ZH[order.status] ?? order.status} />
+                    <StatusBadge status={STATUS_LABELS[order.status] ?? order.status} />
                   </div>
 
                   {order.trackingNumber && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      追蹤號碼：
-                      <span className="font-mono font-medium">{order.trackingNumber}</span>
-                      {order.carrier && (
-                        <span className="ml-1 text-gray-400 dark:text-gray-500">
-                          ({order.carrier})
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="material-symbols-outlined text-sm text-on-surface-variant">
+                        pin
+                      </span>
+                      <p className="font-body text-xs text-on-surface-variant">
+                        {t("trackingLabel")}
+                        <span className="font-mono font-medium text-on-surface">
+                          {order.trackingNumber}
                         </span>
-                      )}
-                    </p>
+                        {order.carrier && (
+                          <span className="ml-1 text-on-surface-variant/60">
+                            ({order.carrier})
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   )}
 
                   {order.shippedAt && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      寄出時間：{new Date(order.shippedAt).toLocaleString("zh-TW")}
+                    <p className="font-body text-xs text-on-surface-variant/60">
+                      {t("shippedAt")}{new Date(order.shippedAt).toLocaleString("zh-TW")}
                     </p>
                   )}
 
                   {order.deliveredAt && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                      送達時間：{new Date(order.deliveredAt).toLocaleString("zh-TW")}
+                    <p className="font-body text-xs text-primary mt-1">
+                      {t("deliveredAt")}{new Date(order.deliveredAt).toLocaleString("zh-TW")}
                     </p>
                   )}
                 </Link>
@@ -133,11 +182,11 @@ export default function ShippingListPage() {
 
 function ShippingListSkeleton() {
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <Skeleton className="h-8 w-40 mb-6" />
-      <div className="space-y-4">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 bg-surface-dim min-h-screen">
+      <Skeleton className="h-8 w-48 mb-8 bg-surface-container" />
+      <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28 rounded-2xl" />
+          <Skeleton key={i} className="h-28 rounded-lg bg-surface-container" />
         ))}
       </div>
     </div>

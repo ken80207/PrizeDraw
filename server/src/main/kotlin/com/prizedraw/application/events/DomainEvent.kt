@@ -112,3 +112,58 @@ public data class SupportTicketReplied(
     override val aggregateType: String = "SupportTicket"
     override val aggregateId: UUID = supportTicketId
 }
+
+/** Emitted when a player sends an exchange request to another player. */
+public data class ExchangeRequested(
+    val exchangeRequestId: UUID,
+    val initiatorId: UUID,
+    val recipientId: UUID,
+) : DomainEvent {
+    override val eventType: String = "exchange.requested"
+    override val aggregateType: String = "ExchangeRequest"
+    override val aggregateId: UUID = exchangeRequestId
+}
+
+/** Emitted when a player sends a counter-proposal on an exchange. */
+public data class ExchangeCounterProposed(
+    val exchangeRequestId: UUID,
+    val proposerId: UUID,
+    val recipientId: UUID,
+) : DomainEvent {
+    override val eventType: String = "exchange.counter_proposed"
+    override val aggregateType: String = "ExchangeRequest"
+    override val aggregateId: UUID = exchangeRequestId
+}
+
+/** Emitted when a player rejects an exchange request. */
+public data class ExchangeRejected(
+    val exchangeRequestId: UUID,
+    val rejecterId: UUID,
+    val otherPlayerId: UUID,
+) : DomainEvent {
+    override val eventType: String = "exchange.rejected"
+    override val aggregateType: String = "ExchangeRequest"
+    override val aggregateId: UUID = exchangeRequestId
+}
+
+/** Emitted when a payment order fails or expires. */
+public data class PaymentFailed(
+    val paymentOrderId: UUID,
+    val playerId: UUID,
+    val reason: String,
+) : DomainEvent {
+    override val eventType: String = "payment.failed"
+    override val aggregateType: String = "PaymentOrder"
+    override val aggregateId: UUID = paymentOrderId
+}
+
+/** Emitted when a player levels up. */
+public data class PlayerLevelUp(
+    val playerId: UUID,
+    val newLevel: Int,
+    val newTierName: String,
+) : DomainEvent {
+    override val eventType: String = "player.level_up"
+    override val aggregateType: String = "Player"
+    override val aggregateId: UUID = playerId
+}

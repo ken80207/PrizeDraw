@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useChat } from "@/hooks/useChat";
 import { authStore } from "@/stores/authStore";
 import { ReactionOverlay, useReactionQueue } from "@/components/ReactionOverlay";
@@ -44,6 +45,7 @@ interface ChatPanelProps {
  * - Floating emoji reactions via ReactionOverlay
  */
 export function ChatPanel({ roomId }: ChatPanelProps) {
+  const t = useTranslations("chat");
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
       setInputText("");
       inputRef.current?.focus();
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "傳送失敗");
+      setSendError(err instanceof Error ? err.message : t("sendFailed"));
     }
   };
 
@@ -96,7 +98,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
     try {
       await sendReaction(emoji);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "傳送失敗");
+      setSendError(err instanceof Error ? err.message : t("sendFailed"));
     }
   };
 
@@ -126,19 +128,19 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
       <button
         data-testid="chat-toggle"
         onClick={() => setIsOpen((v) => !v)}
-        className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-lg transition-all"
-        aria-label={isOpen ? "關閉聊天" : "開啟聊天"}
+        className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-tr from-primary to-primary-container text-on-primary text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105"
+        aria-label={isOpen ? t("closeChat") : t("openChat")}
       >
-        <span>💬</span>
-        <span className="hidden sm:inline">聊天</span>
+        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span>
+        <span className="hidden sm:inline font-headline text-xs uppercase tracking-wider">{t("toggle")}</span>
         {/* Unread indicator dot — shown when panel is closed and messages exist */}
         {!isOpen && messages.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white" />
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full border-2 border-surface-dim" />
         )}
         {/* Connection indicator */}
         <span
-          className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-gray-400"}`}
-          title={isConnected ? "已連線" : "連線中..."}
+          className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-outline"}`}
+          title={isConnected ? t("connected") : t("connecting")}
         />
       </button>
 
@@ -158,35 +160,34 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
           ${isOpen ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-y-0 sm:translate-x-full"}
         `}
         style={{
-          background: "rgba(17, 24, 39, 0.85)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(26, 26, 46, 0.9)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <div className="flex items-center gap-2">
-            <span className="text-white font-semibold text-sm">聊天室</span>
+            <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span>
+            <span className="text-on-surface font-bold text-sm font-headline">{t("title")}</span>
             <span
-              className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-gray-500"}`}
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-outline"}`}
             />
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
-            aria-label="關閉聊天"
+            className="text-on-surface-variant hover:text-on-surface transition-colors"
+            aria-label={t("closeChat")}
           >
-            ×
+            <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
 
         {/* Message list */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 hide-scrollbar">
           {messages.length === 0 && (
-            <p className="text-center text-gray-500 text-xs mt-8">
-              目前沒有訊息，搶先發言吧！
+            <p className="text-center text-on-surface-variant/50 text-xs mt-8">
+              {t("noMessages")}
             </p>
           )}
 
@@ -197,8 +198,8 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
               // Reactions are shown as a compact centered label
               return (
                 <div key={msg.id} className="flex justify-center">
-                  <span className="text-xs text-gray-400 bg-white/5 rounded-full px-2 py-0.5">
-                    {msg.nickname} 送出 {msg.message}
+                  <span className="text-xs text-on-surface-variant/50 bg-white/5 rounded-full px-2 py-0.5">
+                    {msg.nickname} {t("sentReaction")} {msg.message}
                   </span>
                 </div>
               );
@@ -210,14 +211,14 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
                 className={`flex flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}
               >
                 {!isSelf && (
-                  <span className="text-xs text-gray-400 px-1">{msg.nickname}</span>
+                  <span className="text-xs text-on-surface-variant/50 px-1">{msg.nickname}</span>
                 )}
                 <div
                   className={`
                     max-w-[85%] px-3 py-2 rounded-2xl text-sm break-words
                     ${isSelf
-                      ? "bg-indigo-600 text-white rounded-br-sm"
-                      : "bg-white/10 text-gray-100 rounded-bl-sm"
+                      ? "bg-gradient-to-tr from-primary/30 to-primary-container/20 text-on-surface rounded-br-sm"
+                      : "bg-surface-container-high text-on-surface rounded-bl-sm"
                     }
                   `}
                 >
@@ -231,7 +232,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
         </div>
 
         {/* Reaction bar */}
-        <div className="px-3 py-2 flex gap-1.5 border-t border-white/10 shrink-0 overflow-x-auto">
+        <div className="px-3 py-2 flex gap-1.5 shrink-0 overflow-x-auto" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           {REACTION_EMOJIS.map((emoji) => (
             <button
               key={emoji}
@@ -239,7 +240,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
               onClick={() => void handleReaction(emoji)}
               disabled={isCoolingDown}
               className="text-xl p-1.5 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-40 shrink-0"
-              aria-label={`傳送 ${emoji}`}
+              aria-label={t("sendReaction", { emoji })}
             >
               {emoji}
             </button>
@@ -247,9 +248,9 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
         </div>
 
         {/* Input area */}
-        <div className="px-3 pb-4 pt-2 shrink-0 border-t border-white/10">
+        <div className="px-3 pb-4 pt-2 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           {sendError && (
-            <p className="text-xs text-rose-400 mb-1.5">{sendError}</p>
+            <p className="text-xs text-error mb-1.5">{sendError}</p>
           )}
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
@@ -260,14 +261,14 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                 onKeyDown={handleKeyDown}
-                placeholder="說點什麼..."
+                placeholder={t("placeholder")}
                 maxLength={MAX_MESSAGE_LENGTH}
-                className="w-full bg-white/10 text-white placeholder-gray-500 text-sm rounded-xl px-3 py-2 pr-10 outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full bg-surface-container-lowest text-on-surface placeholder-on-surface-variant/30 text-sm rounded-xl px-3 py-2 pr-10 outline-none border-none focus:ring-1 focus:ring-primary transition-all"
               />
               {/* Character counter */}
               <span
                 className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums ${
-                  remaining < 20 ? "text-rose-400" : "text-gray-500"
+                  remaining < 20 ? "text-error" : "text-on-surface-variant/40"
                 }`}
               >
                 {remaining}
@@ -277,9 +278,11 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
               data-testid="chat-send"
               onClick={() => void handleSend()}
               disabled={!inputText.trim() || isCoolingDown}
-              className="shrink-0 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-tr from-primary to-primary-container text-on-primary text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              {isCoolingDown ? "⏱" : "送出"}
+              {isCoolingDown ? (
+                <span className="material-symbols-outlined text-sm">timer</span>
+              ) : t("send")}
             </button>
           </div>
         </div>

@@ -104,12 +104,30 @@ public data class FeatureFlagDto(
 // --- Phase 11: Admin Campaign Management ---
 
 @Serializable
+public data class CreateKujiTicketRangeRequest(
+    val grade: String,
+    val prizeName: String,
+    val rangeStart: Int,
+    val rangeEnd: Int,
+    val prizeValue: Int = 0,
+    val photoUrl: String? = null,
+)
+
+@Serializable
+public data class CreateKujiBoxRequest(
+    val name: String,
+    val totalTickets: Int,
+    val ticketRanges: List<CreateKujiTicketRangeRequest> = emptyList(),
+)
+
+@Serializable
 public data class CreateKujiCampaignAdminRequest(
     val title: String,
     val description: String? = null,
     val coverImageUrl: String? = null,
     val pricePerDraw: Int,
     val drawSessionSeconds: Int = 300,
+    val boxes: List<CreateKujiBoxRequest> = emptyList(),
 )
 
 @Serializable

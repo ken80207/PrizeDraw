@@ -35,7 +35,7 @@ public class TradeRepositoryImpl : ITradeRepository {
                 .selectAll()
                 .where {
                     (TradeOrdersTable.prizeInstanceId eq prizeInstanceId.value) and
-                        (TradeOrdersTable.status eq TradeOrderStatus.LISTED.name)
+                        (TradeOrdersTable.status eq TradeOrderStatus.LISTED)
                 }.singleOrNull()
                 ?.toTradeListing()
         }
@@ -50,7 +50,7 @@ public class TradeRepositoryImpl : ITradeRepository {
                 .where {
                     val baseCondition = TradeOrdersTable.sellerId eq sellerId.value
                     if (status != null) {
-                        baseCondition and (TradeOrdersTable.status eq status.name)
+                        baseCondition and (TradeOrdersTable.status eq status)
                     } else {
                         baseCondition
                     }
@@ -65,7 +65,7 @@ public class TradeRepositoryImpl : ITradeRepository {
             TradeOrdersTable
                 .selectAll()
                 .where {
-                    (TradeOrdersTable.status eq TradeOrderStatus.LISTED.name) and
+                    (TradeOrdersTable.status eq TradeOrderStatus.LISTED) and
                         (TradeOrdersTable.deletedAt.isNull())
                 }.orderBy(TradeOrdersTable.listedAt, org.jetbrains.exposed.sql.SortOrder.DESC)
                 .limit(limit, offset.toLong())
@@ -90,7 +90,7 @@ public class TradeRepositoryImpl : ITradeRepository {
                     it[feeRateBps] = listing.feeRateBps
                     it[feeAmount] = listing.feeAmount
                     it[sellerProceeds] = listing.sellerProceeds
-                    it[status] = listing.status.name
+                    it[status] = listing.status
                     it[listedAt] = listing.listedAt.toOffsetDateTime()
                     it[completedAt] = listing.completedAt?.toOffsetDateTime()
                     it[cancelledAt] = listing.cancelledAt?.toOffsetDateTime()
@@ -103,7 +103,7 @@ public class TradeRepositoryImpl : ITradeRepository {
                     it[buyerId] = listing.buyerId?.value
                     it[feeAmount] = listing.feeAmount
                     it[sellerProceeds] = listing.sellerProceeds
-                    it[status] = listing.status.name
+                    it[status] = listing.status
                     it[completedAt] = listing.completedAt?.toOffsetDateTime()
                     it[cancelledAt] = listing.cancelledAt?.toOffsetDateTime()
                     it[deletedAt] = listing.deletedAt?.toOffsetDateTime()
@@ -128,7 +128,7 @@ public class TradeRepositoryImpl : ITradeRepository {
             feeRateBps = this[TradeOrdersTable.feeRateBps],
             feeAmount = this[TradeOrdersTable.feeAmount],
             sellerProceeds = this[TradeOrdersTable.sellerProceeds],
-            status = TradeOrderStatus.valueOf(this[TradeOrdersTable.status]),
+            status = this[TradeOrdersTable.status],
             listedAt = this[TradeOrdersTable.listedAt].toInstant().toKotlinInstant(),
             completedAt = this[TradeOrdersTable.completedAt]?.toInstant()?.toKotlinInstant(),
             cancelledAt = this[TradeOrdersTable.cancelledAt]?.toInstant()?.toKotlinInstant(),

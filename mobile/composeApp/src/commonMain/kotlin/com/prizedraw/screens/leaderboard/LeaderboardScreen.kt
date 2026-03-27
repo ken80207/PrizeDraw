@@ -29,6 +29,7 @@ import com.prizedraw.contracts.dto.leaderboard.LeaderboardDto
 import com.prizedraw.contracts.dto.leaderboard.LeaderboardEntryDto
 import com.prizedraw.contracts.dto.leaderboard.LeaderboardPeriod
 import com.prizedraw.contracts.dto.leaderboard.LeaderboardType
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.leaderboard.LeaderboardIntent
 import com.prizedraw.viewmodels.leaderboard.LeaderboardViewModel
 
@@ -62,7 +63,7 @@ public fun LeaderboardScreen(
 
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Loading…")
+                Text(S("common.loading"))
             }
         } else if (state.error != null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -93,7 +94,7 @@ public fun LeaderboardScreen(
                     ) {
                         Text("#${self.rank}", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = "Your rank — score: ${self.score}",
+                            text = "${S("leaderboard.yourRank")} — ${S("leaderboard.score")}: ${self.score}",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(start = 8.dp),
                         )
@@ -190,18 +191,20 @@ private fun RankBadge(rank: Int) {
     }
 }
 
+@Composable
 private fun LeaderboardType.displayName(): String =
     when (this) {
-        LeaderboardType.DRAW_COUNT -> "Draws"
-        LeaderboardType.PRIZE_GRADE -> "Grade"
-        LeaderboardType.TRADE_VOLUME -> "Trades"
-        LeaderboardType.CAMPAIGN_SPECIFIC -> "Campaign"
+        LeaderboardType.DRAW_COUNT -> S("leaderboard.typeDraws")
+        LeaderboardType.PRIZE_GRADE -> S("leaderboard.typeGrade")
+        LeaderboardType.TRADE_VOLUME -> S("leaderboard.typeTrades")
+        LeaderboardType.CAMPAIGN_SPECIFIC -> S("leaderboard.typeCampaign")
     }
 
+@Composable
 private fun LeaderboardPeriod.displayName(): String =
     when (this) {
-        LeaderboardPeriod.TODAY -> "Today"
-        LeaderboardPeriod.THIS_WEEK -> "Week"
-        LeaderboardPeriod.THIS_MONTH -> "Month"
-        LeaderboardPeriod.ALL_TIME -> "All Time"
+        LeaderboardPeriod.TODAY -> S("leaderboard.periodToday")
+        LeaderboardPeriod.THIS_WEEK -> S("leaderboard.periodWeek")
+        LeaderboardPeriod.THIS_MONTH -> S("leaderboard.periodMonth")
+        LeaderboardPeriod.ALL_TIME -> S("leaderboard.periodAllTime")
     }

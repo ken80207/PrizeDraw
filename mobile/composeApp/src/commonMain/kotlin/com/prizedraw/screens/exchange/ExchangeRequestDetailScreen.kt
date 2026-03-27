@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.exchange.ExchangeItemDto
 import com.prizedraw.contracts.dto.exchange.ExchangeOfferDto
 import com.prizedraw.contracts.enums.ExchangeRequestStatus
+import com.prizedraw.i18n.S
 
 /**
  * Exchange request detail screen showing both sides' items with respond actions.
@@ -60,18 +61,18 @@ public fun ExchangeRequestDetailScreen(
     ) {
         item {
             Text(
-                text = "Exchange Request",
+                text = S("exchange.requestTitle"),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = "Status: ${offer.status.name}",
+                text = "${S("common.status")}: ${offer.status.name}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {
             Text(
-                text = "${offer.initiatorNickname}'s Offer:",
+                text = "${offer.initiatorNickname}${S("exchange.initiatorOffer")}",
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -81,7 +82,7 @@ public fun ExchangeRequestDetailScreen(
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "${offer.recipientNickname}'s Request:",
+                text = "${offer.recipientNickname}${S("exchange.recipientRequest")}",
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -92,7 +93,7 @@ public fun ExchangeRequestDetailScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Message:", style = MaterialTheme.typography.labelMedium)
+                        Text(S("exchange.message"), style = MaterialTheme.typography.labelMedium)
                         Text(offer.message ?: "", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -108,7 +109,7 @@ public fun ExchangeRequestDetailScreen(
         }
         item {
             OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text("Back")
+                Text(S("common.back"))
             }
         }
     }
@@ -132,10 +133,10 @@ private fun RecipientActions(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(onClick = onAccept, modifier = Modifier.fillMaxWidth()) {
-            Text("Accept")
+            Text(S("exchange.accept"))
         }
         OutlinedButton(onClick = onCounterPropose, modifier = Modifier.fillMaxWidth()) {
-            Text("Counter-Propose")
+            Text(S("exchange.counterPropose"))
         }
         OutlinedButton(
             onClick = onReject,
@@ -145,7 +146,7 @@ private fun RecipientActions(
                 ),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Reject")
+            Text(S("exchange.reject"))
         }
     }
 }
@@ -160,6 +161,6 @@ private fun InitiatorActions(onCancel: () -> Unit) {
             ),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("Cancel Offer")
+        Text(S("exchange.cancelOffer"))
     }
 }

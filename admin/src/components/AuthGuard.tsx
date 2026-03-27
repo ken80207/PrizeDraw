@@ -35,7 +35,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const token = sessionStorage.getItem("adminToken");
+    const token = sessionStorage.getItem("adminAccessToken");
     const role = sessionStorage.getItem("adminRole") as StaffRole | null;
 
     if (!token || !role) {

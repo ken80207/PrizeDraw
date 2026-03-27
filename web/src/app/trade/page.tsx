@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { apiClient } from "@/services/apiClient";
 import { GradeBadge } from "@/components/GradeBadge";
 import { PrizeCardSkeleton } from "@/components/LoadingSkeleton";
@@ -33,14 +34,18 @@ interface PurchaseConfirmProps {
   loading: boolean;
 }
 
-const GRADE_FILTERS = ["全部", "A賞", "B賞", "C賞", "D賞", "Last賞"];
-const SORT_OPTIONS = [
-  { value: "newest", label: "最新上架" },
-  { value: "price_asc", label: "價格低到高" },
-  { value: "price_desc", label: "價格高到低" },
-];
+const GRADE_FILTER_VALUES = ["全部", "A賞", "B賞", "C賞", "D賞", "Last賞"];
 
 export default function TradePage() {
+  const tt = useTranslations("trade");
+  const tc = useTranslations("common");
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: tt("sortNewest") },
+    { value: "price_asc", label: tt("sortPriceLow") },
+    { value: "price_desc", label: tt("sortPriceHigh") },
+  ];
+
   const [listings, setListings] = useState<TradeListingDto[]>([]);
   const [gradeFilter, setGradeFilter] = useState("全部");
   const [search, setSearch] = useState("");
@@ -67,12 +72,12 @@ export default function TradePage() {
       );
       setListings(data.items ?? []);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "載入市集失敗";
+      const msg = err instanceof Error ? err.message : tt("loadFailed");
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [gradeFilter, search, sort, priceMin, priceMax]);
+  }, [gradeFilter, search, sort, priceMin, priceMax, tt]);
 
   useEffect(() => {
     loadListings();
@@ -83,96 +88,100 @@ export default function TradePage() {
     setPurchasing(true);
     try {
       await apiClient.post(`/api/v1/trade/listings/${selectedListing.id}/purchase`, { listingId: selectedListing.id });
-      toast.success(`成功購買 ${selectedListing.prizeName}！`);
+      toast.success(`${tt("purchaseSuccess")} ${selectedListing.prizeName}`);
       setSelectedListing(null);
       loadListings();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "購買失敗");
+      toast.error(err instanceof Error ? err.message : tt("loadFailed"));
     } finally {
       setPurchasing(false);
     }
   }
 
+  // Grade filter display labels: "全部" maps to tc("all"), others keep their value
+  const gradeLabel = (grade: string) => grade === "全部" ? tc("all") : grade;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-surface-dim">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">交易市集</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              購買其他玩家上架的賞品
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-3xl">storefront</span>
+              <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight">
+                {tt("title")}
+              </h1>
+            </div>
+            <p className="font-body text-sm text-on-surface-variant">
+              {tt("subtitle")}
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6 space-y-4">
+        <div className="bg-surface-container rounded-2xl p-6 mb-8 shadow-xl">
           {/* Search */}
-          <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-              />
-            </svg>
+          <div className="relative group mb-5">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors text-xl">
+              search
+            </span>
             <input
               type="text"
-              placeholder="搜尋賞品名稱..."
+              placeholder={tt("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-12 pr-4 py-3 rounded-xl bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             {/* Grade filter pills */}
             <div className="flex flex-wrap gap-2">
-              {GRADE_FILTERS.map((grade) => (
+              {GRADE_FILTER_VALUES.map((grade) => (
                 <button
                   key={grade}
                   onClick={() => setGradeFilter(grade)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold font-label uppercase tracking-wider transition-all ${
                     gradeFilter === grade
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      ? "bg-gradient-to-r from-primary to-primary-container text-on-primary shadow-md shadow-primary/20"
+                      : "bg-surface-container-lowest text-on-surface-variant hover:text-on-surface"
                   }`}
                 >
-                  {grade}
+                  {gradeLabel(grade)}
                 </button>
               ))}
             </div>
 
             {/* Price range */}
             <div className="flex items-center gap-2 ml-auto">
-              <input
-                type="number"
-                placeholder="最低價"
-                value={priceMin}
-                onChange={(e) => setPriceMin(e.target.value)}
-                className="w-20 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-400 text-sm">~</span>
-              <input
-                type="number"
-                placeholder="最高價"
-                value={priceMax}
-                onChange={(e) => setPriceMax(e.target.value)}
-                className="w-20 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <span className="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold">
+                {tc("pts")}
+              </span>
+              <div className="flex items-center gap-2 bg-surface-container-lowest rounded-xl p-1">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(e.target.value)}
+                  className="w-20 bg-transparent px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
+                />
+                <div className="w-px h-4 bg-on-surface-variant/20" />
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(e.target.value)}
+                  className="w-20 bg-transparent px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
+                />
+              </div>
 
               {/* Sort */}
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="bg-surface-container-lowest rounded-xl py-2 pl-3 pr-8 text-xs text-on-surface font-label focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -186,48 +195,60 @@ export default function TradePage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-between">
-            <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
-            <button onClick={loadListings} className="text-sm font-medium text-red-700 dark:text-red-400 hover:underline">
-              重試
+          <div className="mb-6 p-4 rounded-xl bg-error/10 flex items-center justify-between">
+            <span className="text-sm text-error font-body">{error}</span>
+            <button
+              onClick={loadListings}
+              className="text-sm font-medium text-error hover:underline font-label"
+            >
+              {tc("retry")}
             </button>
           </div>
         )}
 
         {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <PrizeCardSkeleton key={i} />
             ))}
           </div>
         ) : listings.length === 0 ? (
           <EmptyState
-            icon="🛒"
-            title="目前沒有符合條件的商品"
-            description="試試調整篩選條件，或稍後再來看看"
-            action={{ label: "清除篩選", onClick: () => { setGradeFilter("全部"); setSearch(""); setPriceMin(""); setPriceMax(""); } }}
+            icon="shopping_cart"
+            title={tt("noListings")}
+            description={tt("adjustFilters")}
+            action={{
+              label: tc("clearFilters"),
+              onClick: () => {
+                setGradeFilter("全部");
+                setSearch("");
+                setPriceMin("");
+                setPriceMax("");
+              },
+            }}
           />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
             {listings.map((listing) => (
               <ListingCard
                 key={listing.id}
                 listing={listing}
                 onBuy={() => setSelectedListing(listing)}
+                buyLabel={tt("buy")}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* FAB: 我要上架 */}
+      {/* FAB: List a Prize */}
       <Link
         href="/trade/new"
-        className="fixed bottom-6 right-6 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xl hover:shadow-2xl transition-all hover:-translate-y-0.5 z-30"
+        className="fixed bottom-6 right-6 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold font-label shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all hover:-translate-y-0.5 active:scale-95 z-30"
       >
-        <span className="text-lg">+</span>
-        我要上架
+        <span className="material-symbols-outlined text-lg">add</span>
+        {tt("createListing")}
       </Link>
 
       {/* Purchase confirmation modal */}
@@ -246,88 +267,135 @@ export default function TradePage() {
 function ListingCard({
   listing,
   onBuy,
+  buyLabel,
 }: {
   listing: TradeListingDto;
   onBuy: () => void;
+  buyLabel: string;
 }) {
   return (
-    <div data-testid="listing-card" className="group rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-600 transition-all">
-      <div className="relative w-full h-40 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+    <div
+      data-testid="listing-card"
+      className="group relative bg-surface-container rounded-lg overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+    >
+      {/* Image */}
+      <div className="relative w-full h-44 bg-surface-container-low group-hover:bg-surface-container-high overflow-hidden transition-colors">
         {listing.prizePhotoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={listing.prizePhotoUrl}
             alt={listing.prizeName}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-3xl">
-            {listing.prizeGrade}
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="material-symbols-outlined text-5xl text-on-surface-variant/30">
+              trophy
+            </span>
           </div>
         )}
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-3 left-3">
           <GradeBadge grade={listing.prizeGrade} />
         </div>
       </div>
-      <div className="p-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-1">
-          {listing.prizeName}
-        </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          賣家: {listing.sellerNickname}
-        </p>
-        <div className="flex items-center justify-between">
-          <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-            💰 {listing.listPrice.toLocaleString()} 點
-          </span>
-          <button
-            onClick={onBuy}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition-colors"
-          >
-            購買
-          </button>
+
+      {/* Body */}
+      <div className="p-4 space-y-3">
+        <div>
+          {listing.sourceCampaignTitle && (
+            <span className="text-[10px] uppercase tracking-[0.2em] text-secondary font-bold font-label mb-1 block">
+              {listing.sourceCampaignTitle}
+            </span>
+          )}
+          <h3 className="font-headline font-bold text-sm text-on-surface leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+            {listing.prizeName}
+          </h3>
         </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-on-surface/5">
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm text-on-surface-variant">
+              person
+            </span>
+            <span className="text-xs text-on-surface-variant font-body">
+              {listing.sellerNickname}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-primary font-black font-label">
+            <span className="material-symbols-outlined text-sm">monetization_on</span>
+            <span className="text-sm">{listing.listPrice.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={onBuy}
+          className="w-full py-2.5 rounded-xl bg-surface-container-high text-on-surface font-bold font-label text-xs uppercase tracking-widest border border-on-surface/10 group-hover:bg-gradient-to-r group-hover:from-primary group-hover:to-primary-container group-hover:text-on-primary group-hover:border-transparent transition-all"
+        >
+          {buyLabel}
+        </button>
       </div>
     </div>
   );
 }
 
 function PurchaseConfirm({ listing, onConfirm, onClose, loading }: PurchaseConfirmProps) {
+  const tt = useTranslations("trade");
+  const tc = useTranslations("common");
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full shadow-2xl p-6">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">確認購買</h3>
-        <div className="flex items-center gap-4 mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="bg-surface-container rounded-lg max-w-sm w-full shadow-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-headline text-lg font-bold text-on-surface">{tt("confirmPurchase")}</h3>
+          <button
+            onClick={onClose}
+            className="text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4 mb-5 p-4 bg-surface-container-high rounded-xl">
           {listing.prizePhotoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={listing.prizePhotoUrl}
               alt={listing.prizeName}
-              className="w-16 h-16 object-cover rounded-lg"
+              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
             />
           )}
           <div>
-            <GradeBadge grade={listing.prizeGrade} className="mb-1" />
-            <p className="font-semibold text-gray-900 dark:text-gray-100">{listing.prizeName}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">賣家: {listing.sellerNickname}</p>
+            <GradeBadge grade={listing.prizeGrade} className="mb-1.5" />
+            <p className="font-headline font-semibold text-on-surface text-sm">
+              {listing.prizeName}
+            </p>
+            <p className="text-xs text-on-surface-variant font-body mt-0.5">
+              {tt("seller")}: {listing.sellerNickname}
+            </p>
           </div>
         </div>
-        <p className="text-center text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-5">
-          {listing.listPrice.toLocaleString()} 消費點數
-        </p>
+
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span className="material-symbols-outlined text-primary">monetization_on</span>
+          <span className="font-headline text-2xl font-black text-primary">
+            {listing.listPrice.toLocaleString()}
+          </span>
+          <span className="text-on-surface-variant font-body text-sm">{tc("pts")}</span>
+        </div>
+
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+            className="flex-1 py-3 rounded-xl border border-on-surface/20 text-on-surface-variant font-label font-medium hover:text-on-surface hover:border-on-surface/40 transition-colors text-sm"
           >
-            取消
+            {tc("cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50 transition-colors text-sm"
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-label font-bold disabled:opacity-50 transition-all shadow-lg shadow-primary/20 text-sm"
           >
-            {loading ? "處理中..." : "確認購買"}
+            {loading ? tt("processing") : tt("confirmPurchase")}
           </button>
         </div>
       </div>

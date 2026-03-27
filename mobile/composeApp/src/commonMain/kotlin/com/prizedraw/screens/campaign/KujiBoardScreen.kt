@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,8 +22,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.draw.DrawTicketDto
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.campaign.KujiCampaignIntent
 import com.prizedraw.viewmodels.campaign.KujiCampaignState
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
@@ -31,8 +35,8 @@ import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
  * Full-screen ticket board for a kuji box.
  *
  * Renders each ticket as a cell in a [LazyVerticalGrid]:
- * - Available: shows slot number, tappable when [isMyTurn] is true.
- * - Drawn: shows prize photo placeholder, grade overlay, and drawer nickname.
+ * - Available: shows slot number prominently, tappable when [isMyTurn] is true.
+ * - Drawn: shows prize grade, prize name, and optionally the drawer's nickname.
  *
  * Players not in the queue automatically enter **spectator mode**: a "Watching" badge
  * is shown in the header, real-time draw events are still received via WebSocket, and
@@ -78,13 +82,13 @@ private fun SpectatorBanner(spectatorCount: Int) {
                 .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Text(
-            text = "Watching",
+            text = S("spectator.watching"),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (spectatorCount > 0) {
             Text(
-                text = "$spectatorCount viewers",
+                text = "$spectatorCount ${S("spectator.viewers")}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -106,32 +110,82 @@ private fun TicketGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         items(tickets, key = { it.id }) { ticket ->
-            TicketCellStub(ticket = ticket, enabled = isMyTurn, onTap = { onTicketTapped(ticket.id) })
+            TicketCell(
+                ticket = ticket,
+                isSelectable = isMyTurn && ticket.status == "AVAILABLE",
+                onSelect = { onTicketTapped(ticket.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun TicketCellStub(
+public fun TicketCell(
     ticket: DrawTicketDto,
-    enabled: Boolean,
-    onTap: () -> Unit,
+    isSelectable: Boolean,
+    onSelect: () -> Unit,
 ) {
+    val isDrawn = ticket.status == "DRAWN"
+
     Card(
-        onClick = { if (enabled && ticket.drawnAt == null) onTap() },
+        onClick = { if (isSelectable) onSelect() },
         modifier = Modifier.fillMaxWidth(),
+        colors =
+            if (isDrawn) {
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            } else {
+                CardDefaults.cardColors()
+            },
+        enabled = isSelectable || isDrawn,
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
-            if (ticket.drawnAt != null) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(8.dp),
+        ) {
+            if (isDrawn) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Ticket number always visible
+                    Text(
+                        text = "#${ticket.position}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     // TODO(T109): AsyncImage for prizePhotoUrl
-                    Text(text = ticket.grade ?: "", style = MaterialTheme.typography.labelLarge)
-                    Text(text = ticket.drawnByNickname ?: "", style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        text = ticket.grade ?: "",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    ticket.prizeName?.let { name ->
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                        )
+                    }
+                    ticket.drawnByNickname?.let { nickname ->
+                        Text(
+                            text = nickname,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
                 }
             } else {
+                // Available ticket — number shown prominently
                 Text(
                     text = ticket.position.toString(),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color =
+                        if (isSelectable) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
                 )
             }
         }
@@ -152,9 +206,9 @@ private fun QueueBottomBar(
         if (state.queueEntry != null) {
             val label =
                 if (state.isMyTurn) {
-                    "Your turn! ${state.sessionCountdown ?: 0}s remaining"
+                    "${S("draw.yourTurn")} ${state.sessionCountdown ?: 0}s ${S("common.remaining")}"
                 } else {
-                    "Queue position: ${state.queueEntry.position}"
+                    "${S("draw.queuePosition")}: ${state.queueEntry.position}"
                 }
             Text(text = label, style = MaterialTheme.typography.bodyMedium)
         } else {
@@ -162,7 +216,7 @@ private fun QueueBottomBar(
                 onClick = { viewModel.onIntent(KujiCampaignIntent.JoinQueue) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Join Queue")
+                Text(S("campaign.joinQueue"))
             }
         }
     }

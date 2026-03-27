@@ -207,7 +207,7 @@ export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }:
         {/* ends up at 360deg = 0deg (front-facing) and the front face is now */}
         {/* at 180deg (rear-facing, hidden). Net result: correct reveal.      */}
         <div
-          className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900"
+          className="rounded-2xl overflow-hidden bg-surface-container"
           style={{
             ...faceBaseStyle,
             // Pre-rotate so this face starts hidden and becomes visible on flip
@@ -243,7 +243,7 @@ export function FlipReveal({ prizePhotoUrl, prizeGrade, prizeName, onRevealed }:
               {prizeGrade}
             </span>
             <p
-              className="text-center font-bold text-gray-900 dark:text-gray-100 leading-tight"
+              className="text-center font-bold text-on-surface leading-tight"
               style={{ fontSize: "clamp(0.8rem, 3vw, 1rem)" }}
             >
               {prizeName}

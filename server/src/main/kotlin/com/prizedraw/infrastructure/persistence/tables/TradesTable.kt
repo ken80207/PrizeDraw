@@ -2,6 +2,9 @@
 
 package com.prizedraw.infrastructure.persistence.tables
 
+import com.prizedraw.contracts.enums.ExchangeItemSide
+import com.prizedraw.contracts.enums.ExchangeRequestStatus
+import com.prizedraw.contracts.enums.TradeOrderStatus
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
@@ -9,6 +12,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
  * Exposed table definitions for the marketplace trade and prize exchange subsystems.
  *
  * Covers `trade_orders`, `exchange_requests`, and `exchange_request_items`.
+ * Enum columns map to their respective PG enum types via [pgEnum].
  */
 public object TradeOrdersTable : Table("trade_orders") {
     public val id = uuid("id").autoGenerate()
@@ -19,7 +23,8 @@ public object TradeOrdersTable : Table("trade_orders") {
     public val feeRateBps = integer("fee_rate_bps")
     public val feeAmount = integer("fee_amount").nullable()
     public val sellerProceeds = integer("seller_proceeds").nullable()
-    public val status = varchar("status", 32).default("LISTED")
+    public val status = pgEnum<TradeOrderStatus>("status", "trade_order_status")
+        .default(TradeOrderStatus.LISTED)
     public val listedAt = timestampWithTimeZone("listed_at")
     public val completedAt = timestampWithTimeZone("completed_at").nullable()
     public val cancelledAt = timestampWithTimeZone("cancelled_at").nullable()
@@ -35,7 +40,8 @@ public object ExchangeRequestsTable : Table("exchange_requests") {
     public val initiatorId = uuid("initiator_id")
     public val recipientId = uuid("recipient_id")
     public val parentRequestId = uuid("parent_request_id").nullable()
-    public val status = varchar("status", 32).default("PENDING")
+    public val status = pgEnum<ExchangeRequestStatus>("status", "exchange_request_status")
+        .default(ExchangeRequestStatus.PENDING)
     public val message = text("message").nullable()
     public val respondedAt = timestampWithTimeZone("responded_at").nullable()
     public val completedAt = timestampWithTimeZone("completed_at").nullable()
@@ -50,7 +56,7 @@ public object ExchangeRequestItemsTable : Table("exchange_request_items") {
     public val id = uuid("id").autoGenerate()
     public val exchangeRequestId = uuid("exchange_request_id")
     public val prizeInstanceId = uuid("prize_instance_id")
-    public val side = varchar("side", 32)
+    public val side = pgEnum<ExchangeItemSide>("side", "exchange_item_side")
     public val createdAt = timestampWithTimeZone("created_at")
 
     override val primaryKey: PrimaryKey = PrimaryKey(id)

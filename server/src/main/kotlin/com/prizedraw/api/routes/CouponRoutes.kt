@@ -36,7 +36,6 @@ import io.ktor.server.routing.route
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 @Serializable

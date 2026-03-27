@@ -166,11 +166,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_action_created
 -- player_coupons: coupon eligibility check during draw (hot path)
 -- ---------------------------------------------------------------------------
 
--- Supports: finding available coupons for a player for a specific campaign type
---   WHERE player_id = $1 AND is_used = false ORDER BY acquired_at ASC
+-- Supports: finding active coupons for a player
 CREATE INDEX IF NOT EXISTS idx_player_coupons_player_unused
-    ON player_coupons (player_id, is_used, acquired_at ASC)
-    WHERE is_used = false;
+    ON player_coupons (player_id, status)
+    WHERE status = 'ACTIVE';
 
 -- ---------------------------------------------------------------------------
 -- exchange_requests: player exchange inbox/outbox

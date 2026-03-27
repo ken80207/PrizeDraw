@@ -2,6 +2,8 @@
 
 package com.prizedraw.infrastructure.persistence.tables
 
+import com.prizedraw.contracts.enums.DrawPointTxType
+import com.prizedraw.contracts.enums.RevenuePointTxType
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
@@ -9,12 +11,13 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
  * Exposed table definitions for the immutable double-entry ledger tables.
  *
  * Both tables are INSERT-only; the application layer must never UPDATE or DELETE rows.
- * Enum columns are mapped as `varchar` and converted in the repository layer.
+ * The `type` column in each table maps to a PG enum via [pgEnum] rather than `varchar`,
+ * avoiding `operator does not exist` errors on enum comparisons.
  */
 public object DrawPointTransactionsTable : Table("draw_point_transactions") {
     public val id = uuid("id").autoGenerate()
     public val playerId = uuid("player_id")
-    public val type = varchar("type", 64)
+    public val type = pgEnum<DrawPointTxType>("type", "draw_point_tx_type")
     public val amount = integer("amount")
     public val balanceAfter = integer("balance_after")
     public val paymentOrderId = uuid("payment_order_id").nullable()
@@ -33,7 +36,7 @@ public object DrawPointTransactionsTable : Table("draw_point_transactions") {
 public object RevenuePointTransactionsTable : Table("revenue_point_transactions") {
     public val id = uuid("id").autoGenerate()
     public val playerId = uuid("player_id")
-    public val type = varchar("type", 64)
+    public val type = pgEnum<RevenuePointTxType>("type", "revenue_point_tx_type")
     public val amount = integer("amount")
     public val balanceAfter = integer("balance_after")
     public val tradeOrderId = uuid("trade_order_id").nullable()

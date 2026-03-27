@@ -15,7 +15,12 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import kotlinx.serialization.Serializable
-import org.koin.ktor.ext.inject
+
+@Serializable
+private data class AnimationModeStateResponse(
+    val mode: String,
+    val enabled: Boolean,
+)
 
 /**
  * Admin routes for managing draw animation modes.
@@ -34,8 +39,8 @@ public fun Route.adminAnimationRoutes() {
         call.respond(
             HttpStatusCode.OK,
             states.map { (mode, enabled) ->
-                mapOf("mode" to mode.name, "enabled" to enabled)
-            }
+                AnimationModeStateResponse(mode = mode.name, enabled = enabled)
+            },
         )
     }
 
@@ -61,8 +66,8 @@ public fun Route.adminAnimationRoutes() {
         call.respond(
             HttpStatusCode.OK,
             states.map { (m, enabled) ->
-                mapOf("mode" to m.name, "enabled" to enabled)
-            }
+                AnimationModeStateResponse(mode = m.name, enabled = enabled)
+            },
         )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.components.animation.AnimatedReveal
 import com.prizedraw.contracts.enums.DrawAnimationMode
+import com.prizedraw.i18n.S
 
 /**
  * Full-screen draw reveal screen.
@@ -77,7 +78,7 @@ public fun DrawRevealScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onContinue) {
-                Text("Continue")
+                Text(S("common.continue"))
             }
         }
     }

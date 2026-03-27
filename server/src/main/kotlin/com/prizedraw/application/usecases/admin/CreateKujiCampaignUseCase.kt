@@ -3,11 +3,18 @@ package com.prizedraw.application.usecases.admin
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.contracts.dto.admin.CreateKujiBoxRequest
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
 import com.prizedraw.domain.entities.KujiCampaign
+import com.prizedraw.domain.entities.PrizeDefinition
+import com.prizedraw.domain.entities.TicketBox
+import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.valueobjects.CampaignId
+import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.domain.valueobjects.StaffId
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.buildJsonObject
@@ -21,11 +28,12 @@ import java.util.UUID
  * - [pricePerDraw] must be > 0.
  * - [drawSessionSeconds] must be > 0.
  *
- * The campaign starts with no ticket boxes; boxes and prize definitions are added
- * via separate admin operations before the campaign is published.
+ * Optionally creates ticket boxes and prize definitions atomically with the campaign.
  */
 public class CreateKujiCampaignUseCase(
     private val campaignRepository: ICampaignRepository,
+    private val ticketBoxRepository: ITicketBoxRepository,
+    private val prizeRepository: IPrizeRepository,
     private val auditRepository: IAuditRepository,
 ) : ICreateKujiCampaignUseCase {
     override suspend fun execute(
@@ -35,15 +43,17 @@ public class CreateKujiCampaignUseCase(
         coverImageUrl: String?,
         pricePerDraw: Int,
         drawSessionSeconds: Int,
+        boxes: List<CreateKujiBoxRequest>,
     ): KujiCampaign {
         require(pricePerDraw > 0) { "pricePerDraw must be > 0, got $pricePerDraw" }
         require(drawSessionSeconds > 0) { "drawSessionSeconds must be > 0, got $drawSessionSeconds" }
         require(title.isNotBlank()) { "title must not be blank" }
 
         val now = Clock.System.now()
+        val campaignId = CampaignId(UUID.randomUUID())
         val campaign =
             KujiCampaign(
-                id = CampaignId(UUID.randomUUID()),
+                id = campaignId,
                 title = title.trim(),
                 description = description,
                 coverImageUrl = coverImageUrl,
@@ -59,6 +69,51 @@ public class CreateKujiCampaignUseCase(
             )
 
         val saved = campaignRepository.saveKuji(campaign)
+
+        // Create ticket boxes and prize definitions if provided
+        var prizeDisplayOrder = 0
+        for ((boxIndex, boxReq) in boxes.withIndex()) {
+            val ticketBox = TicketBox(
+                id = UUID.randomUUID(),
+                kujiCampaignId = campaignId,
+                name = boxReq.name,
+                totalTickets = boxReq.totalTickets,
+                remainingTickets = boxReq.totalTickets,
+                status = TicketBoxStatus.AVAILABLE,
+                soldOutAt = null,
+                displayOrder = boxIndex,
+                createdAt = now,
+                updatedAt = now,
+            )
+            ticketBoxRepository.save(ticketBox)
+
+            for (rangeReq in boxReq.ticketRanges) {
+                val ticketCount = rangeReq.rangeEnd - rangeReq.rangeStart + 1
+                require(ticketCount > 0) {
+                    "Invalid ticket range: ${rangeReq.rangeStart}-${rangeReq.rangeEnd}"
+                }
+
+                val photos = listOfNotNull(rangeReq.photoUrl)
+                val prizeDefinition = PrizeDefinition(
+                    id = PrizeDefinitionId(UUID.randomUUID()),
+                    kujiCampaignId = campaignId,
+                    unlimitedCampaignId = null,
+                    grade = rangeReq.grade,
+                    name = rangeReq.prizeName,
+                    photos = photos,
+                    prizeValue = rangeReq.prizeValue,
+                    buybackPrice = 0,
+                    buybackEnabled = true,
+                    probabilityBps = null,
+                    ticketCount = ticketCount,
+                    displayOrder = prizeDisplayOrder++,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+                prizeRepository.saveDefinition(prizeDefinition)
+            }
+        }
+
         recordAudit(staffId, saved, now)
         return saved
     }

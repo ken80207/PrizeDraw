@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.campaign.KujiCampaignState
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
 
@@ -114,7 +115,7 @@ private fun KujiCampaignCardStub(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                 ) {}
                 Text(
-                    text = "Cover",
+                    text = S("campaign.cover"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -125,7 +126,7 @@ private fun KujiCampaignCardStub(
                 modifier = Modifier.padding(top = 8.dp),
             )
             Text(
-                text = "${campaign.pricePerDraw} pts / draw",
+                text = "${campaign.pricePerDraw} ${S("campaign.ptsPerDraw")}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -140,7 +141,7 @@ private fun KujiCampaignCardStub(
                     onClick = onWatchLive,
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    Text("Watch Live")
+                    Text(S("spectator.watchLive"))
                 }
             }
         }

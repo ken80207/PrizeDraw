@@ -60,3 +60,28 @@ public data class CreateWithdrawalRequest(
     val accountHolderName: String,
     val accountNumber: String,
 )
+
+/**
+ * Request body for the mock instant top-up endpoint.
+ *
+ * For development and testing use only. Credits [points] draw points directly to the
+ * authenticated player without going through a real payment gateway.
+ *
+ * @property points Number of draw points to credit. Must be between 1 and 100 000 inclusive.
+ */
+@Serializable
+public data class MockTopUpRequest(
+    val points: Int,
+)
+
+/**
+ * Response body for the mock instant top-up endpoint.
+ *
+ * @property pointsCredited The number of draw points that were credited.
+ * @property newBalance The player's draw-point balance after the top-up.
+ */
+@Serializable
+public data class MockTopUpResponse(
+    val pointsCredited: Int,
+    val newBalance: Int,
+)

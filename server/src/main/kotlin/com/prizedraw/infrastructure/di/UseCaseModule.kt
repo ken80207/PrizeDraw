@@ -85,6 +85,8 @@ import com.prizedraw.application.usecases.draw.DrawKujiDeps
 import com.prizedraw.application.usecases.draw.DrawKujiUseCase
 import com.prizedraw.application.usecases.draw.DrawUnlimitedDeps
 import com.prizedraw.application.usecases.draw.DrawUnlimitedUseCase
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.application.usecases.exchange.CancelExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.CreateExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.RespondExchangeRequestUseCase
@@ -194,6 +196,18 @@ public val useCaseModule =
         // --- Phase 5: Unlimited Draw ---
         single<UnlimitedDrawDomainService> { UnlimitedDrawDomainService() }
 
+        single<DrawCore> {
+            DrawCore(
+                deps = DrawCoreDeps(
+                    playerRepository = get(),
+                    prizeRepository = get(),
+                    drawPointTxRepository = get<IDrawPointTransactionRepository>(),
+                    outboxRepository = get(),
+                    levelService = get<LevelService>(),
+                ),
+            )
+        }
+
         single<KujiQueueService> {
             KujiQueueService(
                 distributedLock = get<DistributedLock>(),
@@ -213,13 +227,12 @@ public val useCaseModule =
                         playerRepository = get(),
                         campaignRepository = get(),
                         queueRepository = get<IQueueRepository>(),
-                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
                         outboxRepository = get(),
                         auditRepository = get(),
                         domainService = get<KujiDrawDomainService>(),
                         redisPubSub = get<RedisPubSub>(),
+                        drawCore = get<DrawCore>(),
                         couponRepository = get(),
-                        levelService = get<LevelService>(),
                     ),
             )
         }
@@ -230,14 +243,12 @@ public val useCaseModule =
                     DrawUnlimitedDeps(
                         campaignRepository = get(),
                         prizeRepository = get(),
-                        playerRepository = get(),
-                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
                         outboxRepository = get(),
                         auditRepository = get(),
                         domainService = get<UnlimitedDrawDomainService>(),
                         redisClient = get<RedisClient>(),
+                        drawCore = get<DrawCore>(),
                         couponRepository = get(),
-                        levelService = get<LevelService>(),
                     ),
             )
         }
@@ -387,6 +398,8 @@ public val useCaseModule =
         single<ICreateKujiCampaignUseCase> {
             CreateKujiCampaignUseCase(
                 campaignRepository = get(),
+                ticketBoxRepository = get(),
+                prizeRepository = get(),
                 auditRepository = get(),
             )
         }

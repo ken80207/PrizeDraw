@@ -46,7 +46,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
                         (ExchangeRequestsTable.initiatorId eq playerId.value) or
                             (ExchangeRequestsTable.recipientId eq playerId.value)
                     if (status != null) {
-                        playerCondition and (ExchangeRequestsTable.status eq status.name)
+                        playerCondition and (ExchangeRequestsTable.status eq status)
                     } else {
                         playerCondition
                     }
@@ -61,8 +61,8 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
             ExchangeRequestsTable
                 .selectAll()
                 .where {
-                    (ExchangeRequestsTable.status eq ExchangeRequestStatus.PENDING.name) or
-                        (ExchangeRequestsTable.status eq ExchangeRequestStatus.COUNTER_PROPOSED.name)
+                    (ExchangeRequestsTable.status eq ExchangeRequestStatus.PENDING) or
+                        (ExchangeRequestsTable.status eq ExchangeRequestStatus.COUNTER_PROPOSED)
                 }.orderBy(ExchangeRequestsTable.createdAt, org.jetbrains.exposed.sql.SortOrder.DESC)
                 .limit(limit, offset.toLong())
                 .map { it.toExchangeRequest() }
@@ -82,7 +82,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
                     it[initiatorId] = request.initiatorId.value
                     it[recipientId] = request.recipientId.value
                     it[parentRequestId] = request.parentRequestId
-                    it[status] = request.status.name
+                    it[status] = request.status
                     it[message] = request.message
                     it[respondedAt] = request.respondedAt?.toOffsetDateTime()
                     it[completedAt] = request.completedAt?.toOffsetDateTime()
@@ -92,7 +92,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
                 }
             } else {
                 ExchangeRequestsTable.update({ ExchangeRequestsTable.id eq request.id }) {
-                    it[status] = request.status.name
+                    it[status] = request.status
                     it[respondedAt] = request.respondedAt?.toOffsetDateTime()
                     it[completedAt] = request.completedAt?.toOffsetDateTime()
                     it[cancelledAt] = request.cancelledAt?.toOffsetDateTime()
@@ -121,7 +121,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
                 this[ExchangeRequestItemsTable.id] = item.id
                 this[ExchangeRequestItemsTable.exchangeRequestId] = item.exchangeRequestId
                 this[ExchangeRequestItemsTable.prizeInstanceId] = item.prizeInstanceId.value
-                this[ExchangeRequestItemsTable.side] = item.side.name
+                this[ExchangeRequestItemsTable.side] = item.side
                 this[ExchangeRequestItemsTable.createdAt] = item.createdAt.toOffsetDateTime()
             }
             items
@@ -133,7 +133,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
             initiatorId = PlayerId(this[ExchangeRequestsTable.initiatorId]),
             recipientId = PlayerId(this[ExchangeRequestsTable.recipientId]),
             parentRequestId = this[ExchangeRequestsTable.parentRequestId],
-            status = ExchangeRequestStatus.valueOf(this[ExchangeRequestsTable.status]),
+            status = this[ExchangeRequestsTable.status],
             message = this[ExchangeRequestsTable.message],
             respondedAt = this[ExchangeRequestsTable.respondedAt]?.toInstant()?.toKotlinInstant(),
             completedAt = this[ExchangeRequestsTable.completedAt]?.toInstant()?.toKotlinInstant(),
@@ -147,7 +147,7 @@ public class ExchangeRepositoryImpl : IExchangeRepository {
             id = this[ExchangeRequestItemsTable.id],
             exchangeRequestId = this[ExchangeRequestItemsTable.exchangeRequestId],
             prizeInstanceId = PrizeInstanceId(this[ExchangeRequestItemsTable.prizeInstanceId]),
-            side = ExchangeItemSide.valueOf(this[ExchangeRequestItemsTable.side]),
+            side = this[ExchangeRequestItemsTable.side],
             createdAt = this[ExchangeRequestItemsTable.createdAt].toInstant().toKotlinInstant(),
         )
 }

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
 import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.draw.UnlimitedDrawIntent
 import com.prizedraw.viewmodels.draw.UnlimitedDrawState
 import com.prizedraw.viewmodels.draw.UnlimitedDrawViewModel
@@ -131,7 +132,7 @@ private fun UnlimitedDrawBody(
         if (drawHistory.isNotEmpty()) {
             item {
                 Text(
-                    text = "Results this session",
+                    text = S("draw.resultsThisSession"),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -159,7 +160,7 @@ private fun CampaignHeader(campaign: UnlimitedCampaignDto?) {
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("Cover", style = MaterialTheme.typography.labelMedium)
+                    Text(S("campaign.cover"), style = MaterialTheme.typography.labelMedium)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -186,7 +187,7 @@ private fun PrizeProbabilityTable(definitions: List<PrizeDefinitionDto>) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "Prize Probabilities",
+                text = S("draw.prizeProbabilities"),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
@@ -247,7 +248,7 @@ private fun DrawActionSection(
     ) {
         pointBalance?.let { balance ->
             Text(
-                text = "Balance: $balance pts",
+                text = "${S("wallet.balance")}: $balance pts",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -269,7 +270,7 @@ private fun DrawActionSection(
                 )
             } else {
                 Text(
-                    text = "Draw  ($pricePerDraw pts)",
+                    text = "${S("home.drawNow")}  ($pricePerDraw pts)",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -381,7 +382,7 @@ private fun ResultRevealOverlay(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = "Tap to continue",
+                            text = S("draw.tapToContinue"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

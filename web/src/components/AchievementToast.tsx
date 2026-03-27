@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { achievements } from "@/lib/achievements";
 import type { Achievement } from "@/lib/achievements";
 
@@ -44,14 +45,15 @@ export function AchievementToast() {
 }
 
 function AchievementToastCard({ achievement }: { achievement: Achievement }) {
+  const t = useTranslations("achievement");
   const [visible, setVisible] = useState(false);
 
   // Trigger entrance on next tick
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 16);
+    const timer = setTimeout(() => setVisible(true), 16);
     // Begin exit animation 3 s after entrance
     const exit = setTimeout(() => setVisible(false), 3000);
-    return () => { clearTimeout(t); clearTimeout(exit); };
+    return () => { clearTimeout(timer); clearTimeout(exit); };
   }, []);
 
   return (
@@ -63,12 +65,12 @@ function AchievementToastCard({ achievement }: { achievement: Achievement }) {
         pointerEvents: "auto",
       }}
     >
-      <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3 min-w-56 max-w-xs">
+      <div className="amber-gradient text-on-primary rounded-2xl px-5 py-3 shadow-2xl shadow-primary/30 flex items-center gap-3 min-w-56 max-w-xs">
         <span className="text-3xl shrink-0" role="img" aria-label={achievement.title}>
           {achievement.icon}
         </span>
         <div className="min-w-0">
-          <div className="text-xs opacity-80 font-medium">🏆 成就解鎖！</div>
+          <div className="text-xs opacity-80 font-bold font-headline uppercase tracking-wider">{t("unlocked")}</div>
           <div className="font-bold text-sm truncate">{achievement.title}</div>
           <div className="text-xs opacity-70 leading-tight">{achievement.description}</div>
         </div>

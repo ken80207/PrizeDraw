@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.enums.DrawAnimationMode
+import com.prizedraw.i18n.S
 
 private data class LanguageOption(
     val code: String,
@@ -81,10 +82,10 @@ public fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(S("settings.title")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
                     }
                 },
             )
@@ -100,13 +101,13 @@ public fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // ---- Animation Mode ----------------------------------------
-            SettingsSection(title = "Draw Animation") {
+            SettingsSection(title = S("settings.drawAnimation")) {
                 val modes =
                     listOf(
-                        DrawAnimationMode.TEAR to "Tear Open",
-                        DrawAnimationMode.SCRATCH to "Scratch Card",
-                        DrawAnimationMode.FLIP to "Card Flip",
-                        DrawAnimationMode.INSTANT to "Instant Reveal",
+                        DrawAnimationMode.TEAR to S("settings.animationTear"),
+                        DrawAnimationMode.SCRATCH to S("settings.animationScratch"),
+                        DrawAnimationMode.FLIP to S("settings.animationFlip"),
+                        DrawAnimationMode.INSTANT to S("settings.animationInstant"),
                     )
                 modes.forEach { (mode, label) ->
                     Row(
@@ -130,7 +131,7 @@ public fun SettingsScreen(
             }
 
             // ---- Language -----------------------------------------------
-            SettingsSection(title = "Language") {
+            SettingsSection(title = S("settings.language")) {
                 ExposedDropdownMenuBox(
                     expanded = languageExpanded,
                     onExpandedChange = { languageExpanded = !languageExpanded },
@@ -139,7 +140,7 @@ public fun SettingsScreen(
                         value = selectedLanguage.label,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Display Language") },
+                        label = { Text(S("settings.displayLanguage")) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded)
                         },
@@ -167,13 +168,13 @@ public fun SettingsScreen(
             }
 
             // ---- About --------------------------------------------------
-            SettingsSection(title = "About") {
+            SettingsSection(title = S("settings.about")) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "App Version",
+                        text = S("settings.appVersion"),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
@@ -196,7 +197,7 @@ public fun SettingsScreen(
                         contentColor = MaterialTheme.colorScheme.onError,
                     ),
             ) {
-                Text("Log Out")
+                Text(S("auth.logOut"))
             }
         }
     }

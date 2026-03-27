@@ -46,6 +46,7 @@ class UnlimitedDrawDomainServiceTest :
                 grade = grade,
                 name = "Prize $grade",
                 photos = emptyList(),
+                prizeValue = 0,
                 buybackPrice = 0,
                 buybackEnabled = false,
                 probabilityBps = probabilityBps,
@@ -109,6 +110,7 @@ class UnlimitedDrawDomainServiceTest :
                         grade = "A",
                         name = "Kuji Prize",
                         photos = emptyList(),
+                        prizeValue = 0,
                         buybackPrice = 0,
                         buybackEnabled = false,
                         probabilityBps = null, // null treated as 0

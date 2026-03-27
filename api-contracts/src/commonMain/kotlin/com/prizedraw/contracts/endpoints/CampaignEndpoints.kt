@@ -21,4 +21,7 @@ public object CampaignEndpoints {
     // Room scaling (Phase 21)
     public const val CAMPAIGN_ROOMS: String = "$BASE/kuji/{campaignId}/rooms"
     public const val CAMPAIGN_STATS: String = "$BASE/kuji/{campaignId}/stats"
+
+    // Draw records (中獎紀錄) — public endpoint
+    public const val CAMPAIGN_DRAW_RECORDS: String = "$BASE/{campaignId}/draw-records"
 }

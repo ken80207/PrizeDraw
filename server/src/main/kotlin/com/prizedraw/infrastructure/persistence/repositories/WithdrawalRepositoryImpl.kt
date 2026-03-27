@@ -52,7 +52,7 @@ public class WithdrawalRepositoryImpl : IWithdrawalRepository {
         newSuspendedTransaction {
             WithdrawalRequestsTable
                 .selectAll()
-                .where { WithdrawalRequestsTable.status eq status.name }
+                .where { WithdrawalRequestsTable.status eq status }
                 .orderBy(WithdrawalRequestsTable.createdAt, org.jetbrains.exposed.sql.SortOrder.DESC)
                 .limit(limit, offset.toLong())
                 .map { it.toWithdrawalRequest() }
@@ -76,7 +76,7 @@ public class WithdrawalRepositoryImpl : IWithdrawalRepository {
                     it[bankCode] = request.bankCode
                     it[accountHolderName] = request.accountHolderName
                     it[accountNumber] = request.accountNumber
-                    it[status] = request.status.name
+                    it[status] = request.status
                     it[reviewedByStaffId] = request.reviewedByStaffId
                     it[reviewedAt] = request.reviewedAt?.toOffsetDateTime()
                     it[transferredAt] = request.transferredAt?.toOffsetDateTime()
@@ -86,7 +86,7 @@ public class WithdrawalRepositoryImpl : IWithdrawalRepository {
                 }
             } else {
                 WithdrawalRequestsTable.update({ WithdrawalRequestsTable.id eq request.id }) {
-                    it[status] = request.status.name
+                    it[status] = request.status
                     it[reviewedByStaffId] = request.reviewedByStaffId
                     it[reviewedAt] = request.reviewedAt?.toOffsetDateTime()
                     it[transferredAt] = request.transferredAt?.toOffsetDateTime()
@@ -112,7 +112,7 @@ public class WithdrawalRepositoryImpl : IWithdrawalRepository {
             bankCode = this[WithdrawalRequestsTable.bankCode],
             accountHolderName = this[WithdrawalRequestsTable.accountHolderName],
             accountNumber = this[WithdrawalRequestsTable.accountNumber],
-            status = WithdrawalStatus.valueOf(this[WithdrawalRequestsTable.status]),
+            status = this[WithdrawalRequestsTable.status],
             reviewedByStaffId = this[WithdrawalRequestsTable.reviewedByStaffId],
             reviewedAt = this[WithdrawalRequestsTable.reviewedAt]?.toInstant()?.toKotlinInstant(),
             transferredAt = this[WithdrawalRequestsTable.transferredAt]?.toInstant()?.toKotlinInstant(),

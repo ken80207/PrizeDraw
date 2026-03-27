@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 
 /** Approximate TWD equivalent rate: 1 revenue point = 1 TWD cent = TWD 0.01. */
 private const val POINTS_PER_TWD = 100
@@ -70,14 +71,14 @@ public fun WithdrawalScreen(
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = "Withdraw Revenue Points", style = MaterialTheme.typography.headlineSmall)
+        Text(text = S("wallet.withdrawTitle"), style = MaterialTheme.typography.headlineSmall)
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text("Available Balance", style = MaterialTheme.typography.labelMedium)
+                Text(S("wallet.availableBalance"), style = MaterialTheme.typography.labelMedium)
                 Text(
                     text = "$revenuePointsBalance pts",
                     style = MaterialTheme.typography.headlineMedium,
@@ -88,33 +89,33 @@ public fun WithdrawalScreen(
         OutlinedTextField(
             value = bankName,
             onValueChange = { bankName = it },
-            label = { Text("Bank Name") },
+            label = { Text(S("wallet.bankName")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = bankCode,
             onValueChange = { bankCode = it },
-            label = { Text("Bank Code") },
+            label = { Text(S("wallet.bankCode")) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
         OutlinedTextField(
             value = holderName,
             onValueChange = { holderName = it },
-            label = { Text("Account Holder Name") },
+            label = { Text(S("wallet.accountHolderName")) },
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = accountNumber,
             onValueChange = { accountNumber = it },
-            label = { Text("Account Number") },
+            label = { Text(S("wallet.accountNumber")) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
         OutlinedTextField(
             value = amountText,
             onValueChange = { amountText = it.filter { c -> c.isDigit() } },
-            label = { Text("Amount (pts)") },
+            label = { Text(S("wallet.amount")) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             supportingText = {
@@ -127,7 +128,7 @@ public fun WithdrawalScreen(
 
         if (amount > revenuePointsBalance) {
             Text(
-                text = "Amount exceeds your available balance",
+                text = S("wallet.amountExceedsBalance"),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -137,14 +138,14 @@ public fun WithdrawalScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Cancel") }
+            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text(S("common.cancel")) }
             Button(
                 onClick = {
                     onSubmit(bankName, bankCode, holderName, accountNumber, amount)
                 },
                 enabled = isValid,
                 modifier = Modifier.weight(1f),
-            ) { Text("Submit") }
+            ) { Text(S("common.submit")) }
         }
     }
 }

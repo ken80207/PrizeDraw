@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 
 /**
  * A non-blocking, dismissible top banner for regular (non-critical) announcements.
@@ -91,7 +92,7 @@ public fun AnnouncementBanner(
             IconButton(onClick = { isDismissed = true }) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "關閉公告",
+                    contentDescription = S("common.closeBanner"),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }

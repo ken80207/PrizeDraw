@@ -54,6 +54,21 @@ public object AdminEndpoints {
     // Leaderboard configuration
     public const val LEADERBOARD_CONFIG: String = "$BASE/leaderboard/config"
 
+    // Trade listings (admin view)
+    public const val TRADE_LISTINGS: String = "$BASE/trade/listings"
+    public const val TRADE_LISTING_DELIST: String = "$BASE/trade/listings/{listingId}/delist"
+
+    // Prizes (prize definitions admin view)
+    public const val PRIZES: String = "$BASE/prizes"
+    public const val PRIZE_BY_ID: String = "$BASE/prizes/{prizeId}"
+
     // Spectator count
     public const val SPECTATOR_COUNT: String = "/api/v1/campaigns/kuji/{campaignId}/spectators"
+
+    // Draw records (中獎紀錄)
+    public const val CAMPAIGN_DRAW_RECORDS: String = "$BASE/campaigns/{campaignId}/draw-records"
+
+    // Dashboard
+    public const val DASHBOARD_STATS: String = "$BASE/dashboard/stats"
+    public const val DASHBOARD_ACTIVITY: String = "$BASE/dashboard/activity"
 }

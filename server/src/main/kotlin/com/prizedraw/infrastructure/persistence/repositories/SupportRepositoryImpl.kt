@@ -67,10 +67,10 @@ public class SupportRepositoryImpl : ISupportRepository {
                 .where {
                     var condition: org.jetbrains.exposed.sql.Op<Boolean> = org.jetbrains.exposed.sql.Op.TRUE
                     if (status != null) {
-                        condition = condition and (SupportTicketsTable.status eq status.name)
+                        condition = condition and (SupportTicketsTable.status eq status)
                     }
                     if (priority != null) {
-                        condition = condition and (SupportTicketsTable.priority eq priority.name)
+                        condition = condition and (SupportTicketsTable.priority eq priority)
                     }
                     if (assignedToStaffId != null) {
                         condition = condition and (SupportTicketsTable.assignedToStaffId eq assignedToStaffId)
@@ -95,10 +95,10 @@ public class SupportRepositoryImpl : ISupportRepository {
                     it[id] = ticket.id
                     it[playerId] = ticket.playerId.value
                     it[assignedToStaffId] = ticket.assignedToStaffId
-                    it[category] = ticket.category.name
+                    it[category] = ticket.category
                     it[subject] = ticket.subject
-                    it[status] = ticket.status.name
-                    it[priority] = ticket.priority.name
+                    it[status] = ticket.status
+                    it[priority] = ticket.priority
                     it[satisfactionScore] = ticket.satisfactionScore
                     it[lineThreadId] = ticket.lineThreadId
                     it[contextTradeOrderId] = ticket.contextTradeOrderId
@@ -113,8 +113,8 @@ public class SupportRepositoryImpl : ISupportRepository {
             } else {
                 SupportTicketsTable.update({ SupportTicketsTable.id eq ticket.id }) {
                     it[assignedToStaffId] = ticket.assignedToStaffId
-                    it[status] = ticket.status.name
-                    it[priority] = ticket.priority.name
+                    it[status] = ticket.status
+                    it[priority] = ticket.priority
                     it[satisfactionScore] = ticket.satisfactionScore
                     it[resolvedAt] = ticket.resolvedAt?.toOffsetDateTime()
                     it[closedAt] = ticket.closedAt?.toOffsetDateTime()
@@ -159,7 +159,7 @@ public class SupportRepositoryImpl : ISupportRepository {
                             }
                         ),
                     )
-                it[channel] = message.channel.name
+                it[channel] = message.channel
                 it[lineMessageId] = message.lineMessageId
                 it[createdAt] = OffsetDateTime.ofInstant(message.createdAt.toJavaInstant(), ZoneOffset.UTC)
             }
@@ -175,10 +175,10 @@ public class SupportRepositoryImpl : ISupportRepository {
             id = this[SupportTicketsTable.id],
             playerId = PlayerId(this[SupportTicketsTable.playerId]),
             assignedToStaffId = this[SupportTicketsTable.assignedToStaffId],
-            category = SupportTicketCategory.valueOf(this[SupportTicketsTable.category]),
+            category = this[SupportTicketsTable.category],
             subject = this[SupportTicketsTable.subject],
-            status = SupportTicketStatus.valueOf(this[SupportTicketsTable.status]),
-            priority = SupportTicketPriority.valueOf(this[SupportTicketsTable.priority]),
+            status = this[SupportTicketsTable.status],
+            priority = this[SupportTicketsTable.priority],
             satisfactionScore = this[SupportTicketsTable.satisfactionScore],
             lineThreadId = this[SupportTicketsTable.lineThreadId],
             contextTradeOrderId = this[SupportTicketsTable.contextTradeOrderId],
@@ -213,7 +213,7 @@ public class SupportRepositoryImpl : ISupportRepository {
             authorStaffId = this[SupportTicketMessagesTable.authorStaffId],
             body = this[SupportTicketMessagesTable.body],
             attachments = attachments,
-            channel = MessageChannel.valueOf(this[SupportTicketMessagesTable.channel]),
+            channel = this[SupportTicketMessagesTable.channel],
             lineMessageId = this[SupportTicketMessagesTable.lineMessageId],
             createdAt = this[SupportTicketMessagesTable.createdAt].toInstant().toKotlinInstant(),
         )

@@ -12,7 +12,7 @@ interface Staff {
   name: string;
   email: string;
   role: string;
-  status: string;
+  isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -153,7 +153,7 @@ export default function StaffPage() {
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={staff.status} />
+                    <StatusBadge status={staff.isActive ? "ACTIVE" : "INACTIVE"} />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {staff.lastLoginAt ? new Date(staff.lastLoginAt).toLocaleString("zh-TW") : "從未登入"}
@@ -161,14 +161,14 @@ export default function StaffPage() {
                   <td className="px-4 py-3">
                     <button
                       type="button"
-                      onClick={() => handleToggleStatus(staff.id, staff.status)}
+                      onClick={() => handleToggleStatus(staff.id, staff.isActive ? "ACTIVE" : "INACTIVE")}
                       className={`rounded px-2.5 py-1 text-xs font-medium transition-colors border ${
-                        staff.status === "ACTIVE"
+                        staff.isActive ? "ACTIVE" : "INACTIVE" === "ACTIVE"
                           ? "border-red-200 text-red-600 hover:bg-red-50"
                           : "border-green-200 text-green-600 hover:bg-green-50"
                       }`}
                     >
-                      {staff.status === "ACTIVE" ? "停用" : "啟用"}
+                      {staff.isActive ? "ACTIVE" : "INACTIVE" === "ACTIVE" ? "停用" : "啟用"}
                     </button>
                   </td>
                 </tr>

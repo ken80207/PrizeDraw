@@ -28,7 +28,6 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import kotlinx.serialization.Serializable
-import org.koin.ktor.ext.inject
 import java.util.UUID
 import com.prizedraw.domain.valueobjects.PlayerId as DomainPlayerId
 

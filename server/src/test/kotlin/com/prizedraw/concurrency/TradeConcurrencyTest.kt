@@ -127,6 +127,7 @@ class TradeConcurrencyTest :
                 grade = "A賞",
                 name = "Test Prize",
                 photos = listOf("https://example.com/photo.jpg"),
+                prizeValue = 0,
                 buybackPrice = 50,
                 buybackEnabled = true,
                 probabilityBps = null,

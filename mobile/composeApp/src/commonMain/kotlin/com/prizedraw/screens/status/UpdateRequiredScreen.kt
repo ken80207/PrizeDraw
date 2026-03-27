@@ -19,11 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.prizedraw.i18n.S
 
 /**
  * Full-screen overlay shown when the installed app version is below the server-mandated minimum.
  *
- * When [isBlocking] is `true` the "稍後再說" (later) button is hidden and the user
+ * When [isBlocking] is `true` the "Later" button is hidden and the user
  * **must** update before continuing. When `false`, an optional dismiss is provided.
  *
  * The [onUpdate] callback should open the platform's app store listing. Implementations
@@ -65,7 +66,7 @@ public fun UpdateRequiredScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "需要更新應用程式",
+                text = S("status.updateRequired"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -75,7 +76,7 @@ public fun UpdateRequiredScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "請將 PrizeDraw 更新至最新版本以繼續使用。",
+                text = S("status.updateRequiredMessage"),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -84,7 +85,7 @@ public fun UpdateRequiredScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "目前版本：$currentVersion\n最低需求：$minRequiredVersion",
+                text = "${S("status.currentVersion")}: $currentVersion\n${S("status.minRequired")}: $minRequiredVersion",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.outline,
@@ -96,7 +97,7 @@ public fun UpdateRequiredScreen(
                 onClick = onUpdate,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("更新應用程式")
+                Text(S("status.updateApp"))
             }
 
             if (!isBlocking && onDismiss != null) {
@@ -105,7 +106,7 @@ public fun UpdateRequiredScreen(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("稍後再說")
+                    Text(S("status.updateLater"))
                 }
             }
         }

@@ -344,7 +344,7 @@ function DrawerAnimationSlot({ drawer }: DrawerAnimationSlotProps) {
   return (
     <>
       {/* Rounded stage frame */}
-      <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-indigo-500/30 bg-gray-900 aspect-[4/3] flex items-center justify-center relative">
+      <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-primary/20 bg-surface-container-low aspect-[4/3] flex items-center justify-center relative">
         {/* Always show the animation — after reveal, the scratched card with prize stays visible */}
         <div className="w-full h-full flex items-center justify-center">
           <div
@@ -367,7 +367,7 @@ function DrawerAnimationSlot({ drawer }: DrawerAnimationSlotProps) {
 
         {/* Result overlay badge — shows on top of the scratched card */}
         {revealed && (
-          <div className="absolute top-3 right-3 z-20 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+          <div className="absolute top-3 right-3 z-20 bg-primary-container text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
             🎊 已揭曉
           </div>
         )}
@@ -422,14 +422,14 @@ function LiveDrawStage({
     <div className="flex-1 flex flex-col min-w-0">
       {/* Top bar — LIVE badge + campaign title + viewer count */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="flex items-center gap-1.5 bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded-full shrink-0">
+        <span className="flex items-center gap-1.5 bg-error text-white text-xs font-black px-2.5 py-1 rounded-full shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           LIVE
         </span>
-        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+        <span className="text-sm font-semibold text-on-surface truncate">
           {campaignTitle}
         </span>
-        <span className="text-sm text-gray-400 dark:text-gray-500 ml-auto shrink-0 flex items-center gap-1">
+        <span className="text-sm text-on-surface-variant/50 ml-auto shrink-0 flex items-center gap-1">
           <span>👀</span>
           <span>{viewerCount.toLocaleString()}</span>
         </span>
@@ -441,28 +441,28 @@ function LiveDrawStage({
           <span className="text-base font-black text-amber-600 dark:text-amber-400">
             🎯 你正在抽獎！
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-on-surface-variant">
             用手指刮開看看
           </span>
         </div>
       ) : currentDrawer ? (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
-          <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+          <span className="text-base font-black text-primary">
             {currentDrawer.nickname}
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-on-surface-variant">
             正在{currentDrawer.animationMode === "SCRATCH" ? "刮刮樂" :
                   currentDrawer.animationMode === "TEAR" ? "撕籤" :
                   currentDrawer.animationMode === "FLIP" ? "翻牌" : "抽獎"}中
           </span>
           {isFingerDown && (
-            <span className="text-sm text-gray-400 dark:text-gray-500 animate-pulse">
+            <span className="text-sm text-on-surface-variant/50 animate-pulse">
               😬
             </span>
           )}
         </div>
       ) : (
-        <div className="mb-3 text-sm text-gray-400 dark:text-gray-500">
+        <div className="mb-3 text-sm text-on-surface-variant/50">
           等待下一位玩家...
         </div>
       )}
@@ -471,8 +471,8 @@ function LiveDrawStage({
       <div className="relative">
         {isMyTurn ? (
           /* YOUR TURN: interactive scratch card — you can scratch it yourself! */
-          <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-amber-400/50 bg-gray-900 aspect-[4/3] flex items-center justify-center relative">
-            <div className="absolute top-3 left-3 z-20 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+          <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-amber-400/50 bg-surface-container-low aspect-[4/3] flex items-center justify-center relative">
+            <div className="absolute top-3 left-3 z-20 bg-primary-container text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
               🎯 你的回合
             </div>
             <div style={{ width: "min(280px, 80%)", height: "min(400px, 85%)" }}>
@@ -493,11 +493,11 @@ function LiveDrawStage({
           />
         ) : (
         /* Empty waiting state */
-        <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-indigo-500/30 bg-gray-900 aspect-[4/3] flex items-center justify-center">
-          <div className="text-center text-gray-600 select-none">
+        <div className="rounded-2xl overflow-hidden shadow-2xl ring-2 ring-primary/20 bg-surface-container-low aspect-[4/3] flex items-center justify-center">
+          <div className="text-center text-on-surface-variant select-none">
             <div className="text-7xl mb-4 opacity-60">🎰</div>
-            <div className="text-base font-semibold text-gray-500">等待中...</div>
-            <div className="text-xs text-gray-600 mt-1">下一位玩家即將開始</div>
+            <div className="text-base font-semibold text-on-surface-variant">等待中...</div>
+            <div className="text-xs text-on-surface-variant mt-1">下一位玩家即將開始</div>
           </div>
         </div>
         )}
@@ -514,7 +514,7 @@ function LiveDrawStage({
           <button
             key={emoji}
             onClick={() => handleReaction(emoji)}
-            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-xl transition-all duration-150 hover:scale-110 active:scale-95 shadow-sm"
+            className="w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-xl transition-all duration-150 hover:scale-110 active:scale-95 shadow-sm"
             aria-label={`送出 ${emoji}`}
           >
             {emoji}
@@ -537,7 +537,7 @@ function RecentWinsFeed({
   return (
     <div className="space-y-0 overflow-y-auto max-h-[260px]">
       {wins.length === 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
+        <p className="text-xs text-on-surface-variant/50 text-center py-4">
           尚無中獎紀錄
         </p>
       )}
@@ -562,10 +562,10 @@ function RecentWinsFeed({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <span className="font-bold text-sm text-gray-800 dark:text-gray-100">
+            <span className="font-bold text-sm text-on-surface">
               {win.nickname}
             </span>
-            <span className="text-xs text-gray-500 ml-1">抽到</span>
+            <span className="text-xs text-on-surface-variant ml-1">抽到</span>
             <span
               className="font-bold text-sm ml-1"
               style={{ color: gradeColor(win.grade) }}
@@ -573,7 +573,7 @@ function RecentWinsFeed({
               {win.grade}
             </span>
           </div>
-          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+          <span className="text-xs text-on-surface-variant/50 shrink-0">
             {win.timeAgo}
           </span>
         </div>
@@ -594,8 +594,8 @@ function QueuePanel({
   onStartDraw,
 }: Pick<LiveSpectatorRoomProps, "queuePosition" | "queueLength" | "onJoinQueue" | "onLeaveQueue" | "onStartDraw">) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-      <h3 className="font-bold text-sm mb-3 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+    <div className="bg-surface-container rounded-xl p-4  shadow-sm">
+      <h3 className="font-bold text-sm mb-3 flex items-center gap-2 text-on-surface">
         <span>🎫</span> 排隊狀態
       </h3>
 
@@ -609,23 +609,23 @@ function QueuePanel({
           </div>
           <button
             onClick={onStartDraw}
-            className="mt-2.5 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-sm transition-colors shadow"
+            className="mt-2.5 w-full py-2 rounded-lg bg-primary-container hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-sm transition-colors shadow"
           >
             🎰 開始抽獎
           </button>
           <button
             onClick={onLeaveQueue}
-            className="mt-1.5 w-full text-xs text-gray-400 hover:text-rose-500 transition-colors"
+            className="mt-1.5 w-full text-xs text-on-surface-variant/50 hover:text-rose-500 transition-colors"
           >
             放棄排隊
           </button>
         </div>
       ) : queuePosition !== undefined && queuePosition > 1 ? (
-        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 mb-3 border border-indigo-100 dark:border-indigo-800/30">
-          <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none">
+        <div className="bg-primary/10 rounded-lg p-3 mb-3 ">
+          <div className="text-3xl font-black text-primary leading-none">
             #{queuePosition}
           </div>
-          <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">你的位置 — 前面還有 {queuePosition - 1} 人</div>
+          <div className="text-xs text-primary mt-0.5">你的位置 — 前面還有 {queuePosition - 1} 人</div>
           <button
             onClick={onLeaveQueue}
             className="mt-2.5 text-xs text-rose-500 hover:text-rose-600 hover:underline transition-colors"
@@ -636,13 +636,13 @@ function QueuePanel({
       ) : (
         <button
           onClick={onJoinQueue}
-          className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm transition-colors mb-3 shadow-sm"
+          className="w-full py-2.5 rounded-lg bg-gradient-to-tr from-primary to-primary-container hover:opacity-90 active:scale-95 text-white font-bold text-sm transition-colors mb-3 shadow-sm"
         >
           加入排隊
         </button>
       )}
 
-      <div className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="text-xs text-on-surface-variant">
         排隊人數：<span className="font-semibold text-gray-700 dark:text-gray-200">{queueLength}</span> 人
       </div>
     </div>
@@ -700,21 +700,21 @@ function ChatPanelInline({
   };
 
   const panelClass = asDrawer
-    ? "flex flex-col bg-white dark:bg-gray-800 rounded-t-2xl border-t border-gray-200 dark:border-gray-700 shadow-2xl h-full"
-    : "lg:w-[280px] flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm";
+    ? "flex flex-col bg-surface-container rounded-t-2xl  shadow-2xl h-full"
+    : "lg:w-[280px] flex flex-col bg-surface-container rounded-xl  shadow-sm";
 
   return (
     <div className={panelClass}>
       {/* Header */}
-      <div className="px-3 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
-        <div className="font-bold text-sm text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+      <div className="px-3 py-3  flex items-center justify-between shrink-0">
+        <div className="font-bold text-sm text-on-surface flex items-center gap-1.5">
           <span>💬</span>
           <span>聊天室</span>
         </div>
         {asDrawer && onClose && (
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none transition-colors"
+            className="text-on-surface-variant/50 hover:text-on-surface-variant dark:hover:text-gray-200 text-xl leading-none transition-colors"
             aria-label="關閉聊天"
           >
             ×
@@ -730,7 +730,7 @@ function ChatPanelInline({
         style={{ scrollBehavior: "auto" }}
       >
         {chatMessages.length === 0 && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-6">
+          <p className="text-xs text-on-surface-variant/50 text-center mt-6">
             搶先發言吧！
           </p>
         )}
@@ -745,10 +745,10 @@ function ChatPanelInline({
           }
           return (
             <div key={key} className="text-sm leading-snug">
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              <span className="font-bold text-primary">
                 {msg.nickname}
               </span>
-              <span className="text-gray-600 dark:text-gray-300 ml-1.5 break-words">
+              <span className="text-on-surface-variant dark:text-gray-300 ml-1.5 break-words">
                 {msg.message}
               </span>
             </div>
@@ -757,7 +757,7 @@ function ChatPanelInline({
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0">
+      <div className="p-3  flex gap-2 shrink-0">
         <input
           type="text"
           value={chatInput}
@@ -765,12 +765,12 @@ function ChatPanelInline({
           onKeyDown={handleKeyDown}
           placeholder="輸入訊息..."
           maxLength={100}
-          className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+          className="flex-1 bg-surface-container-high rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-on-surface placeholder-on-surface-variant/50"
         />
         <button
           onClick={handleSend}
           disabled={!chatInput.trim()}
-          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          className="px-3 py-2 bg-gradient-to-tr from-primary to-primary-container hover:opacity-90 active:scale-95 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
         >
           送出
         </button>
@@ -793,7 +793,7 @@ function MobileChatToggle({
   return (
     <button
       onClick={onClick}
-      className="lg:hidden fixed bottom-5 right-4 z-40 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg transition-all active:scale-95"
+      className="lg:hidden fixed bottom-5 right-4 z-40 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gradient-to-tr from-primary to-primary-container hover:opacity-90 text-white text-sm font-bold shadow-lg transition-all active:scale-95"
       aria-label="開啟聊天"
     >
       <span>💬</span>
@@ -855,7 +855,7 @@ export function LiveSpectatorRoom({
   }, [mobileChat, chatMessages.length]);
 
   return (
-    <div className="relative flex flex-col h-full min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="relative flex flex-col h-full min-h-screen bg-surface-dim">
       {/* Keyframe animations */}
       <style>{`
         @keyframes slideDown {
@@ -877,8 +877,8 @@ export function LiveSpectatorRoom({
             onStartDraw={onStartDraw}
           />
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex-1">
-            <h3 className="font-bold text-sm mb-2 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+          <div className="bg-surface-container rounded-xl p-4  shadow-sm flex-1">
+            <h3 className="font-bold text-sm mb-2 flex items-center gap-2 text-on-surface">
               <span>🏆</span> 最近中獎
             </h3>
             <RecentWinsFeed wins={recentWins} />
@@ -903,8 +903,8 @@ export function LiveSpectatorRoom({
               onJoinQueue={onJoinQueue}
               onLeaveQueue={onLeaveQueue}
             />
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-              <h3 className="font-bold text-sm mb-2 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+            <div className="bg-surface-container rounded-xl p-4  shadow-sm">
+              <h3 className="font-bold text-sm mb-2 flex items-center gap-2 text-on-surface">
                 <span>🏆</span> 最近中獎
               </h3>
               <RecentWinsFeed wins={recentWins} />

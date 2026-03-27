@@ -5,21 +5,24 @@ interface SkeletonProps {
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700 ${className}`}
+      className={`animate-pulse rounded-lg bg-surface-container-high ${className}`}
     />
   );
 }
 
 export function CampaignCardSkeleton() {
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <Skeleton className="w-full h-48" />
-      <div className="p-4 space-y-3">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <div className="flex gap-2 pt-1">
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-5 w-20 rounded-full" />
+    <div className="rounded-lg overflow-hidden bg-surface-container">
+      <Skeleton className="w-full h-64 rounded-none" />
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-7 w-1/3" />
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-3 w-1/6" />
+          </div>
+          <Skeleton className="h-2 w-full rounded-full" />
         </div>
       </div>
     </div>
@@ -28,9 +31,9 @@ export function CampaignCardSkeleton() {
 
 export function PrizeCardSkeleton() {
   return (
-    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <Skeleton className="w-full h-40" />
-      <div className="p-3 space-y-2">
+    <div className="rounded-lg overflow-hidden bg-surface-container">
+      <Skeleton className="w-full h-40 rounded-none" />
+      <div className="p-4 space-y-2">
         <Skeleton className="h-4 w-1/3 rounded-full" />
         <Skeleton className="h-4 w-2/3" />
         <Skeleton className="h-3 w-full" />
@@ -53,7 +56,7 @@ export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
 
 export function ListItemSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2">
+    <div className="rounded-lg bg-surface-container p-4 space-y-2">
       <div className="flex justify-between items-center">
         <Skeleton className="h-5 w-1/3" />
         <Skeleton className="h-5 w-16 rounded-full" />

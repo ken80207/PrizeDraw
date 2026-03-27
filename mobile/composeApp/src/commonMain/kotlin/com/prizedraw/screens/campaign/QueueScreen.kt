@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.campaign.KujiCampaignIntent
 import com.prizedraw.viewmodels.campaign.KujiCampaignState
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
@@ -68,7 +69,13 @@ public fun QueueScreen(viewModel: KujiCampaignViewModel) {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Draw $selectedQuantity ticket${if (selectedQuantity > 1) "s" else ""}")
+                Text(
+                    if (selectedQuantity > 1) {
+                        "${S("draw.drawTickets")} $selectedQuantity"
+                    } else {
+                        "${S("draw.drawTicket")} $selectedQuantity"
+                    },
+                )
             }
         }
         if (state.queueEntry != null) {
@@ -76,7 +83,7 @@ public fun QueueScreen(viewModel: KujiCampaignViewModel) {
                 onClick = { viewModel.onIntent(KujiCampaignIntent.LeaveQueue) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Leave Queue")
+                Text(S("campaign.leaveQueue"))
             }
         }
     }
@@ -91,19 +98,19 @@ private fun QueueStatusCard(state: KujiCampaignState) {
         ) {
             if (state.isMyTurn) {
                 Text(
-                    text = "Your Turn!",
+                    text = S("draw.yourTurn"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 state.sessionCountdown?.let { seconds ->
                     Text(
-                        text = "Time remaining: ${seconds}s",
+                        text = "${S("draw.timeRemaining")}: ${seconds}s",
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             } else if (state.queueEntry != null) {
                 Text(
-                    text = "Queue Position",
+                    text = S("draw.queuePosition"),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
@@ -113,12 +120,12 @@ private fun QueueStatusCard(state: KujiCampaignState) {
                 )
                 val ahead = (state.queueEntry.position - 1).coerceAtLeast(0)
                 Text(
-                    text = "$ahead player${if (ahead != 1) "s" else ""} ahead",
+                    text = "$ahead ${S("draw.playersAhead")}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
                 Text(
-                    text = "Not in queue",
+                    text = S("draw.notInQueue"),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
@@ -134,7 +141,7 @@ private fun DrawQuantitySelector(
 ) {
     Column {
         Text(
-            text = "Select quantity",
+            text = S("draw.selectQuantity"),
             style = MaterialTheme.typography.titleSmall,
         )
         Spacer(Modifier.height(8.dp))

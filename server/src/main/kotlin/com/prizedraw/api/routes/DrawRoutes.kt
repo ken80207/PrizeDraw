@@ -35,7 +35,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.post
-import org.koin.ktor.ext.inject
 import java.util.UUID
 
 /** Default draw session duration when the campaign or box cannot be resolved. */
@@ -160,7 +159,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleQueueJoin(
             kujiQueueService.joinQueue(principal.playerId, boxId, sessionSeconds)
         }
     entry.fold(
-        onSuccess = { call.respond(HttpStatusCode.Created, it.toDto(0)) },
+        onSuccess = { call.respond(HttpStatusCode.Created, it.toDto(0, sessionSeconds)) },
         onFailure = { ex -> call.handleQueueError(ex) },
     )
 }
@@ -205,7 +204,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleQueueSwitchBox(
             kujiQueueService.switchBox(principal.playerId, fromId, toId, sessionSeconds)
         }
     entry.fold(
-        onSuccess = { call.respond(HttpStatusCode.OK, it.toDto(0)) },
+        onSuccess = { call.respond(HttpStatusCode.OK, it.toDto(0, sessionSeconds)) },
         onFailure = { ex -> call.handleQueueError(ex) },
     )
 }
@@ -257,7 +256,7 @@ private suspend fun resolveSessionSeconds(
     return campaign.drawSessionSeconds
 }
 
-private fun QueueEntry.toDto(queueLength: Int): QueueEntryDto =
+private fun QueueEntry.toDto(queueLength: Int, sessionSeconds: Int = 300): QueueEntryDto =
     QueueEntryDto(
         id = id.toString(),
         queueId = queueId.toString(),
@@ -268,7 +267,11 @@ private fun QueueEntry.toDto(queueLength: Int): QueueEntryDto =
         activatedAt = activatedAt,
         completedAt = completedAt,
         queueLength = queueLength,
-        sessionExpiresAt = null,
+        sessionExpiresAt = if (status == com.prizedraw.contracts.enums.QueueEntryStatus.ACTIVE && activatedAt != null) {
+            activatedAt.plus(kotlin.time.Duration.parse("${sessionSeconds}s"))
+        } else {
+            null
+        },
     )
 
 // --- Draw sync handlers ---

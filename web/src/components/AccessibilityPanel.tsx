@@ -57,21 +57,19 @@ export function AccessibilityPanel({ open, onClose }: AccessibilityPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="無障礙設定"
-        className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl shadow-purple-900/30 p-5 space-y-4"
+        className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-surface-container rounded-2xl shadow-2xl shadow-black/40 p-5 space-y-4"
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-black text-base flex items-center gap-2">
-            <span aria-hidden="true">♿</span> 無障礙設定
+          <h2 className="text-on-surface font-black text-base flex items-center gap-2 font-headline">
+            <span className="material-symbols-outlined text-primary text-base" style={{ fontVariationSettings: "'FILL' 1" }}>accessibility_new</span>
           </h2>
           <button
             onClick={onClose}
             aria-label="關閉無障礙設定"
-            className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-700"
+            className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container-high"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
+            <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
 
@@ -112,13 +110,13 @@ export function AccessibilityPanel({ open, onClose }: AccessibilityPanelProps) {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-700/60" />
+        <div className="border-t border-outline-variant/15" />
 
         {/* Colour-blind mode */}
         <div className="space-y-2">
           <label
             htmlFor="a11y-colorblind-select"
-            className="flex items-center gap-2 text-sm font-semibold text-gray-300"
+            className="flex items-center gap-2 text-sm font-semibold text-on-surface"
           >
             <span className="w-5 h-5 rounded bg-gradient-to-br from-red-500 via-green-500 to-blue-500 inline-block" aria-hidden="true" />
             色覺模式
@@ -127,14 +125,14 @@ export function AccessibilityPanel({ open, onClose }: AccessibilityPanelProps) {
             id="a11y-colorblind-select"
             value={settings.colorBlindMode}
             onChange={(e) => setColorBlindMode(e.target.value as ColorBlindMode)}
-            className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors cursor-pointer"
+            className="w-full bg-surface-container-lowest border-none text-on-surface text-sm rounded-xl px-3 py-2 focus:ring-1 focus:ring-primary outline-none transition-colors cursor-pointer"
           >
             <option value="none">一般（無調整）</option>
             <option value="protanopia">紅色弱 (Protanopia)</option>
             <option value="deuteranopia">綠色弱 (Deuteranopia)</option>
             <option value="tritanopia">藍色弱 (Tritanopia)</option>
           </select>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-on-surface-variant/50">
             套用 SVG 濾鏡模擬色覺差異，並重新映射遊戲中的獎品顏色
           </p>
         </div>
@@ -150,7 +148,7 @@ export function AccessibilityPanel({ open, onClose }: AccessibilityPanelProps) {
               colorBlindMode: "none",
             });
           }}
-          className="w-full text-xs text-gray-500 hover:text-gray-300 py-2 border border-gray-700 rounded-lg hover:border-gray-500 transition-all"
+          className="w-full text-xs text-on-surface-variant/50 hover:text-on-surface py-2 rounded-lg hover:bg-surface-container-high transition-all"
         >
           恢復預設值
         </button>
@@ -195,7 +193,7 @@ function ToggleRow({
         aria-hidden="true"
         className={[
           "relative mt-0.5 w-9 h-5 rounded-full transition-all duration-200 shrink-0 flex items-center",
-          checked ? "bg-purple-600" : "bg-gray-700 group-hover:bg-gray-600",
+          checked ? "bg-primary-container" : "bg-surface-container-highest group-hover:bg-surface-bright",
         ].join(" ")}
       >
         <span
@@ -206,11 +204,11 @@ function ToggleRow({
         />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-200 flex items-center gap-1.5">
+        <p className="text-sm font-semibold text-on-surface flex items-center gap-1.5">
           <span className="text-sm" aria-hidden="true">{icon}</span>
           {label}
         </p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-xs text-on-surface-variant/50 mt-0.5">{description}</p>
       </div>
     </label>
   );

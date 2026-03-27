@@ -57,9 +57,9 @@ public class CouponRepositoryImpl : ICouponRepository {
                     it[id] = coupon.id
                     it[name] = coupon.name
                     it[description] = coupon.description
-                    it[discountType] = coupon.discountType.name
+                    it[discountType] = coupon.discountType
                     it[discountValue] = coupon.discountValue
-                    it[applicableTo] = coupon.applicableTo.name
+                    it[applicableTo] = coupon.applicableTo
                     it[maxUsesPerPlayer] = coupon.maxUsesPerPlayer
                     it[totalIssued] = coupon.totalIssued
                     it[totalUsed] = coupon.totalUsed
@@ -161,7 +161,7 @@ public class CouponRepositoryImpl : ICouponRepository {
                 .where {
                     val base = PlayerCouponsTable.playerId eq playerId.value
                     if (status != null) {
-                        base and (PlayerCouponsTable.status eq status.name)
+                        base and (PlayerCouponsTable.status eq status)
                     } else {
                         base
                     }
@@ -183,7 +183,7 @@ public class CouponRepositoryImpl : ICouponRepository {
                     it[couponId] = playerCoupon.couponId
                     it[discountCodeId] = playerCoupon.discountCodeId
                     it[useCount] = playerCoupon.useCount
-                    it[status] = playerCoupon.status.name
+                    it[status] = playerCoupon.status
                     it[issuedAt] = playerCoupon.issuedAt.toOffsetDateTime()
                     it[lastUsedAt] = playerCoupon.lastUsedAt?.toOffsetDateTime()
                     it[createdAt] = playerCoupon.createdAt.toOffsetDateTime()
@@ -192,7 +192,7 @@ public class CouponRepositoryImpl : ICouponRepository {
             } else {
                 PlayerCouponsTable.update({ PlayerCouponsTable.id eq playerCoupon.id }) {
                     it[useCount] = playerCoupon.useCount
-                    it[status] = playerCoupon.status.name
+                    it[status] = playerCoupon.status
                     it[lastUsedAt] = playerCoupon.lastUsedAt?.toOffsetDateTime()
                     it[updatedAt] = playerCoupon.updatedAt.toOffsetDateTime()
                 }
@@ -209,9 +209,9 @@ public class CouponRepositoryImpl : ICouponRepository {
             id = this[CouponsTable.id],
             name = this[CouponsTable.name],
             description = this[CouponsTable.description],
-            discountType = CouponDiscountType.valueOf(this[CouponsTable.discountType]),
+            discountType = this[CouponsTable.discountType],
             discountValue = this[CouponsTable.discountValue],
-            applicableTo = CouponApplicableTo.valueOf(this[CouponsTable.applicableTo]),
+            applicableTo = this[CouponsTable.applicableTo],
             maxUsesPerPlayer = this[CouponsTable.maxUsesPerPlayer],
             totalIssued = this[CouponsTable.totalIssued],
             totalUsed = this[CouponsTable.totalUsed],
@@ -245,7 +245,7 @@ public class CouponRepositoryImpl : ICouponRepository {
             couponId = this[PlayerCouponsTable.couponId],
             discountCodeId = this[PlayerCouponsTable.discountCodeId],
             useCount = this[PlayerCouponsTable.useCount],
-            status = PlayerCouponStatus.valueOf(this[PlayerCouponsTable.status]),
+            status = this[PlayerCouponsTable.status],
             issuedAt = this[PlayerCouponsTable.issuedAt].toInstant().toKotlinInstant(),
             lastUsedAt = this[PlayerCouponsTable.lastUsedAt]?.toInstant()?.toKotlinInstant(),
             createdAt = this[PlayerCouponsTable.createdAt].toInstant().toKotlinInstant(),

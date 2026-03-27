@@ -14,6 +14,8 @@ import com.prizedraw.contracts.enums.OAuthProvider
 import com.prizedraw.domain.entities.Player
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
@@ -111,6 +113,7 @@ class UnlimitedDrawIntegrityTest : DescribeSpec({
             grade = grade,
             name = "Prize $grade",
             photos = emptyList(),
+            prizeValue = 0,
             buybackPrice = 0,
             buybackEnabled = false,
             probabilityBps = probabilityBps,
@@ -142,6 +145,10 @@ class UnlimitedDrawIntegrityTest : DescribeSpec({
 
         coEvery { campaignRepo.findUnlimitedById(campaign.id) } returns campaign
         coEvery { prizeRepo.findDefinitionsByCampaign(campaign.id, any()) } returns definitions
+        coEvery { prizeRepo.findDefinitionById(any()) } coAnswers {
+            val rawUuid = args[0] as UUID
+            definitions.find { it.id == PrizeDefinitionId(rawUuid) }
+        }
         coEvery { playerRepo.findById(player.id) } returns player
         coEvery { playerRepo.updateBalance(any(), any(), any(), any()) } returns true
         coEvery { prizeRepo.saveInstance(any()) } coAnswers { firstArg() }
@@ -154,9 +161,8 @@ class UnlimitedDrawIntegrityTest : DescribeSpec({
             DrawUnlimitedDeps(
                 campaignRepository = campaignRepo,
                 prizeRepository = prizeRepo,
-                playerRepository = playerRepo,
-                drawPointTxRepository = drawPointTxRepo,
                 outboxRepository = outboxRepo,
+                drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
                 auditRepository = auditRepo,
                 domainService = UnlimitedDrawDomainService(),
                 redisClient = redisClient,

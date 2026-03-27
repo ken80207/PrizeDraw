@@ -82,6 +82,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                     it[grade] = definition.grade
                     it[name] = definition.name
                     it[photos] = photosJson
+                    it[prizeValue] = definition.prizeValue
                     it[buybackPrice] = definition.buybackPrice
                     it[buybackEnabled] = definition.buybackEnabled
                     it[probabilityBps] = definition.probabilityBps
@@ -129,7 +130,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                         (PrizeInstancesTable.ownerId eq ownerId.value) and
                             (PrizeInstancesTable.deletedAt.isNull())
                     if (state != null) {
-                        base and (PrizeInstancesTable.state eq state.name)
+                        base and (PrizeInstancesTable.state eq state)
                     } else {
                         base
                     }
@@ -142,11 +143,11 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                 it[id] = instance.id.value
                 it[prizeDefinitionId] = instance.prizeDefinitionId.value
                 it[ownerId] = instance.ownerId.value
-                it[acquisitionMethod] = instance.acquisitionMethod.name
+                it[acquisitionMethod] = instance.acquisitionMethod
                 it[sourceDrawTicketId] = instance.sourceDrawTicketId
                 it[sourceTradeOrderId] = instance.sourceTradeOrderId
                 it[sourceExchangeRequestId] = instance.sourceExchangeRequestId
-                it[state] = instance.state.name
+                it[state] = instance.state
                 it[acquiredAt] = instance.acquiredAt.toOffsetDateTime()
                 it[deletedAt] = instance.deletedAt?.toOffsetDateTime()
                 it[createdAt] = instance.createdAt.toOffsetDateTime()
@@ -168,9 +169,9 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             val rows =
                 PrizeInstancesTable.update({
                     (PrizeInstancesTable.id eq id.value) and
-                        (PrizeInstancesTable.state eq expectedState.name)
+                        (PrizeInstancesTable.state eq expectedState)
                 }) {
-                    it[state] = newState.name
+                    it[state] = newState
                     it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
                 }
             rows > 0
@@ -184,7 +185,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
         newSuspendedTransaction {
             PrizeInstancesTable.update({ PrizeInstancesTable.id eq instanceId.value }) {
                 it[ownerId] = newOwnerId.value
-                it[state] = newState.name
+                it[state] = newState
                 it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
             }
             PrizeInstancesTable
@@ -211,6 +212,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             grade = this[PrizeDefinitionsTable.grade],
             name = this[PrizeDefinitionsTable.name],
             photos = photos,
+            prizeValue = this[PrizeDefinitionsTable.prizeValue],
             buybackPrice = this[PrizeDefinitionsTable.buybackPrice],
             buybackEnabled = this[PrizeDefinitionsTable.buybackEnabled],
             probabilityBps = this[PrizeDefinitionsTable.probabilityBps],
@@ -226,11 +228,11 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             id = PrizeInstanceId(this[PrizeInstancesTable.id]),
             prizeDefinitionId = PrizeDefinitionId(this[PrizeInstancesTable.prizeDefinitionId]),
             ownerId = PlayerId(this[PrizeInstancesTable.ownerId]),
-            acquisitionMethod = PrizeAcquisitionMethod.valueOf(this[PrizeInstancesTable.acquisitionMethod]),
+            acquisitionMethod = this[PrizeInstancesTable.acquisitionMethod],
             sourceDrawTicketId = this[PrizeInstancesTable.sourceDrawTicketId],
             sourceTradeOrderId = this[PrizeInstancesTable.sourceTradeOrderId],
             sourceExchangeRequestId = this[PrizeInstancesTable.sourceExchangeRequestId],
-            state = PrizeState.valueOf(this[PrizeInstancesTable.state]),
+            state = this[PrizeInstancesTable.state],
             acquiredAt = this[PrizeInstancesTable.acquiredAt].toInstant().toKotlinInstant(),
             deletedAt = this[PrizeInstancesTable.deletedAt]?.toInstant()?.toKotlinInstant(),
             createdAt = this[PrizeInstancesTable.createdAt].toInstant().toKotlinInstant(),

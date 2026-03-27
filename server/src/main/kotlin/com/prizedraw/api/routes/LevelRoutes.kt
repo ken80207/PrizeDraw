@@ -20,7 +20,6 @@ import io.ktor.server.routing.get
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import org.koin.ktor.ext.inject
 import com.prizedraw.domain.valueobjects.PlayerId as DomainPlayerId
 
 /**

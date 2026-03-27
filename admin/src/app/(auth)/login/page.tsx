@@ -11,12 +11,43 @@ interface StaffLoginResponse {
   role: string;
 }
 
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+
+const DEV_ROLES = [
+  {
+    label: "Admin",
+    role: "ADMIN",
+    staffName: "Dev Admin",
+  },
+  {
+    label: "Employee",
+    role: "OPERATOR",
+    staffName: "Dev Operator",
+  },
+  {
+    label: "Support",
+    role: "CUSTOMER_SERVICE",
+    staffName: "Dev Support",
+  },
+] as const;
+
+const DEV_STAFF_ID = "00000000-0000-0000-0000-000000000002";
+const DEV_TOKEN = "dev-bypass-token";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleDevLogin(role: string, staffName: string) {
+    sessionStorage.setItem("adminRole", role);
+    sessionStorage.setItem("adminStaffName", staffName);
+    sessionStorage.setItem("adminAccessToken", DEV_TOKEN);
+    sessionStorage.setItem("adminStaffId", DEV_STAFF_ID);
+    router.push("/dashboard");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +86,39 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-slate-900">PrizeDraw Admin</h1>
           <p className="mt-1 text-sm text-slate-500">後台管理系統，請登入繼續</p>
         </div>
+
+        {/* Dev Mode Panel */}
+        {DEV_MODE && (
+          <div className="mb-4 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-base">🛠</span>
+              <span className="text-sm font-semibold text-amber-800">
+                Dev Mode Login
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DEV_ROLES.map(({ label, role, staffName }) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleDevLogin(role, staffName)}
+                  className="rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 active:scale-95"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        {DEV_MODE && (
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">or login normally</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit}
