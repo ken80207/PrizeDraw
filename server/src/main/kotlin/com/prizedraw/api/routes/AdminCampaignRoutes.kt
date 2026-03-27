@@ -2,10 +2,14 @@ package com.prizedraw.api.routes
 
 import com.prizedraw.api.plugins.StaffPrincipal
 import com.prizedraw.api.plugins.satisfies
+import com.prizedraw.api.mappers.toDto
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
-import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
+import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
+import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
+import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
+import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
@@ -15,7 +19,10 @@ import com.prizedraw.application.usecases.admin.InvalidCampaignTransitionExcepti
 import com.prizedraw.contracts.dto.admin.ChangeCampaignStatusRequest
 import com.prizedraw.contracts.dto.admin.CreateKujiCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.CreateUnlimitedCampaignAdminRequest
+import com.prizedraw.contracts.dto.admin.RiskSettingsUpdateRequest
 import com.prizedraw.contracts.dto.admin.UpdateCampaignAdminRequest
+import com.prizedraw.contracts.dto.admin.UpdatePrizeTableRequest
+import com.prizedraw.domain.services.LowMarginException
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDetailDto
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
 import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
@@ -55,18 +62,24 @@ import java.util.UUID
  * - GET [AdminEndpoints.CAMPAIGN_BY_ID]       -- campaign detail
  * - PATCH  [AdminEndpoints.CAMPAIGN_BY_ID]       -- update name/description/coverImage
  * - PATCH  [AdminEndpoints.CAMPAIGN_STATUS]      -- change campaign status
+ * - PATCH  [AdminEndpoints.UNLIMITED_PRIZE_TABLE] -- replace unlimited prize table
+ * - POST   [AdminEndpoints.CAMPAIGN_APPROVE]      -- approve campaign (MANAGER)
+ * - POST   [AdminEndpoints.CAMPAIGN_REJECT]       -- reject campaign (MANAGER)
+ * - GET    [AdminEndpoints.RISK_SETTINGS]         -- read risk settings (ADMIN)
+ * - PATCH  [AdminEndpoints.RISK_SETTINGS]         -- update risk settings (ADMIN)
  */
 public fun Route.adminCampaignRoutes() {
     adminCampaignCreateRoutes()
     adminCampaignQueryRoutes()
     adminCampaignMutationRoutes()
+    adminCampaignPrizeAndRiskRoutes()
 }
 
 // --- Create routes ---
 
 private fun Route.adminCampaignCreateRoutes() {
     val createKuji: ICreateKujiCampaignUseCase by inject()
-    val createUnlimited: ICreateUnlimitedCampaignUseCase by inject()
+    val createUnlimitedImpl: CreateUnlimitedCampaignUseCase by inject()
 
     post(AdminEndpoints.CAMPAIGNS_KUJI) {
         val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
@@ -87,16 +100,20 @@ private fun Route.adminCampaignCreateRoutes() {
     post(AdminEndpoints.CAMPAIGNS_UNLIMITED) {
         val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
         val req = call.receive<CreateUnlimitedCampaignAdminRequest>()
-        val campaign =
-            createUnlimited.execute(
-                staffId = staff.staffId,
-                title = req.title,
-                description = req.description,
-                coverImageUrl = req.coverImageUrl,
-                pricePerDraw = req.pricePerDraw,
-                rateLimitPerSecond = req.rateLimitPerSecond,
-            )
-        call.respond(HttpStatusCode.Created, campaign.toDto())
+        val (campaign, marginResult) = createUnlimitedImpl.executeWithPrizeTable(
+            staffId = staff.staffId,
+            title = req.title,
+            description = req.description,
+            coverImageUrl = req.coverImageUrl,
+            pricePerDraw = req.pricePerDraw,
+            rateLimitPerSecond = req.rateLimitPerSecond,
+            prizeTable = req.prizeTable,
+        )
+        val response = mapOf(
+            "campaign" to campaign.toDto(),
+            "marginResult" to marginResult?.toDto(),
+        )
+        call.respond(HttpStatusCode.Created, response)
     }
 }
 
@@ -192,9 +209,72 @@ private fun Route.adminCampaignMutationRoutes() {
                 campaignId = campaignId,
                 campaignType = campaignType,
                 newStatus = req.status,
+                confirmLowMargin = req.confirmLowMargin,
             )
         }.fold(
             onSuccess = { call.respond(HttpStatusCode.NoContent) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+}
+
+// --- Prize table, approval, and risk settings routes ---
+
+private fun Route.adminCampaignPrizeAndRiskRoutes() {
+    val updatePrizeTable: UpdateUnlimitedPrizeTableUseCase by inject()
+    val approveCampaign: ApproveCampaignUseCase by inject()
+    val riskSettings: GetRiskSettingsUseCase by inject()
+
+    // Prize table update (unlimited only, DRAFT status)
+    patch(AdminEndpoints.UNLIMITED_PRIZE_TABLE) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@patch
+        val campaignId = call.parseCampaignId() ?: return@patch
+        val req = call.receive<UpdatePrizeTableRequest>()
+        runCatching {
+            updatePrizeTable.execute(campaignId, req, staff.staffId)
+        }.fold(
+            onSuccess = { result -> call.respond(HttpStatusCode.OK, result.toDto()) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+
+    // Approval endpoints (pre-built, requires MANAGER role)
+    post(AdminEndpoints.CAMPAIGN_APPROVE) {
+        val staff = call.requireStaff(StaffRole.MANAGER) ?: return@post
+        val campaignId = call.parseCampaignId() ?: return@post
+        runCatching {
+            approveCampaign.approve(campaignId, staff.staffId)
+        }.fold(
+            onSuccess = { call.respond(HttpStatusCode.OK) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+
+    post(AdminEndpoints.CAMPAIGN_REJECT) {
+        val staff = call.requireStaff(StaffRole.MANAGER) ?: return@post
+        val campaignId = call.parseCampaignId() ?: return@post
+        runCatching {
+            approveCampaign.reject(campaignId, staff.staffId)
+        }.fold(
+            onSuccess = { call.respond(HttpStatusCode.OK) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+
+    // Risk settings
+    get(AdminEndpoints.RISK_SETTINGS) {
+        call.requireStaff(StaffRole.ADMIN) ?: return@get
+        val settings = riskSettings.get()
+        call.respond(HttpStatusCode.OK, settings)
+    }
+
+    patch(AdminEndpoints.RISK_SETTINGS) {
+        val staff = call.requireStaff(StaffRole.ADMIN) ?: return@patch
+        val req = call.receive<RiskSettingsUpdateRequest>()
+        runCatching {
+            riskSettings.update(req, staff.staffId)
+        }.fold(
+            onSuccess = { call.respond(HttpStatusCode.OK, riskSettings.get()) },
             onFailure = { e -> call.respondError(e) },
         )
     }
@@ -244,6 +324,8 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondError(e: T
             respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
         is IllegalArgumentException ->
             respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
+        is LowMarginException ->
+            respond(HttpStatusCode.UnprocessableEntity, e.marginResult.toDto())
         is IllegalStateException ->
             respond(HttpStatusCode.UnprocessableEntity, mapOf("error" to e.message))
         else ->
