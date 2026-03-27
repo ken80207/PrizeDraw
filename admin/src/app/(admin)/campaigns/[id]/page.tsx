@@ -6,6 +6,8 @@ import { apiClient } from "@/services/apiClient";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Modal } from "@/components/Modal";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { calcUnlimitedMargin, pctToBps } from "@/lib/margin-utils";
+import { MarginDisplay } from "@/components/MarginDisplay";
 
 interface DrawRecord {
   ticketId: string;
@@ -22,6 +24,7 @@ interface PrizeDefinition {
   grade: string;
   name: string;
   probability?: number;
+  prizeValue?: number;
   photoUrl?: string;
 }
 
@@ -97,14 +100,25 @@ export default function CampaignDetailPage() {
       });
   }, [id]);
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string, confirmLowMargin = false) => {
     setIsSaving(true);
     try {
-      await apiClient.patch(`/api/v1/admin/campaigns/${id}/status`, { status: newStatus });
-      setCampaign((prev) => prev ? { ...prev, status: newStatus } : prev);
+      await apiClient.patch(`/api/v1/admin/campaigns/${id}/status`, {
+        status: newStatus,
+        ...(confirmLowMargin ? { confirmLowMargin: true } : {}),
+      });
+      setCampaign((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setConfirmModal(null);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "操作失敗");
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 422) {
+        const confirmed = window.confirm("毛利率低於警戒線，確定要上架嗎？");
+        if (confirmed) {
+          await handleStatusChange(newStatus, true);
+          return;
+        }
+      } else {
+        alert(err instanceof Error ? err.message : "操作失敗");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -125,11 +139,28 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // TODO: prize-pool update endpoint is not yet defined in AdminEndpoints.
-  // When the server route is added, implement PATCH /api/v1/admin/campaigns/{id}/prize-pool
-  // with body { prizePool: [{ grade, name, probability }] }.
   const handleSaveProbability = async () => {
-    alert("賞品機率更新功能尚未開放，請聯絡後端工程師新增對應端點。");
+    setIsSaving(true);
+    try {
+      await apiClient.patch(
+        `/api/v1/admin/campaigns/unlimited/${id}/prize-table`,
+        {
+          prizeTable: probRows.map((r, i) => ({
+            grade: r.grade,
+            name: r.name,
+            probabilityBps: pctToBps(r.probability ?? 0),
+            prizeValue: r.prizeValue ?? 0,
+            photoUrl: r.photoUrl || undefined,
+            displayOrder: i,
+          })),
+        },
+      );
+      setProbDirty(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "儲存失敗");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateProbRow = (rowId: string, field: keyof PrizeDefinition, value: unknown) => {
@@ -158,6 +189,15 @@ export default function CampaignDetailPage() {
 
   const totalProb = probRows.reduce((s, r) => s + (r.probability ?? 0), 0);
   const isLocked = campaign?.status === "ACTIVE" && campaign?.type === "KUJI";
+
+  const unlimitedMargin =
+    campaign?.type === "UNLIMITED" && probRows.length > 0
+      ? calcUnlimitedMargin(
+          campaign.pricePerDraw,
+          probRows.map((r) => ({ probabilityBps: pctToBps(r.probability ?? 0), prizeValue: r.prizeValue ?? 0 })),
+          20,
+        )
+      : null;
 
   if (isLoading) {
     return (
@@ -331,15 +371,26 @@ export default function CampaignDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {["等級", "賞品名稱", "機率 %"].map((h) => (
+                {["等級", "賞品名稱", "機率 %", "市場價值"].map((h) => (
                   <th key={h} className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">{h}</th>
                 ))}
+                {campaign.status === "DRAFT" && <th className="pb-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {probRows.map((row) => (
                 <tr key={row.id}>
-                  <td className="py-2 pr-3 text-slate-700 font-medium">{row.grade}</td>
+                  <td className="py-2 pr-3">
+                    {campaign.status === "DRAFT" ? (
+                      <input
+                        className="w-16 rounded border border-slate-300 px-2 py-1 text-xs"
+                        value={row.grade}
+                        onChange={(e) => updateProbRow(row.id, "grade", e.target.value)}
+                      />
+                    ) : (
+                      <span className="font-medium text-slate-700">{row.grade}</span>
+                    )}
+                  </td>
                   <td className="py-2 pr-3">
                     <input
                       className="w-36 rounded border border-slate-300 px-2 py-1 text-xs"
@@ -356,10 +407,56 @@ export default function CampaignDetailPage() {
                       step="0.01"
                     />
                   </td>
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                        value={row.prizeValue ?? ""}
+                        onChange={(e) => updateProbRow(row.id, "prizeValue", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                        onFocus={(e) => e.target.select()}
+                        min={0}
+                        placeholder="0"
+                      />
+                      <span className="text-xs text-slate-400">點</span>
+                    </div>
+                  </td>
+                  {campaign.status === "DRAFT" && (
+                    <td className="py-2">
+                      {probRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProbRows((prev) => prev.filter((r) => r.id !== row.id));
+                            setProbDirty(true);
+                          }}
+                          className="text-slate-400 hover:text-red-500 text-xs"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {campaign.status === "DRAFT" && (
+            <button
+              type="button"
+              onClick={() => {
+                setProbRows((prev) => [
+                  ...prev,
+                  { id: Math.random().toString(36).slice(2, 9), grade: "", name: "", probability: 0, prizeValue: 0 },
+                ]);
+                setProbDirty(true);
+              }}
+              className="rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+            >
+              + 新增等級
+            </button>
+          )}
 
           <div className="flex items-center justify-between">
             <span className={`text-sm font-medium ${Math.abs(totalProb - 100) < 0.01 ? "text-green-600" : "text-red-600"}`}>
@@ -376,6 +473,8 @@ export default function CampaignDetailPage() {
               </button>
             )}
           </div>
+
+          <MarginDisplay result={unlimitedMargin} />
         </div>
       )}
 

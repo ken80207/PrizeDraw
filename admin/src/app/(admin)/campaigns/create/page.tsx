@@ -4,6 +4,8 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 import { ImageUpload } from "@/components/ImageUpload";
+import { calcUnlimitedMargin, pctToBps } from "@/lib/margin-utils";
+import { MarginDisplay } from "@/components/MarginDisplay";
 
 type CampaignType = "kuji" | "unlimited";
 
@@ -12,6 +14,7 @@ interface ProbabilityRow {
   grade: string;
   name: string;
   probability: number;
+  prizeValue: number;
   photoUrl: string;
 }
 
@@ -48,14 +51,23 @@ function CampaignCreateInner() {
 
   // Unlimited state
   const [probRows, setProbRows] = useState<ProbabilityRow[]>([
-    { id: genId(), grade: "A賞", name: "", probability: 0.5, photoUrl: "" },
-    { id: genId(), grade: "B賞", name: "", probability: 2.0, photoUrl: "" },
-    { id: genId(), grade: "C賞", name: "", probability: 10, photoUrl: "" },
-    { id: genId(), grade: "D賞", name: "", probability: 87.5, photoUrl: "" },
+    { id: genId(), grade: "A賞", name: "", probability: 0.5, prizeValue: 0, photoUrl: "" },
+    { id: genId(), grade: "B賞", name: "", probability: 2.0, prizeValue: 0, photoUrl: "" },
+    { id: genId(), grade: "C賞", name: "", probability: 10, prizeValue: 0, photoUrl: "" },
+    { id: genId(), grade: "D賞", name: "", probability: 87.5, prizeValue: 0, photoUrl: "" },
   ]);
 
   const totalProb = probRows.reduce((s, r) => s + r.probability, 0);
   const probValid = Math.abs(totalProb - 100) < 0.01;
+
+  const unlimitedMargin =
+    type === "unlimited" && probRows.length > 0
+      ? calcUnlimitedMargin(
+          price,
+          probRows.map((r) => ({ probabilityBps: pctToBps(r.probability), prizeValue: r.prizeValue })),
+          20,
+        )
+      : null;
 
   // Kuji computed values
   const ticketsPerBox = kujiPrizes.reduce((s, p) => s + p.quantity, 0);
@@ -113,7 +125,7 @@ function CampaignCreateInner() {
   const addProbRow = () => {
     setProbRows((prev) => [
       ...prev,
-      { id: genId(), grade: "", name: "", probability: 0, photoUrl: "" },
+      { id: genId(), grade: "", name: "", probability: 0, prizeValue: 0, photoUrl: "" },
     ]);
   };
 
@@ -163,11 +175,13 @@ function CampaignCreateInner() {
           description,
           coverImageUrl: coverImageUrl || undefined,
           pricePerDraw: price,
-          prizePool: probRows.map((r) => ({
+          prizeTable: probRows.map((r) => ({
             grade: r.grade,
             name: r.name,
-            probability: r.probability / 100,
+            probabilityBps: pctToBps(r.probability),
+            prizeValue: r.prizeValue,
             photoUrl: r.photoUrl || undefined,
+            displayOrder: probRows.indexOf(r),
           })),
         };
         await apiClient.post("/api/v1/admin/campaigns/unlimited", body);
@@ -482,6 +496,7 @@ function CampaignCreateInner() {
                   <th className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">等級</th>
                   <th className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">賞品名稱</th>
                   <th className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">機率 %</th>
+                  <th className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">市場價值</th>
                   <th className="pb-2 text-left text-xs font-medium text-slate-500 pr-3">圖片</th>
                   <th className="pb-2" />
                 </tr>
@@ -516,6 +531,20 @@ function CampaignCreateInner() {
                       />
                     </td>
                     <td className="py-2 pr-3">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                          value={row.prizeValue || ""}
+                          onChange={(e) => updateProbRow(row.id, "prizeValue", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                          onFocus={(e) => e.target.select()}
+                          min={0}
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-slate-400">點</span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3">
                       <ImageUpload
                         compact
                         currentUrl={row.photoUrl || undefined}
@@ -543,6 +572,8 @@ function CampaignCreateInner() {
             <span>機率總和: {totalProb.toFixed(2)}%</span>
             <span>{probValid ? "✓" : "⚠ 必須等於 100%"}</span>
           </div>
+
+          <MarginDisplay result={unlimitedMargin} />
         </div>
       )}
 
