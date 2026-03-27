@@ -8,6 +8,7 @@ import com.google.firebase.messaging.Message
 import com.google.firebase.messaging.MulticastMessage
 import com.google.firebase.messaging.Notification
 import com.prizedraw.application.ports.output.INotificationService
+import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.application.ports.output.PushNotificationPayload
 import com.prizedraw.domain.valueobjects.PlayerId
 import org.slf4j.LoggerFactory
@@ -18,13 +19,13 @@ import java.io.FileInputStream
  *
  * Initialization reads the service account credentials from the path specified in
  * [FirebaseConfig.serviceAccountPath]. FCM tokens are looked up from the player's
- * device registry — in this stub, the token lookup is a placeholder that should be
- * replaced by a real player-device token store (e.g. a `player_devices` table).
+ * device registry via [IPlayerDeviceRepository].
  *
  * All delivery failures are logged and swallowed; push notifications are best-effort.
  */
 public class FirebaseNotificationService(
     private val config: FirebaseConfig,
+    private val playerDeviceRepository: IPlayerDeviceRepository,
 ) : INotificationService {
     public data class FirebaseConfig(
         /** Path to the Firebase service account JSON file. */
@@ -54,12 +55,39 @@ public class FirebaseNotificationService(
         playerId: PlayerId,
         payload: PushNotificationPayload,
     ) {
-        val token =
-            lookupFcmToken(playerId) ?: run {
-                log.debug("No FCM token found for player {}; skipping push", playerId)
-                return
-            }
+        val tokens = lookupFcmTokens(playerId)
+        if (tokens.isEmpty()) {
+            log.debug("No FCM tokens found for player {}; skipping push", playerId)
+            return
+        }
+        if (tokens.size == 1) {
+            sendToSingleToken(tokens.first(), payload)
+        } else {
+            sendToMultipleTokens(tokens, payload)
+        }
+    }
 
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun sendPushBatch(
+        playerIds: List<PlayerId>,
+        payload: PushNotificationPayload,
+    ) {
+        val allTokens = playerIds.flatMap { lookupFcmTokens(it) }
+        if (allTokens.isEmpty()) {
+            log.debug("No FCM tokens found for batch of {} players; skipping", playerIds.size)
+            return
+        }
+        sendToMultipleTokens(allTokens, payload)
+    }
+
+    private suspend fun lookupFcmTokens(playerId: PlayerId): List<String> =
+        playerDeviceRepository.findTokensByPlayerId(playerId.value)
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun sendToSingleToken(
+        token: String,
+        payload: PushNotificationPayload,
+    ) {
         try {
             val message =
                 Message
@@ -74,23 +102,17 @@ public class FirebaseNotificationService(
                     ).putAllData(payload.data)
                     .build()
             messaging.send(message)
-            log.debug("Push notification sent to player {}", playerId)
+            log.debug("Push notification sent to single token")
         } catch (e: Exception) {
-            log.error("Failed to send push notification to player {}: {}", playerId, e.message)
+            log.error("Failed to send push notification to token: {}", e.message)
         }
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun sendPushBatch(
-        playerIds: List<PlayerId>,
+    private fun sendToMultipleTokens(
+        tokens: List<String>,
         payload: PushNotificationPayload,
     ) {
-        val tokens = playerIds.mapNotNull { lookupFcmToken(it) }
-        if (tokens.isEmpty()) {
-            log.debug("No FCM tokens found for batch of {} players; skipping", playerIds.size)
-            return
-        }
-
         try {
             val message =
                 MulticastMessage
@@ -115,15 +137,4 @@ public class FirebaseNotificationService(
             log.error("Failed to send batch push notification: {}", e.message)
         }
     }
-
-    /**
-     * Looks up the FCM device token for the given player.
-     *
-     * Stub implementation — returns null until a `player_devices` table and registration
-     * endpoint are implemented. Replace with a real DB lookup in a future phase.
-     */
-    @Suppress("FunctionOnlyReturningConstant", "UnusedParameter")
-    private fun lookupFcmToken(
-        @Suppress("UNUSED_PARAMETER") playerId: PlayerId,
-    ): String? = null
 }

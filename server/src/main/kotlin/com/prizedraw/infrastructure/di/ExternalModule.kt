@@ -2,11 +2,12 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.events.OutboxWorker
 import com.prizedraw.application.ports.output.ILineMessagingService
+import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
 import com.prizedraw.application.ports.output.IOAuthTokenValidator
-import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
+import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.application.ports.output.ISmsService
 import com.prizedraw.application.ports.output.IStorageService
 import com.prizedraw.application.ports.output.IWithdrawalGateway
@@ -82,16 +83,18 @@ public fun externalModule(config: ApplicationConfig) =
 
         single<INotificationService> {
             FirebaseNotificationService(
-                FirebaseNotificationService.FirebaseConfig(
-                    serviceAccountPath =
-                        config
-                            .propertyOrNull("firebase.serviceAccountPath")
-                            ?.getString() ?: "/etc/prizedraw/firebase-service-account.json",
-                    projectId =
-                        config
-                            .propertyOrNull("firebase.projectId")
-                            ?.getString() ?: "prizedraw",
-                ),
+                config =
+                    FirebaseNotificationService.FirebaseConfig(
+                        serviceAccountPath =
+                            config
+                                .propertyOrNull("firebase.serviceAccountPath")
+                                ?.getString() ?: "/etc/prizedraw/firebase-service-account.json",
+                        projectId =
+                            config
+                                .propertyOrNull("firebase.projectId")
+                                ?.getString() ?: "prizedraw",
+                    ),
+                playerDeviceRepository = get<IPlayerDeviceRepository>(),
             )
         }
 

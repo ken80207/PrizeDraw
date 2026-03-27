@@ -1,22 +1,22 @@
 package com.prizedraw.api.plugins
 
+import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminAnnouncementRoutes
+import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminDashboardRoutes
 import com.prizedraw.api.routes.adminLeaderboardConfigRoutes
 import com.prizedraw.api.routes.adminPlayerRoutes
-import com.prizedraw.api.routes.adminPrizesRoutes
-import com.prizedraw.api.routes.adminTradeRoutes
-import com.prizedraw.api.routes.roomRoutes
-import com.prizedraw.api.routes.adminAnimationRoutes
-import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminPricingRoutes
+import com.prizedraw.api.routes.adminPrizesRoutes
 import com.prizedraw.api.routes.adminStaffRoutes
+import com.prizedraw.api.routes.adminTradeRoutes
 import com.prizedraw.api.routes.authRoutes
 import com.prizedraw.api.routes.broadcastRoutes
 import com.prizedraw.api.routes.buybackRoutes
 import com.prizedraw.api.routes.campaignRoutes
 import com.prizedraw.api.routes.chatRoutes
 import com.prizedraw.api.routes.couponRoutes
+import com.prizedraw.api.routes.deviceRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
@@ -24,21 +24,22 @@ import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
 import com.prizedraw.api.routes.paymentRoutes
 import com.prizedraw.api.routes.playerRoutes
+import com.prizedraw.api.routes.roomRoutes
 import com.prizedraw.api.routes.shippingRoutes
 import com.prizedraw.api.routes.statusRoutes
 import com.prizedraw.api.routes.supportRoutes
 import com.prizedraw.api.routes.tradeRoutes
 import com.prizedraw.api.routes.withdrawalRoutes
 import com.prizedraw.application.ports.output.IDrawRepository
+import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueEntryRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
 import com.prizedraw.application.services.RoomScalingService
-import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
-import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
 import com.prizedraw.infrastructure.websocket.ConnectionManager
 import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
 import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
@@ -73,6 +74,7 @@ import org.koin.ktor.ext.inject
  * Phase 17: GET /api/v1/leaderboards, GET /api/v1/leaderboards/campaign/{campaignId}
  * Phase 18: GET /api/v1/campaigns/kuji/{campaignId}/spectators
  */
+@Suppress("LongMethod")
 public fun Application.configureRouting() {
     val prometheusRegistry: PrometheusMeterRegistry by inject()
     val connectionManager: ConnectionManager by inject()
@@ -107,6 +109,9 @@ public fun Application.configureRouting() {
         authRoutes()
         playerRoutes()
         paymentRoutes()
+
+        // Phase 9: FCM device token registration
+        deviceRoutes()
 
         // Phase 4: Campaign, Draw, WebSocket
         campaignRoutes()
