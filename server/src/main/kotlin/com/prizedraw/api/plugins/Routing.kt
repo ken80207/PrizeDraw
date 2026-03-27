@@ -37,9 +37,13 @@ import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
+import com.prizedraw.application.ports.output.INotificationRepository
+import com.prizedraw.application.services.TokenService
 import com.prizedraw.infrastructure.websocket.ConnectionManager
+import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
 import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
 import com.prizedraw.infrastructure.websocket.kujiWebSocketHandler
+import com.prizedraw.infrastructure.websocket.playerNotificationHandler
 import com.prizedraw.infrastructure.websocket.queueWebSocketHandler
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -80,6 +84,9 @@ public fun Application.configureRouting() {
     val drawSyncService: DrawSyncService by inject()
     val chatService: ChatService by inject()
     val roomScalingService: RoomScalingService by inject()
+    val playerNotificationManager: PlayerNotificationManager by inject()
+    val notificationRepository: INotificationRepository by inject()
+    val tokenService: TokenService by inject()
 
     // Start the leaderboard background aggregation job once at startup
     leaderboardAggregationJob.start()
@@ -114,6 +121,9 @@ public fun Application.configureRouting() {
         chatRoutes()
         broadcastRoutes()
         chatWebSocketHandler(connectionManager, chatService)
+
+        // Player notification WebSocket
+        playerNotificationHandler(playerNotificationManager, tokenService, notificationRepository)
 
         // Phase 6: Prize Inventory & Shipping
         shippingRoutes()
