@@ -1,6 +1,8 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.INotificationRepository
+import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.ports.output.ITierConfigRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
@@ -30,6 +32,8 @@ import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.NotificationRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.PlayerDeviceRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.RoomInstanceRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.TierConfigRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.XpTransactionRepositoryImpl
@@ -104,4 +108,8 @@ public val repositoryModule =
         // Phase 22: Player level/tier system
         single<IXpTransactionRepository> { XpTransactionRepositoryImpl() }
         single<ITierConfigRepository> { TierConfigRepositoryImpl() }
+
+        // Task 3: Notification + Device repositories
+        single<INotificationRepository> { NotificationRepositoryImpl() }
+        single<IPlayerDeviceRepository> { PlayerDeviceRepositoryImpl() }
     }
