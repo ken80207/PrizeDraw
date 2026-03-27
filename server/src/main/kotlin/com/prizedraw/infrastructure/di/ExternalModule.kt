@@ -4,6 +4,7 @@ import com.prizedraw.application.events.OutboxWorker
 import com.prizedraw.application.ports.output.ILineMessagingService
 import com.prizedraw.application.ports.output.INotificationService
 import com.prizedraw.application.ports.output.IOAuthTokenValidator
+import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
 import com.prizedraw.application.ports.output.ISmsService
@@ -118,6 +119,7 @@ public fun externalModule(config: ApplicationConfig) =
                 outboxRepository = get<IOutboxRepository>(),
                 notificationService = get<INotificationService>(),
                 redisPubSub = get<RedisPubSub>(),
+                notificationRepository = get<INotificationRepository>(),
             )
         }
 

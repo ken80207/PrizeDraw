@@ -1,8 +1,10 @@
 package com.prizedraw.application.events
 
+import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.PushNotificationPayload
+import com.prizedraw.domain.entities.Notification
 import com.prizedraw.domain.entities.OutboxEvent
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +13,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,11 +32,13 @@ import kotlin.time.Duration.Companion.seconds
  * @param outboxRepository Source of PENDING outbox events.
  * @param notificationService For sending push notifications on domain events.
  * @param redisPubSub For WebSocket fanout over pub/sub.
+ * @param notificationRepository For persisting notification records per player.
  */
 public class OutboxWorker(
     private val outboxRepository: IOutboxRepository,
     private val notificationService: INotificationService,
     private val redisPubSub: RedisPubSub,
+    private val notificationRepository: INotificationRepository,
 ) {
     private val log = LoggerFactory.getLogger(OutboxWorker::class.java)
     private val job = SupervisorJob()
@@ -88,25 +94,155 @@ public class OutboxWorker(
     /**
      * Routes the event to the appropriate handler(s) based on [OutboxEvent.eventType].
      *
-     * Each event may trigger multiple side effects: push notification, WebSocket fanout,
-     * leaderboard update, etc.
+     * For every event, identifies the target players, persists a [Notification] record
+     * per player, and publishes a WebSocket payload to the player's dedicated channel.
+     * Then dispatches to the FCM push handler for the event type.
      */
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun dispatch(event: OutboxEvent) {
-        // Publish to Redis pub/sub for WebSocket fanout regardless of event type
-        val aggregateId = event.aggregateId.toString()
-        redisPubSub.publish("event:aggregate:$aggregateId", event.payload.toString())
+        // Identify all players who should receive this event
+        val playerIds = extractPlayerIds(event)
+        val (title, body) = notificationContent(event) ?: (null to null)
 
+        // Persist one notification per player and publish to each player's WS channel
+        for (pid in playerIds) {
+            val notification = if (title != null && body != null) {
+                val n = Notification(
+                    playerId = java.util.UUID.fromString(pid),
+                    eventType = event.eventType,
+                    title = title,
+                    body = body,
+                    data = event.payload.mapValues { it.value.jsonPrimitive.content },
+                )
+                notificationRepository.save(n)
+                n
+            } else {
+                null
+            }
+            val wsPayload = buildWsPayload(event, notification)
+            redisPubSub.publish("ws:player:$pid", wsPayload)
+        }
+
+        // FCM push notification
         when (event.eventType) {
             "draw.completed" -> handleDrawCompleted(event)
             "trade.completed" -> handleTradeCompleted(event)
             "exchange.completed" -> handleExchangeCompleted(event)
+            "exchange.requested" -> handleExchangeRequested(event)
+            "exchange.counter_proposed" -> handleExchangeCounterProposed(event)
+            "exchange.rejected" -> handleExchangeRejected(event)
             "buyback.completed" -> handleBuybackCompleted(event)
             "shipping.status_changed" -> handleShippingStatusChanged(event)
             "payment.confirmed" -> handlePaymentConfirmed(event)
+            "payment.failed" -> handlePaymentFailed(event)
+            "withdrawal.status_changed" -> handleWithdrawalStatusChanged(event)
             "support_ticket.replied" -> handleSupportTicketReplied(event)
+            "player.level_up" -> handlePlayerLevelUp(event)
             else -> log.debug("OutboxEvent type '{}' has no handler; skipping", event.eventType)
         }
     }
+
+    /**
+     * Extracts the player IDs that should receive this event.
+     *
+     * Most events target a single `playerId`; trade and exchange events may
+     * target multiple participants.
+     */
+    private fun extractPlayerIds(event: OutboxEvent): List<String> {
+        val payload = event.payload
+        return when (event.eventType) {
+            "trade.completed" -> listOfNotNull(
+                payload["sellerId"]?.jsonPrimitive?.content,
+                payload["buyerId"]?.jsonPrimitive?.content,
+            )
+            "exchange.completed" -> listOfNotNull(
+                payload["initiatorId"]?.jsonPrimitive?.content,
+                payload["recipientId"]?.jsonPrimitive?.content,
+            )
+            "exchange.requested", "exchange.counter_proposed" -> listOfNotNull(
+                payload["recipientId"]?.jsonPrimitive?.content,
+            )
+            "exchange.rejected" -> listOfNotNull(
+                payload["otherPlayerId"]?.jsonPrimitive?.content,
+            )
+            else -> listOfNotNull(
+                payload["playerId"]?.jsonPrimitive?.content,
+            )
+        }
+    }
+
+    /**
+     * Returns the (title, body) pair for a notification based on event type,
+     * or `null` if the event type does not produce a notification.
+     */
+    @Suppress("CyclomaticComplexMethod")
+    private fun notificationContent(event: OutboxEvent): Pair<String, String>? {
+        val payload = event.payload
+        return when (event.eventType) {
+            "draw.completed" -> "Draw Complete!" to "You drew a prize! Check your collection."
+            "trade.completed" -> "Purchase Complete" to "Your marketplace purchase has been completed!"
+            "exchange.completed" -> "Exchange Complete" to "Your prize exchange has been completed!"
+            "exchange.requested" -> "Exchange Request" to "You received a new exchange request."
+            "exchange.counter_proposed" -> "Counter Proposal" to
+                "You received a counter-proposal for your exchange."
+            "exchange.rejected" -> "Exchange Rejected" to "Your exchange request was rejected."
+            "buyback.completed" -> {
+                val points = payload["revenuePointsCredited"]?.jsonPrimitive?.content ?: "0"
+                "Buyback Complete" to "$points revenue points have been credited to your account."
+            }
+            "shipping.status_changed" -> {
+                val status = payload["newStatus"]?.jsonPrimitive?.content ?: ""
+                val body = when (status) {
+                    "SHIPPED" -> "Your prize has been shipped! Check tracking details."
+                    "DELIVERED" -> "Your prize has been delivered!"
+                    else -> "Your shipping order status has been updated: $status"
+                }
+                "Shipping Update" to body
+            }
+            "payment.confirmed" -> {
+                val points = payload["drawPointsGranted"]?.jsonPrimitive?.content ?: "0"
+                "Payment Confirmed" to "$points draw points have been added to your account."
+            }
+            "payment.failed" -> {
+                val reason = payload["reason"]?.jsonPrimitive?.content ?: "Unknown error"
+                "Payment Failed" to "Your payment could not be processed: $reason"
+            }
+            "withdrawal.status_changed" -> {
+                val status = payload["newStatus"]?.jsonPrimitive?.content ?: ""
+                val body = when (status) {
+                    "APPROVED" -> "Your withdrawal request has been approved."
+                    "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
+                    "REJECTED" -> "Your withdrawal request was rejected."
+                    else -> "Your withdrawal status has been updated: $status"
+                }
+                "Withdrawal Update" to body
+            }
+            "support_ticket.replied" -> "Support Reply" to
+                "Customer service has replied to your support ticket."
+            "player.level_up" -> {
+                val level = payload["newLevel"]?.jsonPrimitive?.content ?: ""
+                val tier = payload["newTierName"]?.jsonPrimitive?.content ?: ""
+                "Level Up!" to "Congratulations! You reached level $level ($tier)."
+            }
+            else -> null
+        }
+    }
+
+    /**
+     * Builds the JSON payload published to the player's WebSocket channel.
+     */
+    private fun buildWsPayload(event: OutboxEvent, notification: Notification?): String {
+        return buildJsonObject {
+            put("eventType", event.eventType)
+            put("notificationId", notification?.id?.toString() ?: "")
+            put("title", notification?.title ?: "")
+            put("body", notification?.body ?: "")
+            put("data", event.payload)
+            put("timestamp", kotlinx.datetime.Clock.System.now().toString())
+        }.toString()
+    }
+
+    // ── FCM push notification handlers ───────────────────────────────────
 
     private suspend fun handleDrawCompleted(event: OutboxEvent) {
         val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
@@ -151,6 +287,42 @@ public class OutboxWorker(
                     .fromString(recipientId),
             ),
             payload,
+        )
+    }
+
+    private suspend fun handleExchangeRequested(event: OutboxEvent) {
+        val recipientId = event.payload["recipientId"]?.jsonPrimitive?.content ?: return
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(recipientId),
+            PushNotificationPayload(
+                title = "Exchange Request",
+                body = "You received a new exchange request.",
+                data = mapOf("eventType" to "exchange.requested"),
+            ),
+        )
+    }
+
+    private suspend fun handleExchangeCounterProposed(event: OutboxEvent) {
+        val recipientId = event.payload["recipientId"]?.jsonPrimitive?.content ?: return
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(recipientId),
+            PushNotificationPayload(
+                title = "Counter Proposal",
+                body = "You received a counter-proposal for your exchange.",
+                data = mapOf("eventType" to "exchange.counter_proposed"),
+            ),
+        )
+    }
+
+    private suspend fun handleExchangeRejected(event: OutboxEvent) {
+        val otherPlayerId = event.payload["otherPlayerId"]?.jsonPrimitive?.content ?: return
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(otherPlayerId),
+            PushNotificationPayload(
+                title = "Exchange Rejected",
+                body = "Your exchange request was rejected.",
+                data = mapOf("eventType" to "exchange.rejected"),
+            ),
         )
     }
 
@@ -202,6 +374,38 @@ public class OutboxWorker(
         )
     }
 
+    private suspend fun handlePaymentFailed(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val reason = event.payload["reason"]?.jsonPrimitive?.content ?: "Unknown error"
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "Payment Failed",
+                body = "Your payment could not be processed: $reason",
+                data = mapOf("eventType" to "payment.failed"),
+            ),
+        )
+    }
+
+    private suspend fun handleWithdrawalStatusChanged(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val status = event.payload["newStatus"]?.jsonPrimitive?.content ?: return
+        val body = when (status) {
+            "APPROVED" -> "Your withdrawal request has been approved."
+            "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
+            "REJECTED" -> "Your withdrawal request was rejected."
+            else -> "Your withdrawal status has been updated: $status"
+        }
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "Withdrawal Update",
+                body = body,
+                data = mapOf("eventType" to "withdrawal.status_changed", "status" to status),
+            ),
+        )
+    }
+
     private suspend fun handleSupportTicketReplied(event: OutboxEvent) {
         val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
         notificationService.sendPush(
@@ -211,6 +415,20 @@ public class OutboxWorker(
                 title = "Support Reply",
                 body = "Customer service has replied to your support ticket.",
                 data = mapOf("eventType" to "support_ticket.replied"),
+            ),
+        )
+    }
+
+    private suspend fun handlePlayerLevelUp(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val level = event.payload["newLevel"]?.jsonPrimitive?.content ?: ""
+        val tier = event.payload["newTierName"]?.jsonPrimitive?.content ?: ""
+        notificationService.sendPush(
+            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "Level Up!",
+                body = "Congratulations! You reached level $level ($tier).",
+                data = mapOf("eventType" to "player.level_up"),
             ),
         )
     }
