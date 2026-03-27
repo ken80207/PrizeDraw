@@ -1,7 +1,6 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IStaffRepository
-import com.prizedraw.contracts.enums.StaffRole
 import com.prizedraw.domain.entities.Staff
 import com.prizedraw.domain.valueobjects.EmailAddress
 import com.prizedraw.domain.valueobjects.StaffId

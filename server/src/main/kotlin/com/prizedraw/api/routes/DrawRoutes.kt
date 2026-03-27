@@ -256,7 +256,10 @@ private suspend fun resolveSessionSeconds(
     return campaign.drawSessionSeconds
 }
 
-private fun QueueEntry.toDto(queueLength: Int, sessionSeconds: Int = 300): QueueEntryDto =
+private fun QueueEntry.toDto(
+    queueLength: Int,
+    sessionSeconds: Int = 300,
+): QueueEntryDto =
     QueueEntryDto(
         id = id.toString(),
         queueId = queueId.toString(),
@@ -267,11 +270,12 @@ private fun QueueEntry.toDto(queueLength: Int, sessionSeconds: Int = 300): Queue
         activatedAt = activatedAt,
         completedAt = completedAt,
         queueLength = queueLength,
-        sessionExpiresAt = if (status == com.prizedraw.contracts.enums.QueueEntryStatus.ACTIVE && activatedAt != null) {
-            activatedAt.plus(kotlin.time.Duration.parse("${sessionSeconds}s"))
-        } else {
-            null
-        },
+        sessionExpiresAt =
+            if (status == com.prizedraw.contracts.enums.QueueEntryStatus.ACTIVE && activatedAt != null) {
+                activatedAt.plus(kotlin.time.Duration.parse("${sessionSeconds}s"))
+            } else {
+                null
+            },
     )
 
 // --- Draw sync handlers ---

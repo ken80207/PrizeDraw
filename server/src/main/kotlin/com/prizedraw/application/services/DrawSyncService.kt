@@ -251,14 +251,15 @@ public class DrawSyncService(
         isDown: Boolean,
         timestamp: Long,
     ) {
-        val payload = buildJsonObject {
-            put("type", "DRAW_INPUT")
-            put("sessionId", sessionId.toString())
-            put("x", x)
-            put("y", y)
-            put("isDown", isDown)
-            put("timestamp", timestamp)
-        }.toString()
+        val payload =
+            buildJsonObject {
+                put("type", "DRAW_INPUT")
+                put("sessionId", sessionId.toString())
+                put("x", x)
+                put("y", y)
+                put("isDown", isDown)
+                put("timestamp", timestamp)
+            }.toString()
         redisPubSub.publish("kuji:$campaignId", payload)
     }
 

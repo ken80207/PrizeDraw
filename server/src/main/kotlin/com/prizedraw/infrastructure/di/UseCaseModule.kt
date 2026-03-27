@@ -2,13 +2,13 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.input.admin.ICreateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
-import com.prizedraw.application.ports.input.admin.IDeactivateAnnouncementUseCase
-import com.prizedraw.application.ports.input.admin.IUpdateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.ICreateStaffUseCase
 import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCase
+import com.prizedraw.application.ports.input.admin.IDeactivateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.IDeactivateStaffUseCase
 import com.prizedraw.application.ports.input.admin.IGetAuditLogUseCase
 import com.prizedraw.application.ports.input.admin.IManageAnimationModesUseCase
+import com.prizedraw.application.ports.input.admin.IUpdateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateBuybackPriceUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
@@ -66,12 +66,12 @@ import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
-import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
-import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
-import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
+import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
+import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.ManageAnimationModesUseCase
+import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.UpdateBuybackPriceUseCase
 import com.prizedraw.application.usecases.admin.UpdateCampaignStatusUseCase
 import com.prizedraw.application.usecases.admin.UpdateCampaignUseCase
@@ -88,8 +88,6 @@ import com.prizedraw.application.usecases.draw.DrawKujiDeps
 import com.prizedraw.application.usecases.draw.DrawKujiUseCase
 import com.prizedraw.application.usecases.draw.DrawUnlimitedDeps
 import com.prizedraw.application.usecases.draw.DrawUnlimitedUseCase
-import com.prizedraw.domain.services.DrawCore
-import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.application.usecases.exchange.CancelExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.CreateExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.RespondExchangeRequestUseCase
@@ -111,6 +109,8 @@ import com.prizedraw.application.usecases.trade.PurchaseTradeListingUseCase
 import com.prizedraw.application.usecases.withdrawal.ApproveWithdrawalUseCase
 import com.prizedraw.application.usecases.withdrawal.CreateWithdrawalRequestUseCase
 import com.prizedraw.application.usecases.withdrawal.RejectWithdrawalUseCase
+import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.infrastructure.external.redis.DistributedLock
@@ -201,13 +201,14 @@ public val useCaseModule =
 
         single<DrawCore> {
             DrawCore(
-                deps = DrawCoreDeps(
-                    playerRepository = get(),
-                    prizeRepository = get(),
-                    drawPointTxRepository = get<IDrawPointTransactionRepository>(),
-                    outboxRepository = get(),
-                    levelService = get<LevelService>(),
-                ),
+                deps =
+                    DrawCoreDeps(
+                        playerRepository = get(),
+                        prizeRepository = get(),
+                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
+                        outboxRepository = get(),
+                        levelService = get<LevelService>(),
+                    ),
             )
         }
 

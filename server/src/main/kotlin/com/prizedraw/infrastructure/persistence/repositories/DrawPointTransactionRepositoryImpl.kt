@@ -1,7 +1,6 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
-import com.prizedraw.contracts.enums.DrawPointTxType
 import com.prizedraw.domain.entities.DrawPointTransaction
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.infrastructure.persistence.tables.DrawPointTransactionsTable

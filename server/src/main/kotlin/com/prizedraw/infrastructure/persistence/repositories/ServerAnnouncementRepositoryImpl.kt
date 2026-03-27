@@ -75,10 +75,14 @@ public class ServerAnnouncementRepositoryImpl : IServerAnnouncementRepository {
                     it[isBlocking] = announcement.isBlocking
                     it[targetPlatforms] = announcement.targetPlatforms
                     it[minAppVersion] = announcement.minAppVersion
-                    it[scheduledStart] = announcement.scheduledStart?.toJavaInstant()
-                        ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
-                    it[scheduledEnd] = announcement.scheduledEnd?.toJavaInstant()
-                        ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
+                    it[scheduledStart] =
+                        announcement.scheduledStart
+                            ?.toJavaInstant()
+                            ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
+                    it[scheduledEnd] =
+                        announcement.scheduledEnd
+                            ?.toJavaInstant()
+                            ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
                     it[createdByStaffId] = announcement.createdByStaffId
                     it[createdAt] = OffsetDateTime.ofInstant(announcement.createdAt.toJavaInstant(), ZoneOffset.UTC)
                     it[updatedAt] = OffsetDateTime.ofInstant(announcement.updatedAt.toJavaInstant(), ZoneOffset.UTC)
@@ -92,10 +96,14 @@ public class ServerAnnouncementRepositoryImpl : IServerAnnouncementRepository {
                     it[isBlocking] = announcement.isBlocking
                     it[targetPlatforms] = announcement.targetPlatforms
                     it[minAppVersion] = announcement.minAppVersion
-                    it[scheduledStart] = announcement.scheduledStart?.toJavaInstant()
-                        ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
-                    it[scheduledEnd] = announcement.scheduledEnd?.toJavaInstant()
-                        ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
+                    it[scheduledStart] =
+                        announcement.scheduledStart
+                            ?.toJavaInstant()
+                            ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
+                    it[scheduledEnd] =
+                        announcement.scheduledEnd
+                            ?.toJavaInstant()
+                            ?.let { instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC) }
                     it[updatedAt] = OffsetDateTime.ofInstant(announcement.updatedAt.toJavaInstant(), ZoneOffset.UTC)
                 }
             }

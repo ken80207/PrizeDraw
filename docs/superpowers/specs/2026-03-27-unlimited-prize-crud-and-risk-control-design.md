@@ -241,7 +241,7 @@ POST /api/v1/admin/campaigns/{campaignId}/approve
 POST /api/v1/admin/campaigns/{campaignId}/reject
 ```
 
-Requires `StaffRole.MANAGER` (higher authority than the default `StaffRole.OPERATOR` used by other admin routes).
+Requires new `StaffRole.MANAGER` role. This role is added to the existing `StaffRole` enum (between `OPERATOR` and `ADMIN`): `CUSTOMER_SERVICE, OPERATOR, MANAGER, ADMIN, OWNER`. A new migration adds `'MANAGER'` to the `staff_role` PostgreSQL enum type. Existing staff records are unaffected.
 
 When `require_approval_below_threshold = false`: returns HTTP 409 with descriptive error indicating the feature is not enabled.
 

@@ -1,8 +1,6 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IPaymentOrderRepository
-import com.prizedraw.contracts.enums.PaymentGateway
-import com.prizedraw.contracts.enums.PaymentOrderStatus
 import com.prizedraw.domain.entities.PaymentOrder
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.infrastructure.persistence.tables.PaymentOrdersTable

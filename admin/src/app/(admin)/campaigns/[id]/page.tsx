@@ -25,7 +25,12 @@ interface PrizeDefinition {
   name: string;
   probability?: number;
   prizeValue?: number;
+  probabilityBps?: number;
   photoUrl?: string;
+  photos?: string[];
+  ticketCount?: number;
+  buybackPrice?: number;
+  buybackEnabled?: boolean;
 }
 
 interface TicketBox {
@@ -56,7 +61,9 @@ export default function CampaignDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ action: "activate" | "deactivate" } | null>(null);
+  const [notifyOnChange, setNotifyOnChange] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [probRows, setProbRows] = useState<PrizeDefinition[]>([]);
@@ -90,7 +97,7 @@ export default function CampaignDetailPage() {
         setIsLoading(false);
 
         apiClient
-          .get<DrawRecord[]>(`/api/v1/admin/campaigns/${id}/draw-records?limit=50`)
+          .get<DrawRecord[]>(`/api/v1/admin/campaigns/${id}/draw-records?limit=200`)
           .then(setDrawRecords)
           .catch(() => {}); // silently fail if not available yet
       })
@@ -106,9 +113,11 @@ export default function CampaignDetailPage() {
       await apiClient.patch(`/api/v1/admin/campaigns/${id}/status`, {
         status: newStatus,
         ...(confirmLowMargin ? { confirmLowMargin: true } : {}),
+        notifyPlayers: notifyOnChange,
       });
       setCampaign((prev) => (prev ? { ...prev, status: newStatus } : prev));
       setConfirmModal(null);
+      setNotifyOnChange(true); // reset for next time
     } catch (err: unknown) {
       if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 422) {
         const confirmed = window.confirm("毛利率低於警戒線，確定要上架嗎？");
@@ -132,6 +141,7 @@ export default function CampaignDetailPage() {
         description: editDesc,
       });
       setCampaign((prev) => prev ? { ...prev, title: editName, description: editDesc } : prev);
+      setIsEditing(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "儲存失敗");
     } finally {
@@ -269,65 +279,117 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* Basic info edit */}
+      {/* Basic info */}
       <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-slate-800">基本資訊</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-800">基本資訊</h2>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+              </svg>
+              修改
+            </button>
+          )}
+        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-slate-700">活動名稱</label>
-            <input
-              className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                isLocked
-                  ? "border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed"
-                  : "border-slate-300 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              }`}
-              value={editName}
-              onChange={(e) => !isLocked && setEditName(e.target.value)}
-              disabled={isLocked}
-            />
-            {isLocked && (
-              <p className="mt-1 text-xs text-slate-400">進行中的一番賞名稱不可更改</p>
-            )}
-          </div>
+        {isEditing ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">活動名稱</label>
+                <input
+                  className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                    isLocked
+                      ? "border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed"
+                      : "border-slate-300 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  }`}
+                  value={editName}
+                  onChange={(e) => !isLocked && setEditName(e.target.value)}
+                  disabled={isLocked}
+                />
+                {isLocked && (
+                  <p className="mt-1 text-xs text-slate-400">進行中的一番賞名稱不可更改</p>
+                )}
+              </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">每抽價格</label>
-            <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500">
-              {campaign.pricePerDraw} 點
-            </div>
-          </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">每抽價格</label>
+                <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500">
+                  {campaign.pricePerDraw} 點
+                </div>
+              </div>
 
-          {campaign.type === "KUJI" && campaign.drawSessionSeconds && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">抽籤時間</label>
-              <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500">
-                {Math.floor(campaign.drawSessionSeconds / 60)} 分鐘
+              {campaign.type === "KUJI" && campaign.drawSessionSeconds && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">抽籤時間</label>
+                  <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500">
+                    {Math.floor(campaign.drawSessionSeconds / 60)} 分鐘
+                  </div>
+                </div>
+              )}
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">活動描述</label>
+                <textarea
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  rows={3}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                />
               </div>
             </div>
-          )}
 
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-slate-700">活動描述</label>
-            <textarea
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              rows={3}
-              value={editDesc}
-              onChange={(e) => setEditDesc(e.target.value)}
-            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditName(campaign.title);
+                  setEditDesc(campaign.description ?? "");
+                  setIsEditing(false);
+                }}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveBasic}
+                disabled={isSaving}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isSaving ? "儲存中..." : "儲存變更"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <p className="text-xs text-slate-500">活動名稱</p>
+              <p className="text-sm text-slate-800">{campaign.title}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">每抽價格</p>
+              <p className="text-sm text-slate-800">{campaign.pricePerDraw} 點</p>
+            </div>
+            {campaign.type === "KUJI" && campaign.drawSessionSeconds && (
+              <div>
+                <p className="text-xs text-slate-500">抽籤時間</p>
+                <p className="text-sm text-slate-800">{Math.floor(campaign.drawSessionSeconds / 60)} 分鐘</p>
+              </div>
+            )}
+            {campaign.description && (
+              <div className="sm:col-span-2">
+                <p className="text-xs text-slate-500">活動描述</p>
+                <p className="text-sm text-slate-800 whitespace-pre-wrap">{campaign.description}</p>
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleSaveBasic}
-            disabled={isSaving}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {isSaving ? "儲存中..." : "儲存變更"}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Kuji: Ticket boxes preview */}
@@ -353,6 +415,110 @@ export default function CampaignDetailPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Prize / reward status */}
+      {campaign.prizePool && campaign.prizePool.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">獎賞狀態</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {[
+                    "等級",
+                    "賞品名稱",
+                    ...(campaign.type === "KUJI" ? ["數量", "已抽出", "剩餘"] : ["機率"]),
+                    "賞品價值",
+                  ].map((h) => (
+                    <th key={h} className="pb-2 text-left text-xs font-medium text-slate-500 pr-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {campaign.prizePool.map((prize) => {
+                  const drawnCount = drawRecords.filter((r) => r.grade === prize.grade).length;
+                  const total = prize.ticketCount ?? 0;
+                  const remaining = total - drawnCount;
+                  const pct = total > 0 ? Math.round((drawnCount / total) * 100) : 0;
+                  const prob = prize.probabilityBps != null
+                    ? (prize.probabilityBps / 100).toFixed(2)
+                    : prize.probability != null
+                      ? prize.probability.toFixed(2)
+                      : "-";
+
+                  return (
+                    <tr key={prize.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2 pr-4">
+                        <span
+                          className="inline-block rounded px-2 py-0.5 text-xs font-semibold"
+                          style={gradeBadgeStyle(prize.grade)}
+                        >
+                          {prize.grade}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <div className="flex items-center gap-2">
+                          {(prize.photos?.[0] || prize.photoUrl) && (
+                            <img
+                              src={prize.photos?.[0] || prize.photoUrl}
+                              alt={prize.name}
+                              className="h-8 w-8 rounded object-cover border border-slate-200 flex-shrink-0"
+                            />
+                          )}
+                          <span className="text-slate-700">{prize.name}</span>
+                        </div>
+                      </td>
+                      {campaign.type === "KUJI" ? (
+                        <>
+                          <td className="py-2 pr-4 text-slate-600 font-mono text-xs">{total}</td>
+                          <td className="py-2 pr-4 text-slate-600 font-mono text-xs">{drawnCount}</td>
+                          <td className="py-2 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-mono text-xs font-semibold ${
+                                remaining === 0 ? "text-red-500" : "text-green-600"
+                              }`}>
+                                {remaining}
+                              </span>
+                              {total > 0 && (
+                                <div className="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      remaining === 0 ? "bg-red-400" : "bg-green-500"
+                                    }`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <td className="py-2 pr-4 text-slate-600 text-xs">{prob}%</td>
+                      )}
+                      <td className="py-2 pr-4 text-slate-600 text-xs">
+                        {prize.prizeValue != null ? `${prize.prizeValue} 點` : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {campaign.type === "KUJI" && (
+            <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 border-t border-slate-100">
+              <span>
+                總獎賞: {campaign.prizePool.reduce((s, p) => s + (p.ticketCount ?? 0), 0)} 件
+              </span>
+              <span>
+                已抽出: {drawRecords.length} 件
+              </span>
+              <span>
+                剩餘: {campaign.prizePool.reduce((s, p) => s + (p.ticketCount ?? 0), 0) - drawRecords.length} 件
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -558,11 +724,26 @@ export default function CampaignDetailPage() {
           </>
         }
       >
-        <p className="text-sm text-slate-600">
-          {confirmModal?.action === "activate"
-            ? `確定要將「${campaign.title}」上架嗎？上架後玩家即可抽獎。`
-            : `確定要停售「${campaign.title}」嗎？進行中的抽籤將被中斷。`}
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">
+            {confirmModal?.action === "activate"
+              ? `確定要將「${campaign.title}」上架嗎？上架後玩家即可抽獎。`
+              : `確定要停售「${campaign.title}」嗎？進行中的抽籤將被中斷。`}
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notifyOnChange}
+              onChange={(e) => setNotifyOnChange(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            <span className="text-sm text-slate-700">
+              {confirmModal?.action === "activate"
+                ? "同時推播通知玩家"
+                : "通知曾參與的玩家"}
+            </span>
+          </label>
+        </div>
       </Modal>
     </div>
   );

@@ -3,7 +3,6 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.contracts.enums.PrizeState
-import com.prizedraw.domain.entities.PrizeAcquisitionMethod
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.PrizeInstance
 import com.prizedraw.domain.valueobjects.CampaignId

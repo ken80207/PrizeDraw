@@ -637,7 +637,8 @@
     "connected": "已連線",
     "connecting": "連線中...",
     "sendReaction": "傳送 {emoji}",
-    "sendFailed": "傳送失敗"
+    "sendFailed": "傳送失敗",
+    "emojiPicker": "表情符號"
   },
   "achievement": {
     "title": "成就",

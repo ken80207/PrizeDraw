@@ -61,6 +61,5 @@ public class XpTransactionRepositoryImpl : IXpTransactionRepository {
                 }
         }
 
-    private fun java.time.Instant.toOffsetDateTime(): OffsetDateTime =
-        OffsetDateTime.ofInstant(this, ZoneOffset.UTC)
+    private fun java.time.Instant.toOffsetDateTime(): OffsetDateTime = OffsetDateTime.ofInstant(this, ZoneOffset.UTC)
 }

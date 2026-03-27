@@ -1,10 +1,8 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.ISupportRepository
-import com.prizedraw.contracts.enums.SupportTicketCategory
 import com.prizedraw.contracts.enums.SupportTicketStatus
 import com.prizedraw.domain.entities.MessageAttachment
-import com.prizedraw.domain.entities.MessageChannel
 import com.prizedraw.domain.entities.SupportTicket
 import com.prizedraw.domain.entities.SupportTicketMessage
 import com.prizedraw.domain.entities.SupportTicketPriority

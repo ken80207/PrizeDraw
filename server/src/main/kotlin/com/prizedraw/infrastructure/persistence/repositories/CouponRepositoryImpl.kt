@@ -2,8 +2,6 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.ICouponRepository
 import com.prizedraw.domain.entities.Coupon
-import com.prizedraw.domain.entities.CouponApplicableTo
-import com.prizedraw.domain.entities.CouponDiscountType
 import com.prizedraw.domain.entities.DiscountCode
 import com.prizedraw.domain.entities.PlayerCoupon
 import com.prizedraw.domain.entities.PlayerCouponStatus

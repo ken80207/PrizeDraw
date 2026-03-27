@@ -20,17 +20,19 @@ import io.ktor.server.plugins.cors.routing.CORS
 public fun Application.configureCORS() {
     // W-6: read allowed origins from config; fall back to safe development defaults
     // Read from cors.allowedHosts (may be a comma-separated env var or HOCON list)
-    val rawHosts = environment.config
-        .propertyOrNull("cors.allowedHosts")
-        ?.getString()
-    val allowedOrigins = if (rawHosts != null) {
-        rawHosts.split(",").map { host ->
-            val h = host.trim().removeSurrounding("[", "]").removeSurrounding("\"")
-            if (h.startsWith("http")) h else "http://$h"
+    val rawHosts =
+        environment.config
+            .propertyOrNull("cors.allowedHosts")
+            ?.getString()
+    val allowedOrigins =
+        if (rawHosts != null) {
+            rawHosts.split(",").map { host ->
+                val h = host.trim().removeSurrounding("[", "]").removeSurrounding("\"")
+                if (h.startsWith("http")) h else "http://$h"
+            }
+        } else {
+            listOf("http://localhost:3000", "http://localhost:3001", "http://localhost:3002")
         }
-    } else {
-        listOf("http://localhost:3000", "http://localhost:3001", "http://localhost:3002")
-    }
 
     install(CORS) {
         allowedOrigins.forEach { origin ->

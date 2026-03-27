@@ -11,12 +11,12 @@ import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.application.usecases.auth.PlayerNotFoundException
 import com.prizedraw.application.usecases.player.PrizeNotFoundException
-import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.contracts.dto.player.DrawPointTransactionDto
 import com.prizedraw.contracts.dto.player.UpdatePlayerRequest
 import com.prizedraw.contracts.dto.player.WalletDto
 import com.prizedraw.contracts.endpoints.PlayerEndpoints
 import com.prizedraw.contracts.enums.DrawAnimationMode
+import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -211,9 +211,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleUpdateAnimationP
     }
 }
 
-private suspend fun io.ktor.server.routing.RoutingContext.handleGetPublicPrizes(
-    prizeRepository: IPrizeRepository,
-) {
+private suspend fun io.ktor.server.routing.RoutingContext.handleGetPublicPrizes(prizeRepository: IPrizeRepository) {
     val rawId =
         call.parameters["playerId"] ?: run {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing playerId"))

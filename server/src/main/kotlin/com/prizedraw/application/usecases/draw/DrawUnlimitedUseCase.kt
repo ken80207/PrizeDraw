@@ -108,24 +108,26 @@ public class DrawUnlimitedUseCase(
             )
         }
 
-        val pool = definitions.map { def ->
-            PrizePoolEntry(
-                prizeDefinitionId = def.id.value,
-                weight = def.probabilityBps ?: 0,
-            )
-        }
+        val pool =
+            definitions.map { def ->
+                PrizePoolEntry(
+                    prizeDefinitionId = def.id.value,
+                    weight = def.probabilityBps ?: 0,
+                )
+            }
 
-        val outcomes = newSuspendedTransaction {
-            markCouponExhausted(playerId, playerCouponId)
-            deps.drawCore.draw(
-                playerId = playerId,
-                pool = pool,
-                quantity = 1,
-                pricePerDraw = effectivePrice,
-                discountAmount = discountAmount,
-                gameType = "UNLIMITED",
-            )
-        }
+        val outcomes =
+            newSuspendedTransaction {
+                markCouponExhausted(playerId, playerCouponId)
+                deps.drawCore.draw(
+                    playerId = playerId,
+                    pool = pool,
+                    quantity = 1,
+                    pricePerDraw = effectivePrice,
+                    discountAmount = discountAmount,
+                    gameType = "UNLIMITED",
+                )
+            }
 
         val outcome = outcomes.first()
         return newSuspendedTransaction {
@@ -176,7 +178,10 @@ public class DrawUnlimitedUseCase(
         return Pair(discountedPrice, basePrice - discountedPrice)
     }
 
-    private suspend fun markCouponExhausted(playerId: PlayerId, playerCouponId: UUID?) {
+    private suspend fun markCouponExhausted(
+        playerId: PlayerId,
+        playerCouponId: UUID?,
+    ) {
         if (playerCouponId == null || deps.couponRepository == null) return
         val pc = deps.couponRepository.findPlayerCouponById(playerCouponId)
         if (pc != null && pc.playerId == playerId) {

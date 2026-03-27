@@ -31,24 +31,12 @@ interface ChatPanelProps {
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Slide-in chat panel rendered as a fixed right sidebar on desktop and a
- * bottom sheet on mobile.
- *
- * Features:
- * - Toggle button "💬 聊天" to show/hide the panel
- * - Message list with auto-scroll to bottom
- * - Message input (max 100 chars) with character counter
- * - Reaction bar: 🎉 😱 👏 🔥 💪 😂 ❤️ 🎊
- * - 500 ms send cooldown with visual feedback
- * - Messages styled as bubbles (self = indigo, others = gray)
- * - Floating emoji reactions via ReactionOverlay
- */
 export function ChatPanel({ roomId }: ChatPanelProps) {
   const t = useTranslations("chat");
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const { messages, isConnected, sendMessage, sendReaction, isCoolingDown } =
     useChat(roomId);
@@ -57,6 +45,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const currentPlayerId = authStore.player?.id ?? null;
 
@@ -74,38 +63,43 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
     if (latest?.isReaction) {
       pushReaction(latest.message);
     }
-    // We only want to trigger on new messages, not on `pushReaction` changing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showEmojiPicker]);
+
   // ── Send handlers ──────────────────────────────────────────────────────────
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!inputText.trim() || isCoolingDown) return;
+    const text = inputText.trim();
+    setInputText("");
     setSendError(null);
-    try {
-      await sendMessage(inputText.trim());
-      setInputText("");
-      inputRef.current?.focus();
-    } catch (err) {
-      setSendError(err instanceof Error ? err.message : t("sendFailed"));
-    }
+    inputRef.current?.focus();
+    sendMessage(text);
   };
 
-  const handleReaction = async (emoji: string) => {
+  const handleReaction = (emoji: string) => {
     if (isCoolingDown) return;
     setSendError(null);
-    try {
-      await sendReaction(emoji);
-    } catch (err) {
-      setSendError(err instanceof Error ? err.message : t("sendFailed"));
-    }
+    setShowEmojiPicker(false);
+    sendReaction(emoji);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void handleSend();
+      handleSend();
     }
   };
 
@@ -128,16 +122,14 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
       <button
         data-testid="chat-toggle"
         onClick={() => setIsOpen((v) => !v)}
-        className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-tr from-primary to-primary-container text-on-primary text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105"
+        className="fixed bottom-[4.5rem] right-4 z-30 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-tr from-primary to-primary-container text-on-primary text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105"
         aria-label={isOpen ? t("closeChat") : t("openChat")}
       >
         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span>
         <span className="hidden sm:inline font-headline text-xs uppercase tracking-wider">{t("toggle")}</span>
-        {/* Unread indicator dot — shown when panel is closed and messages exist */}
         {!isOpen && messages.length > 0 && (
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full border-2 border-surface-dim" />
         )}
-        {/* Connection indicator */}
         <span
           className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-outline"}`}
           title={isConnected ? t("connected") : t("connecting")}
@@ -148,15 +140,13 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
       <div
         data-testid="chat-panel"
         className={`
-          fixed z-40 flex flex-col
+          fixed z-30 flex flex-col
           transition-transform duration-300 ease-in-out
-          /* Desktop: right sidebar */
-          sm:top-0 sm:right-0 sm:h-full sm:w-80
-          sm:translate-x-0
-          /* Mobile: bottom sheet */
-          bottom-0 left-0 right-0
-          sm:bottom-auto sm:left-auto
-          h-[60vh] sm:h-full
+          right-0 bottom-14
+          sm:top-0 sm:w-80
+          left-0 sm:left-auto
+          h-[55vh] sm:h-auto
+          rounded-t-2xl sm:rounded-none
           ${isOpen ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-y-0 sm:translate-x-full"}
         `}
         style={{
@@ -195,7 +185,6 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
             const isSelf = msg.playerId === currentPlayerId;
 
             if (msg.isReaction) {
-              // Reactions are shown as a compact centered label
               return (
                 <div key={msg.id} className="flex justify-center">
                   <span className="text-xs text-on-surface-variant/50 bg-white/5 rounded-full px-2 py-0.5">
@@ -210,9 +199,9 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
                 key={msg.id}
                 className={`flex flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}
               >
-                {!isSelf && (
-                  <span className="text-xs text-on-surface-variant/50 px-1">{msg.nickname}</span>
-                )}
+                <span className={`text-xs px-1 ${isSelf ? "text-primary/60" : "text-on-surface-variant/50"}`}>
+                  {msg.nickname}
+                </span>
                 <div
                   className={`
                     max-w-[85%] px-3 py-2 rounded-2xl text-sm break-words
@@ -231,28 +220,54 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Reaction bar */}
-        <div className="px-3 py-2 flex gap-1.5 shrink-0 overflow-x-auto" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          {REACTION_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              data-testid={`reaction-${emoji}`}
-              onClick={() => void handleReaction(emoji)}
-              disabled={isCoolingDown}
-              className="text-xl p-1.5 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-40 shrink-0"
-              aria-label={t("sendReaction", { emoji })}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-
         {/* Input area */}
         <div className="px-3 pb-4 pt-2 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           {sendError && (
             <p className="text-xs text-error mb-1.5">{sendError}</p>
           )}
           <div className="flex items-center gap-2">
+            {/* Emoji picker toggle */}
+            <div className="relative" ref={emojiPickerRef}>
+              <button
+                data-testid="emoji-toggle"
+                type="button"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                disabled={isCoolingDown}
+                className="shrink-0 p-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-white/10 transition-colors disabled:opacity-40"
+                aria-label={t("emojiPicker")}
+              >
+                <span className="material-symbols-outlined text-lg">mood</span>
+              </button>
+
+              {/* Emoji popover */}
+              {showEmojiPicker && (
+                <div
+                  className="absolute bottom-full left-0 mb-2 p-2 rounded-xl grid grid-cols-4 gap-1"
+                  style={{
+                    background: "rgba(30, 30, 55, 0.95)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  {REACTION_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      data-testid={`reaction-${emoji}`}
+                      type="button"
+                      onClick={() => handleReaction(emoji)}
+                      disabled={isCoolingDown}
+                      className="text-xl p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
+                      aria-label={t("sendReaction", { emoji })}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex-1 relative">
               <input
                 ref={inputRef}
@@ -265,7 +280,6 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
                 maxLength={MAX_MESSAGE_LENGTH}
                 className="w-full bg-surface-container-lowest text-on-surface placeholder-on-surface-variant/30 text-sm rounded-xl px-3 py-2 pr-10 outline-none border-none focus:ring-1 focus:ring-primary transition-all"
               />
-              {/* Character counter */}
               <span
                 className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs tabular-nums ${
                   remaining < 20 ? "text-error" : "text-on-surface-variant/40"
@@ -276,7 +290,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
             </div>
             <button
               data-testid="chat-send"
-              onClick={() => void handleSend()}
+              onClick={handleSend}
               disabled={!inputText.trim() || isCoolingDown}
               className="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-tr from-primary to-primary-container text-on-primary text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >

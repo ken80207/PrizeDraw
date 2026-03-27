@@ -49,10 +49,11 @@ public fun Route.roomRoutes() {
 }
 
 private suspend fun io.ktor.server.application.ApplicationCall.parseCampaignId(): UUID? {
-    val raw = parameters["campaignId"] ?: run {
-        respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing campaignId"))
-        return null
-    }
+    val raw =
+        parameters["campaignId"] ?: run {
+            respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing campaignId"))
+            return null
+        }
     return runCatching { UUID.fromString(raw) }.getOrElse {
         respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid campaignId"))
         null

@@ -52,17 +52,18 @@ public fun Route.statusRoutes() {
                 null
             }
 
-        val announcementDtos = activeAnnouncements.map { announcement ->
-            AnnouncementDto(
-                id = announcement.id.toString(),
-                type = announcement.type.toContractType(),
-                title = announcement.title,
-                message = announcement.message,
-                isBlocking = announcement.isBlocking,
-                scheduledStart = announcement.scheduledStart,
-                scheduledEnd = announcement.scheduledEnd,
-            )
-        }
+        val announcementDtos =
+            activeAnnouncements.map { announcement ->
+                AnnouncementDto(
+                    id = announcement.id.toString(),
+                    type = announcement.type.toContractType(),
+                    title = announcement.title,
+                    message = announcement.message,
+                    isBlocking = announcement.isBlocking,
+                    scheduledStart = announcement.scheduledStart,
+                    scheduledEnd = announcement.scheduledEnd,
+                )
+            }
 
         call.respond(
             ServerStatusResponse(

@@ -1,7 +1,6 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IExchangeRepository
-import com.prizedraw.contracts.enums.ExchangeItemSide
 import com.prizedraw.contracts.enums.ExchangeRequestStatus
 import com.prizedraw.domain.entities.ExchangeRequest
 import com.prizedraw.domain.entities.ExchangeRequestItem

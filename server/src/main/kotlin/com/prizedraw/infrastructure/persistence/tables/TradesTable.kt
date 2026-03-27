@@ -23,8 +23,9 @@ public object TradeOrdersTable : Table("trade_orders") {
     public val feeRateBps = integer("fee_rate_bps")
     public val feeAmount = integer("fee_amount").nullable()
     public val sellerProceeds = integer("seller_proceeds").nullable()
-    public val status = pgEnum<TradeOrderStatus>("status", "trade_order_status")
-        .default(TradeOrderStatus.LISTED)
+    public val status =
+        pgEnum<TradeOrderStatus>("status", "trade_order_status")
+            .default(TradeOrderStatus.LISTED)
     public val listedAt = timestampWithTimeZone("listed_at")
     public val completedAt = timestampWithTimeZone("completed_at").nullable()
     public val cancelledAt = timestampWithTimeZone("cancelled_at").nullable()
@@ -40,8 +41,9 @@ public object ExchangeRequestsTable : Table("exchange_requests") {
     public val initiatorId = uuid("initiator_id")
     public val recipientId = uuid("recipient_id")
     public val parentRequestId = uuid("parent_request_id").nullable()
-    public val status = pgEnum<ExchangeRequestStatus>("status", "exchange_request_status")
-        .default(ExchangeRequestStatus.PENDING)
+    public val status =
+        pgEnum<ExchangeRequestStatus>("status", "exchange_request_status")
+            .default(ExchangeRequestStatus.PENDING)
     public val message = text("message").nullable()
     public val respondedAt = timestampWithTimeZone("responded_at").nullable()
     public val completedAt = timestampWithTimeZone("completed_at").nullable()

@@ -30,11 +30,11 @@ export interface UseChatReturn {
    * Sends a plain-text message to the room.
    * Applies a 500 ms client-side cooldown after each successful send.
    */
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string) => void;
   /**
    * Sends an emoji reaction to the room.
    */
-  sendReaction: (emoji: string) => Promise<void>;
+  sendReaction: (emoji: string) => void;
   /** True during the 500 ms client-side rate-limit cooldown. */
   isCoolingDown: boolean;
 }
@@ -87,6 +87,10 @@ export function useChat(roomId: string): UseChatReturn {
 
   const handleEvent = useCallback(
     (event: ChatWsEvent) => {
+      // Skip own messages — already shown via optimistic echo.
+      const selfId = authStore.player?.id;
+      if (selfId && event.playerId === selfId) return;
+
       if (event.type === "CHAT_MESSAGE") {
         appendMessage({
           id: nextId(),
@@ -169,36 +173,43 @@ export function useChat(roomId: string): UseChatReturn {
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim() || isCoolingDown) return;
-      await apiClient.post(`/api/v1/chat/${encodeURIComponent(roomId)}/messages`, {
-        message: text.trim(),
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      // Optimistic local echo — display immediately, no await.
+      const player = authStore.player;
+      appendMessage({
+        id: nextId(),
+        playerId: player?.id ?? "",
+        nickname: player?.nickname ?? "我",
+        message: trimmed,
+        isReaction: false,
+        timestamp: new Date().toISOString(),
       });
       startCooldown();
-      // Optimistic local echo — the server will also broadcast it back via WS,
-      // but displaying it immediately prevents a jarring delay.
-      const player = authStore.player;
-      if (player) {
-        appendMessage({
-          id: nextId(),
-          playerId: player.id,
-          nickname: player.nickname,
-          message: text.trim(),
-          isReaction: false,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Fire-and-forget — errors logged but not surfaced.
+      apiClient.post(`/api/v1/chat/${encodeURIComponent(roomId)}/messages`, {
+        message: trimmed,
+      }).catch(() => {});
     },
-    [roomId, isCoolingDown, startCooldown, appendMessage],
+    [roomId, startCooldown, appendMessage],
   );
 
   const sendReaction = useCallback(
-    async (emoji: string) => {
-      if (isCoolingDown) return;
-      await apiClient.post(`/api/v1/chat/${encodeURIComponent(roomId)}/reactions`, { emoji });
+    (emoji: string) => {
+      const player = authStore.player;
+      appendMessage({
+        id: nextId(),
+        playerId: player?.id ?? "",
+        nickname: player?.nickname ?? "我",
+        message: emoji,
+        isReaction: true,
+        timestamp: new Date().toISOString(),
+      });
       startCooldown();
+      apiClient.post(`/api/v1/chat/${encodeURIComponent(roomId)}/reactions`, { emoji }).catch(() => {});
     },
-    [roomId, isCoolingDown, startCooldown],
+    [roomId, startCooldown, appendMessage],
   );
 
   return { messages, isConnected, sendMessage, sendReaction, isCoolingDown };

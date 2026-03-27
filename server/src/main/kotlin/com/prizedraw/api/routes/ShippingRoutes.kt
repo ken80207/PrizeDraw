@@ -32,7 +32,7 @@ import java.util.UUID
  * Registers shipping order routes for both players and admin.
  *
  * Player routes (require JWT `player` auth):
- * - GET    [ShippingEndpoints.ORDERS]                  -- List the authenticated player's shipping orders.
+ * - GET [ShippingEndpoints.ORDERS]                  -- List the authenticated player's shipping orders.
  * - POST   [ShippingEndpoints.ORDERS]                  -- Create a new shipping order.
  * - DELETE [ShippingEndpoints.ORDER_BY_ID]             -- Cancel a PENDING_SHIPMENT order.
  * - POST   [ShippingEndpoints.CONFIRM_DELIVERY]        -- Player confirms delivery.

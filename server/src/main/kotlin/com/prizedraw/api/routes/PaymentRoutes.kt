@@ -77,39 +77,42 @@ public fun Route.paymentRoutes() {
             }
 
             val playerId = principal.playerId
-            val response = newSuspendedTransaction {
-                val player = playerRepository.findById(playerId)
-                    ?: error("Player $playerId not found")
+            val response =
+                newSuspendedTransaction {
+                    val player =
+                        playerRepository.findById(playerId)
+                            ?: error("Player $playerId not found")
 
-                val success = playerRepository.updateBalance(
-                    id = playerId,
-                    drawPointsDelta = request.points,
-                    revenuePointsDelta = 0,
-                    expectedVersion = player.version,
-                )
-                check(success) {
-                    "Failed to update balance due to concurrent modification — please retry"
+                    val success =
+                        playerRepository.updateBalance(
+                            id = playerId,
+                            drawPointsDelta = request.points,
+                            revenuePointsDelta = 0,
+                            expectedVersion = player.version,
+                        )
+                    check(success) {
+                        "Failed to update balance due to concurrent modification — please retry"
+                    }
+
+                    val newBalance = player.drawPointsBalance + request.points
+                    drawPointTransactionRepository.record(
+                        DrawPointTransaction(
+                            id = UUID.randomUUID(),
+                            playerId = playerId,
+                            type = DrawPointTxType.PURCHASE_CREDIT,
+                            amount = request.points,
+                            balanceAfter = newBalance,
+                            paymentOrderId = null,
+                            description = "Mock top-up: ${request.points} draw points",
+                            createdAt = Clock.System.now(),
+                        ),
+                    )
+
+                    MockTopUpResponse(
+                        pointsCredited = request.points,
+                        newBalance = newBalance,
+                    )
                 }
-
-                val newBalance = player.drawPointsBalance + request.points
-                drawPointTransactionRepository.record(
-                    DrawPointTransaction(
-                        id = UUID.randomUUID(),
-                        playerId = playerId,
-                        type = DrawPointTxType.PURCHASE_CREDIT,
-                        amount = request.points,
-                        balanceAfter = newBalance,
-                        paymentOrderId = null,
-                        description = "Mock top-up: ${request.points} draw points",
-                        createdAt = Clock.System.now(),
-                    ),
-                )
-
-                MockTopUpResponse(
-                    pointsCredited = request.points,
-                    newBalance = newBalance,
-                )
-            }
 
             call.respond(HttpStatusCode.OK, response)
         }

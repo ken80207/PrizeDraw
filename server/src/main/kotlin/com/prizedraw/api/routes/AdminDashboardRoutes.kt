@@ -21,7 +21,6 @@ import com.prizedraw.infrastructure.persistence.tables.WithdrawalRequestsTable
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.respond
-import org.jetbrains.exposed.sql.or
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import kotlinx.serialization.Serializable
@@ -30,6 +29,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -104,8 +104,10 @@ private fun queryTodayRevenue(todayStart: OffsetDateTime): Long {
     return DrawPointTransactionsTable
         .select(sumExpr)
         .where {
-            ((DrawPointTransactionsTable.type eq DrawPointTxType.KUJI_DRAW_DEBIT) or
-                (DrawPointTransactionsTable.type eq DrawPointTxType.UNLIMITED_DRAW_DEBIT)) and
+            (
+                (DrawPointTransactionsTable.type eq DrawPointTxType.KUJI_DRAW_DEBIT) or
+                    (DrawPointTransactionsTable.type eq DrawPointTxType.UNLIMITED_DRAW_DEBIT)
+            ) and
                 (DrawPointTransactionsTable.createdAt greaterEq todayStart)
         }.firstOrNull()
         ?.get(sumExpr)
@@ -210,7 +212,7 @@ private fun Route.adminDashboardActivityRoute() {
                         ActivityItem(
                             id = row[DrawTicketsTable.id].toString(),
                             type = "draw",
-                            message = "${nickname} 抽到 ${grade}",
+                            message = "$nickname 抽到 $grade",
                             timestamp = timestamp,
                         )
                     }

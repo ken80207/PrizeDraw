@@ -28,10 +28,12 @@ public object SupportTicketsTable : Table("support_tickets") {
     public val assignedToStaffId = uuid("assigned_to_staff_id").nullable()
     public val category = pgEnum<SupportTicketCategory>("category", "support_ticket_category")
     public val subject = varchar("subject", 255)
-    public val status = pgEnum<SupportTicketStatus>("status", "support_ticket_status")
-        .default(SupportTicketStatus.OPEN)
-    public val priority = pgEnum<SupportTicketPriority>("priority", "support_ticket_priority")
-        .default(SupportTicketPriority.NORMAL)
+    public val status =
+        pgEnum<SupportTicketStatus>("status", "support_ticket_status")
+            .default(SupportTicketStatus.OPEN)
+    public val priority =
+        pgEnum<SupportTicketPriority>("priority", "support_ticket_priority")
+            .default(SupportTicketPriority.NORMAL)
     public val satisfactionScore = short("satisfaction_score").nullable()
     public val lineThreadId = varchar("line_thread_id", 255).nullable()
     public val contextTradeOrderId = uuid("context_trade_order_id").nullable()
@@ -53,8 +55,9 @@ public object SupportTicketMessagesTable : Table("support_ticket_messages") {
     public val authorStaffId = uuid("author_staff_id").nullable()
     public val body = text("body")
     public val attachments = jsonb("attachments", { it }, { it })
-    public val channel = pgEnum<MessageChannel>("channel", "message_channel")
-        .default(MessageChannel.PLATFORM)
+    public val channel =
+        pgEnum<MessageChannel>("channel", "message_channel")
+            .default(MessageChannel.PLATFORM)
     public val lineMessageId = varchar("line_message_id", 255).nullable()
     public val createdAt = timestampWithTimeZone("created_at")
 

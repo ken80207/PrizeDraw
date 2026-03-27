@@ -73,18 +73,19 @@ public class CreateKujiCampaignUseCase(
         // Create ticket boxes and prize definitions if provided
         var prizeDisplayOrder = 0
         for ((boxIndex, boxReq) in boxes.withIndex()) {
-            val ticketBox = TicketBox(
-                id = UUID.randomUUID(),
-                kujiCampaignId = campaignId,
-                name = boxReq.name,
-                totalTickets = boxReq.totalTickets,
-                remainingTickets = boxReq.totalTickets,
-                status = TicketBoxStatus.AVAILABLE,
-                soldOutAt = null,
-                displayOrder = boxIndex,
-                createdAt = now,
-                updatedAt = now,
-            )
+            val ticketBox =
+                TicketBox(
+                    id = UUID.randomUUID(),
+                    kujiCampaignId = campaignId,
+                    name = boxReq.name,
+                    totalTickets = boxReq.totalTickets,
+                    remainingTickets = boxReq.totalTickets,
+                    status = TicketBoxStatus.AVAILABLE,
+                    soldOutAt = null,
+                    displayOrder = boxIndex,
+                    createdAt = now,
+                    updatedAt = now,
+                )
             ticketBoxRepository.save(ticketBox)
 
             for (rangeReq in boxReq.ticketRanges) {
@@ -94,22 +95,23 @@ public class CreateKujiCampaignUseCase(
                 }
 
                 val photos = listOfNotNull(rangeReq.photoUrl)
-                val prizeDefinition = PrizeDefinition(
-                    id = PrizeDefinitionId(UUID.randomUUID()),
-                    kujiCampaignId = campaignId,
-                    unlimitedCampaignId = null,
-                    grade = rangeReq.grade,
-                    name = rangeReq.prizeName,
-                    photos = photos,
-                    prizeValue = rangeReq.prizeValue,
-                    buybackPrice = 0,
-                    buybackEnabled = true,
-                    probabilityBps = null,
-                    ticketCount = ticketCount,
-                    displayOrder = prizeDisplayOrder++,
-                    createdAt = now,
-                    updatedAt = now,
-                )
+                val prizeDefinition =
+                    PrizeDefinition(
+                        id = PrizeDefinitionId(UUID.randomUUID()),
+                        kujiCampaignId = campaignId,
+                        unlimitedCampaignId = null,
+                        grade = rangeReq.grade,
+                        name = rangeReq.prizeName,
+                        photos = photos,
+                        prizeValue = rangeReq.prizeValue,
+                        buybackPrice = 0,
+                        buybackEnabled = true,
+                        probabilityBps = null,
+                        ticketCount = ticketCount,
+                        displayOrder = prizeDisplayOrder++,
+                        createdAt = now,
+                        updatedAt = now,
+                    )
                 prizeRepository.saveDefinition(prizeDefinition)
             }
         }

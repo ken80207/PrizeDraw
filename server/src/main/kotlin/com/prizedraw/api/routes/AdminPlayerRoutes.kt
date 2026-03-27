@@ -32,7 +32,10 @@ public fun Route.adminPlayerRoutes() {
 
     get(AdminEndpoints.PLAYERS) {
         call.requireStaffWithRole(StaffRole.ADMIN) ?: return@get
-        val search = call.request.queryParameters["search"]?.trim()?.takeIf { it.isNotEmpty() }
+        val search =
+            call.request.queryParameters["search"]
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
         val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
         val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 200)
 

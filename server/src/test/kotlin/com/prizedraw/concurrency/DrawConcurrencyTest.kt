@@ -256,7 +256,15 @@ class DrawConcurrencyTest :
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
-                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
+                            drawCore =
+                                DrawCore(
+                                    DrawCoreDeps(
+                                        playerRepository = playerRepo,
+                                        prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo
+                                    )
+                                ),
                         ),
                     )
 
@@ -321,7 +329,15 @@ class DrawConcurrencyTest :
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
-                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
+                            drawCore =
+                                DrawCore(
+                                    DrawCoreDeps(
+                                        playerRepository = playerRepo,
+                                        prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo
+                                    )
+                                ),
                         ),
                     )
 
@@ -402,7 +418,15 @@ class DrawConcurrencyTest :
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisPubSub = redisPubSub,
-                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
+                            drawCore =
+                                DrawCore(
+                                    DrawCoreDeps(
+                                        playerRepository = playerRepo,
+                                        prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo
+                                    )
+                                ),
                         ),
                     )
 
@@ -494,7 +518,15 @@ class DrawConcurrencyTest :
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisClient = redisClient,
-                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
+                            drawCore =
+                                DrawCore(
+                                    DrawCoreDeps(
+                                        playerRepository = playerRepo,
+                                        prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo
+                                    )
+                                ),
                         ),
                     )
 
@@ -571,7 +603,15 @@ class DrawConcurrencyTest :
                             auditRepository = auditRepo,
                             domainService = domainService,
                             redisClient = redisClient,
-                            drawCore = DrawCore(DrawCoreDeps(playerRepository = playerRepo, prizeRepository = prizeRepo, drawPointTxRepository = drawPointTxRepo, outboxRepository = outboxRepo)),
+                            drawCore =
+                                DrawCore(
+                                    DrawCoreDeps(
+                                        playerRepository = playerRepo,
+                                        prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo
+                                    )
+                                ),
                         ),
                     )
 

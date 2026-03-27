@@ -19,14 +19,15 @@ import org.postgresql.util.PGobject
 public inline fun <reified T : Enum<T>> Table.pgEnum(
     columnName: String,
     pgEnumTypeName: String,
-): Column<T> = customEnumeration(
-    name = columnName,
-    sql = pgEnumTypeName,
-    fromDb = { value -> enumValueOf<T>(value as String) },
-    toDb = { value ->
-        PGobject().apply {
-            type = pgEnumTypeName
-            this.value = value.name
-        }
-    },
-)
+): Column<T> =
+    customEnumeration(
+        name = columnName,
+        sql = pgEnumTypeName,
+        fromDb = { value -> enumValueOf<T>(value as String) },
+        toDb = { value ->
+            PGobject().apply {
+                type = pgEnumTypeName
+                this.value = value.name
+            }
+        },
+    )

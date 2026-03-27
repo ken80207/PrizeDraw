@@ -77,5 +77,4 @@ public object XpRules {
             ((currentXp - levelStart).toFloat() / bandWidth).coerceIn(0f, 1f)
         }
     }
-
 }

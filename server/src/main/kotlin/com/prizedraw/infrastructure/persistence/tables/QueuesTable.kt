@@ -29,8 +29,9 @@ public object QueueEntriesTable : Table("queue_entries") {
     public val queueId = uuid("queue_id")
     public val playerId = uuid("player_id")
     public val position = integer("position")
-    public val status = pgEnum<QueueEntryStatus>("status", "queue_entry_status")
-        .default(QueueEntryStatus.WAITING)
+    public val status =
+        pgEnum<QueueEntryStatus>("status", "queue_entry_status")
+            .default(QueueEntryStatus.WAITING)
     public val joinedAt = timestampWithTimeZone("joined_at")
     public val activatedAt = timestampWithTimeZone("activated_at").nullable()
     public val completedAt = timestampWithTimeZone("completed_at").nullable()

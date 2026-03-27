@@ -53,10 +53,11 @@ public fun Route.playerNotificationHandler(
         try {
             // Send initial unread count
             val unreadCount = notificationRepository.countUnread(playerId.value)
-            val welcome = buildJsonObject {
-                put("eventType", "CONNECTED")
-                put("unreadCount", unreadCount)
-            }
+            val welcome =
+                buildJsonObject {
+                    put("eventType", "CONNECTED")
+                    put("unreadCount", unreadCount)
+                }
             send(Frame.Text(welcome.toString()))
 
             // Keep the connection alive — read frames to detect disconnect

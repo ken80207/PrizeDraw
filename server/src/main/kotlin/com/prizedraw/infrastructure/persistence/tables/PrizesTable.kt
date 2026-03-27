@@ -43,17 +43,19 @@ public object PrizeInstancesTable : Table("prize_instances") {
     public val ownerId = uuid("owner_id")
 
     /** Maps to the `prize_acquisition_method` PG enum. Uses the domain entity enum type. */
-    public val acquisitionMethod = pgEnum<PrizeAcquisitionMethod>(
-        "acquisition_method",
-        "prize_acquisition_method",
-    )
+    public val acquisitionMethod =
+        pgEnum<PrizeAcquisitionMethod>(
+            "acquisition_method",
+            "prize_acquisition_method",
+        )
     public val sourceDrawTicketId = uuid("source_draw_ticket_id").nullable()
     public val sourceTradeOrderId = uuid("source_trade_order_id").nullable()
     public val sourceExchangeRequestId = uuid("source_exchange_request_id").nullable()
 
     /** Maps to the `prize_instance_state` PG enum. Uses the api-contracts [PrizeState] enum. */
-    public val state = pgEnum<PrizeState>("state", "prize_instance_state")
-        .default(PrizeState.HOLDING)
+    public val state =
+        pgEnum<PrizeState>("state", "prize_instance_state")
+            .default(PrizeState.HOLDING)
     public val acquiredAt = timestampWithTimeZone("acquired_at")
     public val deletedAt = timestampWithTimeZone("deleted_at").nullable()
     public val createdAt = timestampWithTimeZone("created_at")

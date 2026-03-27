@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { authStore, subscribeToAuthStore } from "@/stores/authStore";
 import type { PlayerDto } from "@/stores/authStore";
+import { usePlayerNotifications } from "@/hooks/usePlayerNotifications";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 interface NavItem {
   href: string;
@@ -86,6 +88,13 @@ function SideNav({ pathname, player }: { pathname: string; player: PlayerDto | n
         })}
       </nav>
 
+      {/* Notification bell — shown when authenticated */}
+      {player && (
+        <div className="flex justify-center">
+          <NotificationBell />
+        </div>
+      )}
+
       {/* User profile */}
       {player ? (
         <Link
@@ -139,9 +148,7 @@ function MobileTopBar({ player }: { player: PlayerDto | null }) {
             </span>
           </Link>
         )}
-        <Link href="/settings">
-          <span className="material-symbols-outlined text-secondary">notifications</span>
-        </Link>
+        <NotificationBell />
       </div>
     </header>
   );
@@ -181,6 +188,9 @@ function MobileBottomBar({ pathname }: { pathname: string }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [player, setPlayer] = useState<PlayerDto | null>(() => authStore.player);
+
+  // Start WebSocket notification stream whenever the user is authenticated.
+  usePlayerNotifications();
 
   useEffect(() => {
     const unsub = subscribeToAuthStore(() => {

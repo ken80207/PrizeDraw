@@ -66,12 +66,16 @@ public class RoomScalingService(
      * @param playerId The player being assigned (used for logging / future pinning).
      * @return The shard the player should connect to.
      */
-    public suspend fun assignRoom(campaignId: UUID, playerId: UUID): RoomInstance {
+    public suspend fun assignRoom(
+        campaignId: UUID,
+        playerId: UUID,
+    ): RoomInstance {
         val rooms = roomInstanceRepository.findActiveByCampaign(campaignId)
 
-        val availableRoom = rooms
-            .filter { it.playerCount < it.maxPlayers * SCALE_UP_THRESHOLD }
-            .minByOrNull { it.playerCount }
+        val availableRoom =
+            rooms
+                .filter { it.playerCount < it.maxPlayers * SCALE_UP_THRESHOLD }
+                .minByOrNull { it.playerCount }
 
         if (availableRoom != null) {
             roomInstanceRepository.incrementPlayerCount(availableRoom.id)
@@ -90,16 +94,17 @@ public class RoomScalingService(
         // All shards are at or above threshold — provision a new shard.
         val nextInstanceNumber = (rooms.maxOfOrNull { it.instanceNumber } ?: 0) + 1
         val now = Clock.System.now()
-        val newInstance = RoomInstance(
-            id = UUID.randomUUID(),
-            campaignId = campaignId,
-            instanceNumber = nextInstanceNumber,
-            playerCount = 1,
-            maxPlayers = DEFAULT_MAX_PLAYERS,
-            isActive = true,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val newInstance =
+            RoomInstance(
+                id = UUID.randomUUID(),
+                campaignId = campaignId,
+                instanceNumber = nextInstanceNumber,
+                playerCount = 1,
+                maxPlayers = DEFAULT_MAX_PLAYERS,
+                isActive = true,
+                createdAt = now,
+                updatedAt = now,
+            )
         roomInstanceRepository.save(newInstance)
 
         // Publish lifecycle event so all server pods can update their local state.

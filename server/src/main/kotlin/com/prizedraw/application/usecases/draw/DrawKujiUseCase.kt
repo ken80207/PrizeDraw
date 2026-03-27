@@ -5,8 +5,8 @@ import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.ICouponRepository
 import com.prizedraw.application.ports.output.IDrawRepository
-import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
@@ -25,7 +25,6 @@ import com.prizedraw.domain.services.PrizePoolEntry
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
-import com.prizedraw.domain.valueobjects.PrizeInstanceId
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -117,45 +116,50 @@ public class DrawKujiUseCase(
 
         val pool = buildPool(resolvedTickets, ticketIds)
 
-        val outcomes = newSuspendedTransaction {
-            markCouponExhausted(playerId, playerCouponId)
-            deps.drawCore.draw(
-                playerId = playerId,
-                pool = pool,
-                quantity = resolvedTickets.size,
-                pricePerDraw = pricePerDraw,
-                discountAmount = discountAmount,
-                gameType = "KUJI",
-                preSelected = pool,
-            )
-        }
-
-        val results = newSuspendedTransaction {
-            val now = Clock.System.now()
-            val drawnResults = outcomes.map { outcome ->
-                val ticketId = outcome.metadata["ticketId"]?.let { UUID.fromString(it) }
-                    ?: error("DrawCore outcome missing ticketId in metadata")
-                val position = outcome.metadata["position"]?.toIntOrNull() ?: 0
-                deps.drawRepository.markDrawn(ticketId, playerId, outcome.prizeInstanceId, now)
-                val prizeDef = deps.prizeRepository.findDefinitionById(
-                    PrizeDefinitionId(outcome.prizeDefinitionId),
-                )
-                checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
-                DrawnTicketResultDto(
-                    ticketId = ticketId.toString(),
-                    position = position,
-                    prizeInstanceId = outcome.prizeInstanceId.value.toString(),
-                    grade = prizeDef.grade,
-                    prizeName = prizeDef.name,
-                    prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
-                    pointsCharged = outcome.pointsCharged,
-                    discountApplied = if (outcomes.size == 1) discountAmount else 0,
+        val outcomes =
+            newSuspendedTransaction {
+                markCouponExhausted(playerId, playerCouponId)
+                deps.drawCore.draw(
+                    playerId = playerId,
+                    pool = pool,
+                    quantity = resolvedTickets.size,
+                    pricePerDraw = pricePerDraw,
+                    discountAmount = discountAmount,
+                    gameType = "KUJI",
+                    preSelected = pool,
                 )
             }
-            handleBoxSoldOut(box, resolvedTickets.size)
-            recordAuditLog(playerId, box, resolvedTickets.size, basePrice - discountAmount, now)
-            drawnResults
-        }
+
+        val results =
+            newSuspendedTransaction {
+                val now = Clock.System.now()
+                val drawnResults =
+                    outcomes.map { outcome ->
+                        val ticketId =
+                            outcome.metadata["ticketId"]?.let { UUID.fromString(it) }
+                                ?: error("DrawCore outcome missing ticketId in metadata")
+                        val position = outcome.metadata["position"]?.toIntOrNull() ?: 0
+                        deps.drawRepository.markDrawn(ticketId, playerId, outcome.prizeInstanceId, now)
+                        val prizeDef =
+                            deps.prizeRepository.findDefinitionById(
+                                PrizeDefinitionId(outcome.prizeDefinitionId),
+                            )
+                        checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
+                        DrawnTicketResultDto(
+                            ticketId = ticketId.toString(),
+                            position = position,
+                            prizeInstanceId = outcome.prizeInstanceId.value.toString(),
+                            grade = prizeDef.grade,
+                            prizeName = prizeDef.name,
+                            prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
+                            pointsCharged = outcome.pointsCharged,
+                            discountApplied = if (outcomes.size == 1) discountAmount else 0,
+                        )
+                    }
+                handleBoxSoldOut(box, resolvedTickets.size)
+                recordAuditLog(playerId, box, resolvedTickets.size, basePrice - discountAmount, now)
+                drawnResults
+            }
 
         publishDrawEvents(box, results, playerId)
         return DrawResultDto(tickets = results)
@@ -193,7 +197,10 @@ public class DrawKujiUseCase(
         return Pair(discountedPrice, basePrice - discountedPrice)
     }
 
-    private suspend fun markCouponExhausted(playerId: PlayerId, playerCouponId: UUID?) {
+    private suspend fun markCouponExhausted(
+        playerId: PlayerId,
+        playerCouponId: UUID?,
+    ) {
         if (playerCouponId == null || deps.couponRepository == null) return
         val pc = deps.couponRepository.findPlayerCouponById(playerCouponId)
         if (pc != null && pc.playerId == playerId) {
@@ -253,10 +260,11 @@ public class DrawKujiUseCase(
                 PrizePoolEntry(
                     prizeDefinitionId = ticket.prizeDefinitionId.value,
                     weight = 1,
-                    metadata = mapOf(
-                        "ticketId" to ticket.id.toString(),
-                        "position" to ticket.position.toString(),
-                    ),
+                    metadata =
+                        mapOf(
+                            "ticketId" to ticket.id.toString(),
+                            "position" to ticket.position.toString(),
+                        ),
                 )
             }
     }
@@ -266,22 +274,24 @@ public class DrawKujiUseCase(
         drawnCount: Int,
     ) {
         val now = Clock.System.now()
-        val freshBox = deps.ticketBoxRepository.findById(box.id)
-            ?: error("TicketBox ${box.id} not found during sold-out check")
+        val freshBox =
+            deps.ticketBoxRepository.findById(box.id)
+                ?: error("TicketBox ${box.id} not found during sold-out check")
         val newRemaining = (freshBox.remainingTickets - drawnCount).coerceAtLeast(0)
-        val updatedBox = if (newRemaining <= 0) {
-            freshBox.copy(
-                remainingTickets = 0,
-                status = DomainTicketBoxStatus.SOLD_OUT,
-                soldOutAt = now,
-                updatedAt = now,
-            )
-        } else {
-            freshBox.copy(
-                remainingTickets = newRemaining,
-                updatedAt = now,
-            )
-        }
+        val updatedBox =
+            if (newRemaining <= 0) {
+                freshBox.copy(
+                    remainingTickets = 0,
+                    status = DomainTicketBoxStatus.SOLD_OUT,
+                    soldOutAt = now,
+                    updatedAt = now,
+                )
+            } else {
+                freshBox.copy(
+                    remainingTickets = newRemaining,
+                    updatedAt = now,
+                )
+            }
         deps.ticketBoxRepository.save(updatedBox)
         if (newRemaining <= 0) {
             checkCampaignSoldOut(freshBox.kujiCampaignId)

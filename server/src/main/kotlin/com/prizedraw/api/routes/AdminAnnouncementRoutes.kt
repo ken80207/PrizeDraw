@@ -32,7 +32,7 @@ import java.util.UUID
  * All routes require `authenticate("staff")` in the parent scope (enforced in Routing.kt)
  * and [StaffRole.OPERATOR] or above (enforced per handler).
  *
- * - GET    [StatusEndpoints.ADMIN_ANNOUNCEMENTS]        — list all announcements
+ * - GET [StatusEndpoints.ADMIN_ANNOUNCEMENTS]        — list all announcements
  * - POST   [StatusEndpoints.ADMIN_ANNOUNCEMENTS]        — create new announcement
  * - PATCH  [StatusEndpoints.ADMIN_ANNOUNCEMENT_BY_ID]   — partial update
  * - DELETE [StatusEndpoints.ADMIN_ANNOUNCEMENT_BY_ID]   — deactivate

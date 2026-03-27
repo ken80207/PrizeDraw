@@ -262,6 +262,9 @@ export default function UnlimitedCampaignPage() {
   const [pointBalance, setPointBalance] = useState(0);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [rateLimited, setRateLimited] = useState(false);
+  const [showTopUpDialog, setShowTopUpDialog] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState(1000);
+  const [isTopUpProcessing, setIsTopUpProcessing] = useState(false);
   const [watchingPlayerId, setWatchingPlayerId] = useState<string | null>(null);
   const [activeDrawers, setActiveDrawers] = useState<ActiveDrawer[]>([]);
   const [recentWins, setRecentWins] = useState<RecentWin[]>([]);
@@ -317,13 +320,19 @@ export default function UnlimitedCampaignPage() {
   // Single draw
   const handleDraw = useCallback(async () => {
     if (!campaign || isDrawing || rateLimited) return;
-    if (!canAfford) return;
+    if (!canAfford) {
+      setShowTopUpDialog(true);
+      return;
+    }
 
     try {
       await draw();
       setPointBalance((prev) => prev - effectivePrice);
-    } catch {
-      // Errors are surfaced via the hook's error field
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("Insufficient") || msg.includes("點數不足") || msg.includes("insufficient")) {
+        setShowTopUpDialog(true);
+      }
     }
   }, [campaign, isDrawing, rateLimited, canAfford, draw, effectivePrice]);
 
@@ -506,6 +515,7 @@ export default function UnlimitedCampaignPage() {
                     onClearCoupon={() => { setSelectedCoupon(null); setCouponOpen(false); }}
                     onDraw={handleDraw}
                     onMultiDraw={handleMultiDraw}
+                    onTopUp={() => setShowTopUpDialog(true)}
                   />
                 </div>
               </section>
@@ -557,6 +567,70 @@ export default function UnlimitedCampaignPage() {
           mode={mode}
           onClose={handleAcknowledge}
         />
+      )}
+
+      {/* Top-up dialog */}
+      {showTopUpDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-surface-container p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-headline text-lg font-bold text-on-surface">
+                點數不足
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTopUpDialog(false)}
+                className="text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <p className="text-sm text-on-surface-variant">
+              目前持有 <span className="font-bold text-primary">{pointBalance.toLocaleString()}</span> 點，請選擇儲值金額
+            </p>
+
+            <div className="grid grid-cols-3 gap-2">
+              {[500, 1000, 3000, 5000, 10000, 50000].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setTopUpAmount(amount)}
+                  className={`rounded-xl py-3 text-sm font-bold transition-all ${
+                    topUpAmount === amount
+                      ? "amber-gradient text-on-primary shadow-md"
+                      : "bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
+                  }`}
+                >
+                  {amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={isTopUpProcessing}
+              onClick={async () => {
+                setIsTopUpProcessing(true);
+                try {
+                  const res = await apiClient.post<{ pointsCredited: number; newBalance: number }>(
+                    "/api/v1/payment/mock-topup",
+                    { points: topUpAmount },
+                  );
+                  setPointBalance(res.newBalance);
+                  setShowTopUpDialog(false);
+                } catch {
+                  setShowTopUpDialog(false);
+                } finally {
+                  setIsTopUpProcessing(false);
+                }
+              }}
+              className="w-full amber-gradient py-3.5 rounded-xl font-headline font-bold text-on-primary text-sm shadow-lg disabled:opacity-60"
+            >
+              {isTopUpProcessing ? "處理中..." : `儲值 ${topUpAmount.toLocaleString()} 點`}
+            </button>
+          </div>
+        </div>
       )}
 
     </div>
@@ -655,6 +729,7 @@ interface DrawAreaProps {
   onClearCoupon: () => void;
   onDraw: () => void;
   onMultiDraw: (qty: number) => void;
+  onTopUp: () => void;
 }
 
 function DrawArea({
@@ -674,9 +749,10 @@ function DrawArea({
   onClearCoupon,
   onDraw,
   onMultiDraw,
+  onTopUp,
 }: DrawAreaProps) {
   const t = useTranslations("campaign");
-  const isDisabled = isDrawing || pageState === "DRAWING" || rateLimited || !canAfford;
+  const isBusy = isDrawing || pageState === "DRAWING" || rateLimited;
 
   return (
     <div className="space-y-4">
@@ -688,7 +764,13 @@ function DrawArea({
             {pointBalance.toLocaleString()} {t("pointsUnit")}
           </p>
           {!canAfford && (
-            <p className="mt-0.5 text-xs text-error">{t("insufficientPointsMsg")}</p>
+            <button
+              type="button"
+              onClick={onTopUp}
+              className="mt-0.5 text-xs text-error underline underline-offset-2 hover:text-primary transition-colors"
+            >
+              {t("insufficientPointsMsg")} — 點擊儲值
+            </button>
           )}
         </div>
         <div className="text-right">
@@ -762,12 +844,14 @@ function DrawArea({
       {/* Big single-draw button */}
       <button
         data-testid="draw-button"
-        onClick={onDraw}
-        disabled={isDisabled}
+        onClick={!canAfford ? onTopUp : onDraw}
+        disabled={isBusy}
         className={`w-full rounded-2xl py-5 text-xl font-extrabold transition-all ${
-          isDisabled
+          isBusy
             ? "cursor-not-allowed bg-surface-container-high text-on-surface-variant"
-            : "amber-gradient text-on-primary shadow-lg hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-md gold-glow"
+            : !canAfford
+              ? "bg-error/80 text-on-primary shadow-lg hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              : "amber-gradient text-on-primary shadow-lg hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-md gold-glow"
         }`}
       >
         {rateLimited
@@ -775,7 +859,7 @@ function DrawArea({
           : isDrawing
             ? t("drawingNow")
             : !canAfford
-              ? t("insufficientPoints")
+              ? "點數不足 — 點擊儲值"
               : t("drawNowBtn")}
       </button>
 
@@ -790,12 +874,14 @@ function DrawArea({
               <button
                 key={opt.qty}
                 data-testid={`multi-draw-${opt.qty}`}
-                disabled={isDisabled || !canAffordMulti}
-                onClick={() => onMultiDraw(opt.qty)}
+                disabled={isBusy}
+                onClick={!canAffordMulti ? onTopUp : () => onMultiDraw(opt.qty)}
                 className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl border py-3 text-sm font-bold transition-colors ${
-                  isDisabled || !canAffordMulti
+                  isBusy
                     ? "cursor-not-allowed border-surface-container-highest text-on-surface-variant/30"
-                    : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                    : !canAffordMulti
+                      ? "border-error/30 text-error/60 hover:bg-error/10"
+                      : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
                 }`}
               >
                 <span>{opt.label}</span>

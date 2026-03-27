@@ -6,7 +6,6 @@ import com.prizedraw.contracts.dto.draw.DrawRecordDto
 import com.prizedraw.domain.entities.DrawTicket
 import com.prizedraw.domain.entities.DrawTicketStatus
 import com.prizedraw.domain.entities.TicketBox
-import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
@@ -25,8 +24,8 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update

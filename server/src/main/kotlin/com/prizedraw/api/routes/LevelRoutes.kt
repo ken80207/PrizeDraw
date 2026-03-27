@@ -82,8 +82,9 @@ private suspend fun RoutingContext.handleGetXpHistory(xpTransactionRepository: I
     val principal = call.principal<PlayerPrincipal>()!!
     val playerId = DomainPlayerId(principal.playerId.value)
     val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
-    val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: XP_HISTORY_DEFAULT_LIMIT)
-        .coerceAtMost(XP_HISTORY_MAX_LIMIT)
+    val limit =
+        (call.request.queryParameters["limit"]?.toIntOrNull() ?: XP_HISTORY_DEFAULT_LIMIT)
+            .coerceAtMost(XP_HISTORY_MAX_LIMIT)
     val dtos =
         xpTransactionRepository.findByPlayer(playerId, offset, limit).map { tx ->
             XpTransactionDto(
@@ -113,8 +114,9 @@ private suspend fun RoutingContext.handleGetTiers(levelService: LevelService) {
 }
 
 private suspend fun RoutingContext.handleGetXpLeaderboard(levelService: LevelService) {
-    val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: XP_LEADERBOARD_DEFAULT_LIMIT)
-        .coerceAtMost(XP_LEADERBOARD_MAX_LIMIT)
+    val limit =
+        (call.request.queryParameters["limit"]?.toIntOrNull() ?: XP_LEADERBOARD_DEFAULT_LIMIT)
+            .coerceAtMost(XP_LEADERBOARD_MAX_LIMIT)
     val dtos =
         levelService.getXpLeaderboard(limit).map { entry ->
             XpLeaderboardEntryDto(

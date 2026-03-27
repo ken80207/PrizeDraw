@@ -98,7 +98,12 @@ public class LevelService(
                         xpEarned = amount,
                     ),
                 )
-                val tierMsg = if (tierChanged) { " and advanced to tier $newTier" } else { "" }
+                val tierMsg =
+                    if (tierChanged) {
+                        " and advanced to tier $newTier"
+                    } else {
+                        ""
+                    }
                 log.info("Player ${playerId.value} levelled up to Lv.$newLevel$tierMsg")
             }
 

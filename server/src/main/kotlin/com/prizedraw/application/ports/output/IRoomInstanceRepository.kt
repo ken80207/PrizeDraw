@@ -56,7 +56,10 @@ public interface IRoomInstanceRepository {
      * @param emptyForMinutes Grace period before an empty shard is deactivated.
      * @param keepMinimum Minimum number of active shards preserved per campaign regardless of emptiness.
      */
-    public suspend fun deactivateEmptyRooms(emptyForMinutes: Int, keepMinimum: Int)
+    public suspend fun deactivateEmptyRooms(
+        emptyForMinutes: Int,
+        keepMinimum: Int,
+    )
 
     /**
      * Upserts the global viewer stats for [campaignId] in `campaign_viewer_stats`.
@@ -65,5 +68,9 @@ public interface IRoomInstanceRepository {
      * @param totalViewers Sum of player counts across all active shards.
      * @param totalInQueue Number of players currently waiting in the draw queue.
      */
-    public suspend fun updateViewerStats(campaignId: UUID, totalViewers: Int, totalInQueue: Int)
+    public suspend fun updateViewerStats(
+        campaignId: UUID,
+        totalViewers: Int,
+        totalInQueue: Int,
+    )
 }

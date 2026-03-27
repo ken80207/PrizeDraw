@@ -25,10 +25,10 @@ import io.ktor.server.netty.EngineMain
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.minutes
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
+import kotlin.time.Duration.Companion.minutes
 
 private val roomCleanupInterval = 2.minutes
 
@@ -60,6 +60,7 @@ fun Application.module() {
 
     // --- Eagerly initialize Database (triggers Flyway + Exposed connect) ---
     val database: org.jetbrains.exposed.sql.Database by inject()
+
     @Suppress("UNUSED_VARIABLE")
     val dbReady = database // force lazy init
 
@@ -95,7 +96,8 @@ fun Application.module() {
                 roomScalingService.cleanupEmptyRooms()
             } catch (e: Exception) {
                 // Log and continue — cleanup failures must never crash the application.
-                org.slf4j.LoggerFactory.getLogger("RoomCleanup")
+                org.slf4j.LoggerFactory
+                    .getLogger("RoomCleanup")
                     .warn("Room cleanup cycle failed: {}", e.message, e)
             }
         }

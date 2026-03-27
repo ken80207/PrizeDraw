@@ -29,7 +29,6 @@ import java.util.UUID
  * lost-update races under concurrent WebSocket connection storms.
  */
 public class RoomInstanceRepositoryImpl : IRoomInstanceRepository {
-
     override suspend fun findActiveByCampaign(campaignId: UUID): List<RoomInstance> =
         newSuspendedTransaction {
             RoomInstancesTable
@@ -93,27 +92,29 @@ public class RoomInstanceRepositoryImpl : IRoomInstanceRepository {
             // Collect distinct campaign IDs that have empty active shards.
             val cutoff = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(emptyForMinutes.toLong())
 
-            val emptyCandidates = RoomInstancesTable
-                .selectAll()
-                .where {
-                    (RoomInstancesTable.isActive eq true) and
-                        (RoomInstancesTable.playerCount eq 0) and
-                        (RoomInstancesTable.updatedAt less cutoff)
-                }.orderBy(RoomInstancesTable.campaignId)
-                .orderBy(RoomInstancesTable.instanceNumber)
-                .map { it.toRoomInstance() }
+            val emptyCandidates =
+                RoomInstancesTable
+                    .selectAll()
+                    .where {
+                        (RoomInstancesTable.isActive eq true) and
+                            (RoomInstancesTable.playerCount eq 0) and
+                            (RoomInstancesTable.updatedAt less cutoff)
+                    }.orderBy(RoomInstancesTable.campaignId)
+                    .orderBy(RoomInstancesTable.instanceNumber)
+                    .map { it.toRoomInstance() }
 
             // Group by campaign and skip the minimum set of shards per campaign.
             emptyCandidates
                 .groupBy { it.campaignId }
                 .forEach { (cId, candidates) ->
-                    val activeTotalForCampaign = RoomInstancesTable
-                        .selectAll()
-                        .where {
-                            (RoomInstancesTable.campaignId eq cId) and
-                                (RoomInstancesTable.isActive eq true)
-                        }.count()
-                        .toInt()
+                    val activeTotalForCampaign =
+                        RoomInstancesTable
+                            .selectAll()
+                            .where {
+                                (RoomInstancesTable.campaignId eq cId) and
+                                    (RoomInstancesTable.isActive eq true)
+                            }.count()
+                            .toInt()
 
                     // How many we are allowed to deactivate while keeping keepMinimum alive.
                     val allowedToDeactivate = (activeTotalForCampaign - keepMinimum).coerceAtLeast(0)
@@ -154,4 +155,3 @@ public class RoomInstanceRepositoryImpl : IRoomInstanceRepository {
             updatedAt = this[RoomInstancesTable.updatedAt].toInstant().toKotlinInstant(),
         )
 }
-

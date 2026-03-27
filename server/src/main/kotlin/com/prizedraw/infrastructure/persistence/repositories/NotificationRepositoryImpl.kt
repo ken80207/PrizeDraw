@@ -6,9 +6,9 @@ import com.prizedraw.infrastructure.persistence.tables.NotificationsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
@@ -98,7 +98,11 @@ public class NotificationRepositoryImpl : INotificationRepository {
 
     private fun serializeData(data: Map<String, String>): String {
         val obj = buildJsonObject { data.forEach { (k, v) -> put(k, v) } }
-        return json.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), obj)
+        return json.encodeToString(
+            kotlinx.serialization.json.JsonObject
+                .serializer(),
+            obj
+        )
     }
 
     private fun deserializeData(raw: String): Map<String, String> =

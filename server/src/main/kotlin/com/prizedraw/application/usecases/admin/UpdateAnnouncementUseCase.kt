@@ -38,7 +38,12 @@ public class UpdateAnnouncementUseCase(
                 message = message?.trim() ?: existing.message,
                 isBlocking = isBlocking ?: existing.isBlocking,
                 isActive = isActive ?: existing.isActive,
-                scheduledEnd = if (scheduledEnd != null) { scheduledEnd } else { existing.scheduledEnd },
+                scheduledEnd =
+                    if (scheduledEnd != null) {
+                        scheduledEnd
+                    } else {
+                        existing.scheduledEnd
+                    },
                 updatedAt = Clock.System.now(),
             )
 

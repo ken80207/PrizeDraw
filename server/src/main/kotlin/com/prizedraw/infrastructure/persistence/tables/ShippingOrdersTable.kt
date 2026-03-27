@@ -25,8 +25,9 @@ public object ShippingOrdersTable : Table("shipping_orders") {
     public val countryCode = char("country_code", 2).default("TW")
     public val trackingNumber = varchar("tracking_number", 128).nullable()
     public val carrier = varchar("carrier", 64).nullable()
-    public val status = pgEnum<ShippingOrderStatus>("status", "shipping_order_status")
-        .default(ShippingOrderStatus.PENDING_SHIPMENT)
+    public val status =
+        pgEnum<ShippingOrderStatus>("status", "shipping_order_status")
+            .default(ShippingOrderStatus.PENDING_SHIPMENT)
     public val shippedAt = timestampWithTimeZone("shipped_at").nullable()
     public val deliveredAt = timestampWithTimeZone("delivered_at").nullable()
     public val cancelledAt = timestampWithTimeZone("cancelled_at").nullable()

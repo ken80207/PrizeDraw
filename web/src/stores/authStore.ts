@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import type { PlayerDto } from "./authStore.types";
 export type { PlayerDto };
+import { useWalletStore } from "./walletStore";
 
 export interface AuthStore {
   /** The currently authenticated player, or null when unauthenticated. */
@@ -56,6 +57,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   setSession(player, accessToken, refreshToken) {
     set({ player, isAuthenticated: true, accessToken, refreshToken });
+    // Seed the wallet store with the server-authoritative balances from the player profile.
+    useWalletStore.getState().setBalances(player.drawPointsBalance, player.revenuePointsBalance);
   },
 
   clearSession() {

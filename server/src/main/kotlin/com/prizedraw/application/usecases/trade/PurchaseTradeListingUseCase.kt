@@ -190,7 +190,9 @@ public class PurchaseTradeListingUseCase(
     ) {
         val levelService = levelService ?: return
         val xpAmount = (listPrice * XpRules.TRADE_PURCHASE_XP_RATE).toInt()
-        if (xpAmount <= 0) { return }
+        if (xpAmount <= 0) {
+            return
+        }
         runCatching {
             levelService.awardXp(
                 playerId = buyerId,

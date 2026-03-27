@@ -15,9 +15,9 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.jsonObject
@@ -141,14 +141,16 @@ private suspend fun DefaultWebSocketServerSession.handleLegacyKujiRoom(
     drawSyncService: DrawSyncService,
     roomScalingService: RoomScalingService,
 ) {
-    val campaignIdStr = call.parameters["campaignId"] ?: run {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
-        return
-    }
-    val campaignId = runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
-        return
-    }
+    val campaignIdStr =
+        call.parameters["campaignId"] ?: run {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
+            return
+        }
+    val campaignId =
+        runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
+            return
+        }
     val shard = roomScalingService.assignRoom(campaignId, UUID.randomUUID())
     val roomKey = "room:${shard.id}"
     val campaignRoomKey = "kuji:$campaignIdStr"
@@ -160,7 +162,12 @@ private suspend fun DefaultWebSocketServerSession.handleLegacyKujiRoom(
         sendBoardSnapshot(campaignIdStr, drawRepository, prizeRepository)
         broadcastRoomStats(campaignId, roomScalingService, connectionManager, campaignRoomKey)
         processIncomingFrames(
-            campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager,
+            campaignId,
+            roomKey,
+            campaignRoomKey,
+            drawSyncService,
+            roomScalingService,
+            connectionManager,
         )
     } finally {
         connectionManager.unregister(roomKey, this)
@@ -193,7 +200,12 @@ private suspend fun DefaultWebSocketServerSession.handleShardedKujiRoom(
         sendBoardSnapshot(campaignIdStr, drawRepository, prizeRepository)
         broadcastRoomStats(campaignId, roomScalingService, connectionManager, campaignRoomKey)
         processIncomingFrames(
-            campaignId, roomKey, campaignRoomKey, drawSyncService, roomScalingService, connectionManager,
+            campaignId,
+            roomKey,
+            campaignRoomKey,
+            drawSyncService,
+            roomScalingService,
+            connectionManager,
         )
     } finally {
         connectionManager.unregister(roomKey, this)
@@ -216,26 +228,31 @@ private suspend fun DefaultWebSocketServerSession.handleShardedKujiRoom(
 private suspend fun DefaultWebSocketServerSession.resolveShardedParams(
     roomScalingService: RoomScalingService,
 ): Triple<String, UUID, com.prizedraw.domain.entities.RoomInstance>? {
-    val campaignIdStr = call.parameters["campaignId"] ?: run {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
-        return null
-    }
-    val roomInstanceIdStr = call.parameters["roomInstanceId"] ?: run {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing roomInstanceId"))
-        return null
-    }
-    val campaignId = runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
-        return null
-    }
-    val roomInstanceId = runCatching { UUID.fromString(roomInstanceIdStr) }.getOrElse {
-        close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid roomInstanceId"))
-        return null
-    }
-    val shard = roomScalingService.findShard(roomInstanceId) ?: run {
-        close(CloseReason(CloseReason.Codes.NORMAL, "Room instance not found"))
-        return null
-    }
+    val campaignIdStr =
+        call.parameters["campaignId"] ?: run {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing campaignId"))
+            return null
+        }
+    val roomInstanceIdStr =
+        call.parameters["roomInstanceId"] ?: run {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Missing roomInstanceId"))
+            return null
+        }
+    val campaignId =
+        runCatching { UUID.fromString(campaignIdStr) }.getOrElse {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid campaignId"))
+            return null
+        }
+    val roomInstanceId =
+        runCatching { UUID.fromString(roomInstanceIdStr) }.getOrElse {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid roomInstanceId"))
+            return null
+        }
+    val shard =
+        roomScalingService.findShard(roomInstanceId) ?: run {
+            close(CloseReason(CloseReason.Codes.NORMAL, "Room instance not found"))
+            return null
+        }
     if (shard.playerCount >= shard.maxPlayers) {
         val alternative = roomScalingService.assignRoom(campaignId, UUID.randomUUID())
         sendRoomFull(suggestedRoomInstanceId = alternative.id)
@@ -291,15 +308,16 @@ private suspend fun handleC2sFrame(
         "C2S_DRAW_PROGRESS" -> handleDrawProgress(obj, drawSyncService)
         "C2S_DRAW_CANCEL" -> handleDrawCancel(obj, drawSyncService)
         "C2S_DRAW_COMPLETE" -> handleDrawComplete(obj, drawSyncService)
-        "C2S_SWITCH_ROOM" -> handleSwitchRoom(
-            obj = obj,
-            campaignId = campaignId,
-            currentRoomKey = currentRoomKey,
-            campaignRoomKey = campaignRoomKey,
-            roomScalingService = roomScalingService,
-            connectionManager = connectionManager,
-            session = session,
-        )
+        "C2S_SWITCH_ROOM" ->
+            handleSwitchRoom(
+                obj = obj,
+                campaignId = campaignId,
+                currentRoomKey = currentRoomKey,
+                campaignRoomKey = campaignRoomKey,
+                roomScalingService = roomScalingService,
+                connectionManager = connectionManager,
+                session = session,
+            )
         else -> log.debug("Kuji WS unhandled C2S type: {}", type)
     }
 }
@@ -349,8 +367,11 @@ private suspend fun handleDrawProgress(
     obj: kotlinx.serialization.json.JsonObject,
     drawSyncService: DrawSyncService,
 ) {
-    val sessionId = obj["sessionId"]?.jsonPrimitive?.content
-        ?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return
+    val sessionId =
+        obj["sessionId"]
+            ?.jsonPrimitive
+            ?.content
+            ?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return
     val progress = obj["progress"]?.jsonPrimitive?.content?.toFloatOrNull() ?: return
     runCatching { drawSyncService.relayProgress(sessionId, progress) }
         .onFailure { log.warn("relayProgress failed for session {}", sessionId, it) }
@@ -404,8 +425,10 @@ private suspend fun handleSwitchRoom(
         return
     }
 
-    val oldShardId = currentRoomKey.removePrefix("room:")
-        .let { runCatching { UUID.fromString(it) }.getOrNull() }
+    val oldShardId =
+        currentRoomKey
+            .removePrefix("room:")
+            .let { runCatching { UUID.fromString(it) }.getOrNull() }
     if (oldShardId != null) {
         roomScalingService.leaveRoom(oldShardId)
         connectionManager.unregister(currentRoomKey, session)
@@ -432,16 +455,18 @@ private suspend fun DefaultWebSocketServerSession.sendBoardSnapshot(
     prizeRepository: IPrizeRepository,
 ) {
     val campaignId = runCatching { UUID.fromString(campaignIdStr) }.getOrNull() ?: return
-    val definitions = prizeRepository.findDefinitionsByCampaign(
-        CampaignId(campaignId),
-        CampaignType.KUJI,
-    )
-    val snapshot = buildJsonObject {
-        put("type", "BOARD_SNAPSHOT")
-        put("campaignId", campaignIdStr)
-        put("prizeDefinitionCount", definitions.size)
-        put("tickets", buildJsonArray { })
-    }
+    val definitions =
+        prizeRepository.findDefinitionsByCampaign(
+            CampaignId(campaignId),
+            CampaignType.KUJI,
+        )
+    val snapshot =
+        buildJsonObject {
+            put("type", "BOARD_SNAPSHOT")
+            put("campaignId", campaignIdStr)
+            put("prizeDefinitionCount", definitions.size)
+            put("tickets", buildJsonArray { })
+        }
     send(Frame.Text(snapshot.toString()))
 }
 
@@ -451,21 +476,23 @@ private suspend fun DefaultWebSocketServerSession.sendRoomAssigned(
     playerCount: Int,
     maxPlayers: Int,
 ) {
-    val event = buildJsonObject {
-        put("type", "S2C_ROOM_ASSIGNED")
-        put("roomInstanceId", roomInstanceId.toString())
-        put("instanceNumber", instanceNumber)
-        put("playerCount", playerCount)
-        put("maxPlayers", maxPlayers)
-    }
+    val event =
+        buildJsonObject {
+            put("type", "S2C_ROOM_ASSIGNED")
+            put("roomInstanceId", roomInstanceId.toString())
+            put("instanceNumber", instanceNumber)
+            put("playerCount", playerCount)
+            put("maxPlayers", maxPlayers)
+        }
     send(Frame.Text(event.toString()))
 }
 
 private suspend fun DefaultWebSocketServerSession.sendRoomFull(suggestedRoomInstanceId: UUID) {
-    val event = buildJsonObject {
-        put("type", "S2C_ROOM_FULL")
-        put("suggestedRoomInstanceId", suggestedRoomInstanceId.toString())
-    }
+    val event =
+        buildJsonObject {
+            put("type", "S2C_ROOM_FULL")
+            put("suggestedRoomInstanceId", suggestedRoomInstanceId.toString())
+        }
     send(Frame.Text(event.toString()))
 }
 
@@ -476,10 +503,11 @@ private suspend fun broadcastRoomStats(
     campaignRoomKey: String,
 ) {
     val stats = roomScalingService.getCampaignStats(campaignId)
-    val event = buildJsonObject {
-        put("type", "S2C_ROOM_STATS")
-        put("totalViewers", stats.totalViewers)
-        put("activeRooms", stats.activeRooms)
-    }
+    val event =
+        buildJsonObject {
+            put("type", "S2C_ROOM_STATS")
+            put("totalViewers", stats.totalViewers)
+            put("activeRooms", stats.activeRooms)
+        }
     connectionManager.broadcast(campaignRoomKey, event.toString())
 }

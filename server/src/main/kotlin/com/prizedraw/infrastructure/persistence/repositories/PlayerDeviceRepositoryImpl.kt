@@ -18,7 +18,6 @@ import java.util.UUID
 
 /** Exposed-backed implementation of [IPlayerDeviceRepository]. */
 public class PlayerDeviceRepositoryImpl : IPlayerDeviceRepository {
-
     override suspend fun upsert(device: PlayerDevice): PlayerDevice =
         newSuspendedTransaction {
             PlayerDevicesTable.upsert(PlayerDevicesTable.fcmToken) {

@@ -1,5 +1,6 @@
 package com.prizedraw.domain.services
 
+import com.prizedraw.application.events.DrawCompleted
 import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
@@ -8,7 +9,6 @@ import com.prizedraw.application.services.LevelService
 import com.prizedraw.contracts.enums.DrawPointTxType
 import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.domain.entities.DrawPointTransaction
-import com.prizedraw.application.events.DrawCompleted
 import com.prizedraw.domain.entities.PrizeAcquisitionMethod
 import com.prizedraw.domain.entities.PrizeInstance
 import com.prizedraw.domain.entities.XpSourceType
@@ -17,7 +17,6 @@ import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 import java.util.UUID
@@ -72,8 +71,9 @@ private const val XP_PER_DRAW_POINT = 1
  * 職責：加權隨機選取 → 扣款 → 建 PrizeInstance → 記帳 → 發事件 → 獎勵 XP
  * 不負責：排隊、頻率限制、庫存管理、顯示資訊
  */
-public class DrawCore(private val deps: DrawCoreDeps) {
-
+public class DrawCore(
+    private val deps: DrawCoreDeps,
+) {
     private val log = LoggerFactory.getLogger(DrawCore::class.java)
     private val secureRandom = SecureRandom()
 
@@ -111,7 +111,8 @@ public class DrawCore(private val deps: DrawCoreDeps) {
         debitBalance(playerId, totalCost, now)
 
         // ③ 為每個結果建 PrizeInstance + 記帳 + 發事件
-        return selected.map { entry ->
+        return selected
+            .map { entry ->
                 val instanceId = PrizeInstanceId(UUID.randomUUID())
                 val perCost = if (quantity == 1) totalCost else pricePerDraw
 
@@ -163,9 +164,9 @@ public class DrawCore(private val deps: DrawCoreDeps) {
                     pointsCharged = perCost,
                     metadata = entry.metadata,
                 )
-        }.also {
-            awardXp(playerId, pricePerDraw * quantity)
-        }
+            }.also {
+                awardXp(playerId, pricePerDraw * quantity)
+            }
     }
 
     // ── 加權隨機（CDF + SecureRandom）────────────────────────────────────────
@@ -184,20 +185,26 @@ public class DrawCore(private val deps: DrawCoreDeps) {
 
     // ── 扣款（optimistic lock + retry）──────────────────────────────────────
 
-    private suspend fun debitBalance(playerId: PlayerId, totalCost: Int, now: Instant) {
+    private suspend fun debitBalance(
+        playerId: PlayerId,
+        totalCost: Int,
+        now: Instant,
+    ) {
         if (totalCost <= 0) return
         repeat(MAX_BALANCE_RETRIES) {
-            val player = deps.playerRepository.findById(playerId)
-                ?: error("Player ${playerId.value} not found")
+            val player =
+                deps.playerRepository.findById(playerId)
+                    ?: error("Player ${playerId.value} not found")
             if (player.drawPointsBalance < totalCost) {
                 error("Insufficient balance: has ${player.drawPointsBalance}, needs $totalCost")
             }
-            val ok = deps.playerRepository.updateBalance(
-                id = playerId,
-                drawPointsDelta = -totalCost,
-                revenuePointsDelta = 0,
-                expectedVersion = player.version,
-            )
+            val ok =
+                deps.playerRepository.updateBalance(
+                    id = playerId,
+                    drawPointsDelta = -totalCost,
+                    revenuePointsDelta = 0,
+                    expectedVersion = player.version,
+                )
             if (ok) return
         }
         error("Failed to debit balance after $MAX_BALANCE_RETRIES retries")
@@ -205,7 +212,10 @@ public class DrawCore(private val deps: DrawCoreDeps) {
 
     // ── XP ──────────────────────────────────────────────────────────────────
 
-    private suspend fun awardXp(playerId: PlayerId, totalSpent: Int) {
+    private suspend fun awardXp(
+        playerId: PlayerId,
+        totalSpent: Int,
+    ) {
         val svc = deps.levelService ?: return
         try {
             svc.awardXp(playerId, totalSpent * XP_PER_DRAW_POINT, XpSourceType.KUJI_DRAW)

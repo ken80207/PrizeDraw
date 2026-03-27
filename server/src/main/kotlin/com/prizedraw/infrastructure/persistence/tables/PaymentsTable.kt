@@ -27,8 +27,9 @@ public object PaymentOrdersTable : Table("payment_orders") {
     public val gatewayTransactionId = varchar("gateway_transaction_id", 255).nullable()
     public val paymentMethod = varchar("payment_method", 64).nullable()
     public val gatewayMetadata = jsonb("gateway_metadata", { it }, { it })
-    public val status = pgEnum<PaymentOrderStatus>("status", "payment_order_status")
-        .default(PaymentOrderStatus.PENDING)
+    public val status =
+        pgEnum<PaymentOrderStatus>("status", "payment_order_status")
+            .default(PaymentOrderStatus.PENDING)
     public val paidAt = timestampWithTimeZone("paid_at").nullable()
     public val failedAt = timestampWithTimeZone("failed_at").nullable()
     public val refundedAt = timestampWithTimeZone("refunded_at").nullable()
@@ -49,8 +50,9 @@ public object WithdrawalRequestsTable : Table("withdrawal_requests") {
     public val bankCode = varchar("bank_code", 16)
     public val accountHolderName = varchar("account_holder_name", 128)
     public val accountNumber = varchar("account_number", 64)
-    public val status = pgEnum<WithdrawalStatus>("status", "withdrawal_status")
-        .default(WithdrawalStatus.PENDING_REVIEW)
+    public val status =
+        pgEnum<WithdrawalStatus>("status", "withdrawal_status")
+            .default(WithdrawalStatus.PENDING_REVIEW)
     public val reviewedByStaffId = uuid("reviewed_by_staff_id").nullable()
     public val reviewedAt = timestampWithTimeZone("reviewed_at").nullable()
     public val transferredAt = timestampWithTimeZone("transferred_at").nullable()

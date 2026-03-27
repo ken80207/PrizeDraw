@@ -24,6 +24,7 @@ interface KujiPrize {
   name: string;
   quantity: number;
   prizeValue: number;
+  buybackPrice: number;
   photoUrl: string;
 }
 
@@ -42,6 +43,12 @@ function CampaignCreateInner() {
   const [price, setPrice] = useState(100);
   const [sessionMinutes, setSessionMinutes] = useState(5);
   const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(""); // ISO datetime-local for scheduled release
+  const [autoExpireDays, setAutoExpireDays] = useState(14); // days after activation to auto-expire
+  const [enableSchedule, setEnableSchedule] = useState(false);
+  const [enableAutoExpire, setEnableAutoExpire] = useState(false);
+  const [notifyOnActivate, setNotifyOnActivate] = useState(true);
+  const [notifyOnExpire, setNotifyOnExpire] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,12 +113,20 @@ function CampaignCreateInner() {
   const addKujiPrize = () => {
     setKujiPrizes((prev) => [
       ...prev,
-      { id: genId(), grade: "", name: "", quantity: 1, prizeValue: 0, photoUrl: "" },
+      { id: genId(), grade: "", name: "", quantity: 1, prizeValue: 0, buybackPrice: 0, photoUrl: "" },
     ]);
   };
 
   const updateKujiPrize = (id: string, field: keyof KujiPrize, value: unknown) => {
-    setKujiPrizes((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+    setKujiPrizes((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const updated = { ...p, [field]: value };
+      // Auto-calculate buyback at 90% when prizeValue changes
+      if (field === "prizeValue") {
+        updated.buybackPrice = Math.floor((value as number) * 0.9);
+      }
+      return updated;
+    }));
   };
 
   const removeKujiPrize = (id: string) => {
@@ -148,6 +163,7 @@ function CampaignCreateInner() {
             rangeStart,
             rangeEnd: rangeStart + p.quantity - 1,
             prizeValue: p.prizeValue,
+            buybackPrice: p.buybackPrice,
             photoUrl: p.photoUrl || undefined,
           };
           rangeStart += p.quantity;
@@ -166,6 +182,10 @@ function CampaignCreateInner() {
           coverImageUrl: coverImageUrl || undefined,
           pricePerDraw: price,
           drawSessionSeconds: sessionMinutes * 60,
+          scheduledAt: enableSchedule && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+          autoExpireDays: enableAutoExpire ? autoExpireDays : undefined,
+          notifyOnActivate,
+          notifyOnExpire,
           boxes,
         };
         await apiClient.post("/api/v1/admin/campaigns/kuji", body);
@@ -305,6 +325,102 @@ function CampaignCreateInner() {
         </div>
       </div>
 
+      {/* Schedule & auto-expire */}
+      {type === "kuji" && (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">時間設定</h2>
+
+          <div className="space-y-3">
+            {/* Scheduled release */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableSchedule}
+                onChange={(e) => setEnableSchedule(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-700">預約上架</p>
+                <p className="text-xs text-slate-400">設定時間到自動上架，不設定則需手動上架</p>
+              </div>
+            </label>
+            {enableSchedule && (
+              <div className="ml-7">
+                <input
+                  type="datetime-local"
+                  className={inputCls}
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+              </div>
+            )}
+
+            {/* Auto-expire */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableAutoExpire}
+                onChange={(e) => setEnableAutoExpire(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-700">自動退場</p>
+                <p className="text-xs text-slate-400">上架後超過指定天數未抽完，自動下架</p>
+              </div>
+            </label>
+            {enableAutoExpire && (
+              <div className="ml-7 flex items-center gap-2">
+                <input
+                  type="number"
+                  className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={autoExpireDays}
+                  onChange={(e) => setAutoExpireDays(Math.max(1, Number(e.target.value)))}
+                  min={1}
+                />
+                <span className="text-sm text-slate-500">天後自動下架</span>
+                {enableSchedule && scheduledAt && (
+                  <span className="text-xs text-slate-400">
+                    （預計 {new Date(new Date(scheduledAt).getTime() + autoExpireDays * 86400000).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })} 退場）
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Notification settings */}
+            <div className="border-t border-slate-100 pt-3 mt-1">
+              <p className="text-xs font-medium text-slate-500 mb-2">通知設定</p>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnActivate}
+                    onChange={(e) => setNotifyOnActivate(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  <div>
+                    <p className="text-sm text-slate-700">上架時通知玩家</p>
+                    <p className="text-xs text-slate-400">活動上架時推播通知給訂閱的玩家</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyOnExpire}
+                    onChange={(e) => setNotifyOnExpire(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  <div>
+                    <p className="text-sm text-slate-700">退場時通知玩家</p>
+                    <p className="text-xs text-slate-400">活動下架時通知曾參與或關注的玩家</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Kuji: Box setup (parent) with prizes (children) */}
       {type === "kuji" && (
         <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
@@ -406,6 +522,23 @@ function CampaignCreateInner() {
                       />
                       <span className="text-slate-400">點</span>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-500">回收價</span>
+                      <input
+                        type="number"
+                        className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                        value={prize.buybackPrice || ""}
+                        onChange={(e) => updateKujiPrize(prize.id, "buybackPrice", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                        onFocus={(e) => e.target.select()}
+                        min={0}
+                      />
+                      <span className="text-slate-400">點</span>
+                      {prize.prizeValue > 0 && (
+                        <span className="text-slate-400">
+                          ({Math.round((prize.buybackPrice / prize.prizeValue) * 100)}%)
+                        </span>
+                      )}
+                    </div>
                     <ImageUpload
                       compact
                       currentUrl={prize.photoUrl || undefined}
@@ -415,6 +548,11 @@ function CampaignCreateInner() {
                   {prize.quantity > 0 && prize.prizeValue > 0 && (
                     <p className="text-xs text-slate-400">
                       小計: {(prize.quantity * prize.prizeValue).toLocaleString()} 點 / 盒
+                      {prize.buybackPrice > 0 && (
+                        <span className="ml-2">
+                          | 回收成本: {(prize.quantity * prize.buybackPrice).toLocaleString()} 點 / 盒
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>

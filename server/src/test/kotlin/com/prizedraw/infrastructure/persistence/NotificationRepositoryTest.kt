@@ -47,8 +47,18 @@ class NotificationRepositoryTest :
                 val playerId = UUID.randomUUID()
                 val notifications =
                     listOf(
-                        Notification(playerId = playerId, eventType = "draw.won", title = "You Won!", body = "Prize awarded"),
-                        Notification(playerId = playerId, eventType = "payment.confirmed", title = "Payment", body = "Points added"),
+                        Notification(
+                            playerId = playerId,
+                            eventType = "draw.won",
+                            title = "You Won!",
+                            body = "Prize awarded"
+                        ),
+                        Notification(
+                            playerId = playerId,
+                            eventType = "payment.confirmed",
+                            title = "Payment",
+                            body = "Points added"
+                        ),
                     )
                 coEvery { repo.findByPlayerId(playerId, limit = 20, offset = 0) } returns notifications
 
