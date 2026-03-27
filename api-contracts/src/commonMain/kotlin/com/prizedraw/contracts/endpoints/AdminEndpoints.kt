@@ -71,4 +71,14 @@ public object AdminEndpoints {
     // Dashboard
     public const val DASHBOARD_STATS: String = "$BASE/dashboard/stats"
     public const val DASHBOARD_ACTIVITY: String = "$BASE/dashboard/activity"
+
+    // Unlimited Prize Table
+    public const val UNLIMITED_PRIZE_TABLE: String = "$BASE/campaigns/unlimited/{campaignId}/prize-table"
+
+    // Campaign Approval
+    public const val CAMPAIGN_APPROVE: String = "$BASE/campaigns/{campaignId}/approve"
+    public const val CAMPAIGN_REJECT: String = "$BASE/campaigns/{campaignId}/reject"
+
+    // Risk Settings
+    public const val RISK_SETTINGS: String = "$BASE/settings/risk"
 }

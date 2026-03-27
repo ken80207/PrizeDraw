@@ -30,6 +30,7 @@ public enum class OAuthProvider {
 public enum class StaffRole {
     CUSTOMER_SERVICE,
     OPERATOR,
+    MANAGER,
     ADMIN,
     OWNER,
 }

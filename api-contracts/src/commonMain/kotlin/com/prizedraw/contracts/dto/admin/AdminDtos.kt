@@ -137,6 +137,7 @@ public data class CreateUnlimitedCampaignAdminRequest(
     val coverImageUrl: String? = null,
     val pricePerDraw: Int,
     val rateLimitPerSecond: Int = 1,
+    val prizeTable: List<UnlimitedPrizeEntryRequest> = emptyList(),
 )
 
 @Serializable
@@ -150,6 +151,7 @@ public data class UpdateCampaignAdminRequest(
 @Serializable
 public data class ChangeCampaignStatusRequest(
     val status: CampaignStatus,
+    val confirmLowMargin: Boolean = false,
 )
 
 // --- Phase 12: Admin Pricing ---
@@ -170,4 +172,50 @@ public data class UpdateTradeFeeRateRequest(
 public data class TradeFeeRateDto(
     val tradeFeeRateBps: Int,
     val updatedAt: Instant,
+)
+
+// --- Unlimited Prize Table ---
+
+/** A single prize entry in an unlimited campaign's probability table. */
+@Serializable
+public data class UnlimitedPrizeEntryRequest(
+    val grade: String,
+    val name: String,
+    val probabilityBps: Int,
+    val prizeValue: Int,
+    val photoUrl: String? = null,
+    val displayOrder: Int = 0,
+)
+
+/** Full replacement of an unlimited campaign's prize table. Only allowed in DRAFT status. */
+@Serializable
+public data class UpdatePrizeTableRequest(
+    val prizeTable: List<UnlimitedPrizeEntryRequest>,
+)
+
+// --- Margin / Risk ---
+
+/** Margin analysis result returned after create/update/status-change operations. */
+@Serializable
+public data class MarginResultDto(
+    val totalRevenuePerUnit: Int,
+    val totalCostPerUnit: Int,
+    val profitPerUnit: Int,
+    val marginPct: Double,
+    val belowThreshold: Boolean,
+    val thresholdPct: Double,
+)
+
+/** Risk settings for campaign margin validation. */
+@Serializable
+public data class RiskSettingsResponse(
+    val marginThresholdPct: Double,
+    val requireApprovalBelowThreshold: Boolean,
+)
+
+/** Request to update risk settings. */
+@Serializable
+public data class RiskSettingsUpdateRequest(
+    val marginThresholdPct: Double? = null,
+    val requireApprovalBelowThreshold: Boolean? = null,
 )
