@@ -34,6 +34,7 @@ import kotlin.time.Duration.Companion.seconds
  * @param redisPubSub For WebSocket fanout over pub/sub.
  * @param notificationRepository For persisting notification records per player.
  */
+@Suppress("TooManyFunctions")
 public class OutboxWorker(
     private val outboxRepository: IOutboxRepository,
     private val notificationService: INotificationService,
@@ -106,19 +107,21 @@ public class OutboxWorker(
 
         // Persist one notification per player and publish to each player's WS channel
         for (pid in playerIds) {
-            val notification = if (title != null && body != null) {
-                val n = Notification(
-                    playerId = java.util.UUID.fromString(pid),
-                    eventType = event.eventType,
-                    title = title,
-                    body = body,
-                    data = event.payload.mapValues { it.value.jsonPrimitive.content },
-                )
-                notificationRepository.save(n)
-                n
-            } else {
-                null
-            }
+            val notification =
+                if (title != null && body != null) {
+                    val n =
+                        Notification(
+                            playerId = java.util.UUID.fromString(pid),
+                            eventType = event.eventType,
+                            title = title,
+                            body = body,
+                            data = event.payload.mapValues { it.value.jsonPrimitive.content },
+                        )
+                    notificationRepository.save(n)
+                    n
+                } else {
+                    null
+                }
             val wsPayload = buildWsPayload(event, notification)
             redisPubSub.publish("ws:player:$pid", wsPayload)
         }
@@ -151,23 +154,28 @@ public class OutboxWorker(
     private fun extractPlayerIds(event: OutboxEvent): List<String> {
         val payload = event.payload
         return when (event.eventType) {
-            "trade.completed" -> listOfNotNull(
-                payload["sellerId"]?.jsonPrimitive?.content,
-                payload["buyerId"]?.jsonPrimitive?.content,
-            )
-            "exchange.completed" -> listOfNotNull(
-                payload["initiatorId"]?.jsonPrimitive?.content,
-                payload["recipientId"]?.jsonPrimitive?.content,
-            )
-            "exchange.requested", "exchange.counter_proposed" -> listOfNotNull(
-                payload["recipientId"]?.jsonPrimitive?.content,
-            )
-            "exchange.rejected" -> listOfNotNull(
-                payload["otherPlayerId"]?.jsonPrimitive?.content,
-            )
-            else -> listOfNotNull(
-                payload["playerId"]?.jsonPrimitive?.content,
-            )
+            "trade.completed" ->
+                listOfNotNull(
+                    payload["sellerId"]?.jsonPrimitive?.content,
+                    payload["buyerId"]?.jsonPrimitive?.content,
+                )
+            "exchange.completed" ->
+                listOfNotNull(
+                    payload["initiatorId"]?.jsonPrimitive?.content,
+                    payload["recipientId"]?.jsonPrimitive?.content,
+                )
+            "exchange.requested", "exchange.counter_proposed" ->
+                listOfNotNull(
+                    payload["recipientId"]?.jsonPrimitive?.content,
+                )
+            "exchange.rejected" ->
+                listOfNotNull(
+                    payload["otherPlayerId"]?.jsonPrimitive?.content,
+                )
+            else ->
+                listOfNotNull(
+                    payload["playerId"]?.jsonPrimitive?.content,
+                )
         }
     }
 
@@ -183,8 +191,9 @@ public class OutboxWorker(
             "trade.completed" -> "Purchase Complete" to "Your marketplace purchase has been completed!"
             "exchange.completed" -> "Exchange Complete" to "Your prize exchange has been completed!"
             "exchange.requested" -> "Exchange Request" to "You received a new exchange request."
-            "exchange.counter_proposed" -> "Counter Proposal" to
-                "You received a counter-proposal for your exchange."
+            "exchange.counter_proposed" ->
+                "Counter Proposal" to
+                    "You received a counter-proposal for your exchange."
             "exchange.rejected" -> "Exchange Rejected" to "Your exchange request was rejected."
             "buyback.completed" -> {
                 val points = payload["revenuePointsCredited"]?.jsonPrimitive?.content ?: "0"
@@ -192,11 +201,12 @@ public class OutboxWorker(
             }
             "shipping.status_changed" -> {
                 val status = payload["newStatus"]?.jsonPrimitive?.content ?: ""
-                val body = when (status) {
-                    "SHIPPED" -> "Your prize has been shipped! Check tracking details."
-                    "DELIVERED" -> "Your prize has been delivered!"
-                    else -> "Your shipping order status has been updated: $status"
-                }
+                val body =
+                    when (status) {
+                        "SHIPPED" -> "Your prize has been shipped! Check tracking details."
+                        "DELIVERED" -> "Your prize has been delivered!"
+                        else -> "Your shipping order status has been updated: $status"
+                    }
                 "Shipping Update" to body
             }
             "payment.confirmed" -> {
@@ -209,16 +219,18 @@ public class OutboxWorker(
             }
             "withdrawal.status_changed" -> {
                 val status = payload["newStatus"]?.jsonPrimitive?.content ?: ""
-                val body = when (status) {
-                    "APPROVED" -> "Your withdrawal request has been approved."
-                    "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
-                    "REJECTED" -> "Your withdrawal request was rejected."
-                    else -> "Your withdrawal status has been updated: $status"
-                }
+                val body =
+                    when (status) {
+                        "APPROVED" -> "Your withdrawal request has been approved."
+                        "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
+                        "REJECTED" -> "Your withdrawal request was rejected."
+                        else -> "Your withdrawal status has been updated: $status"
+                    }
                 "Withdrawal Update" to body
             }
-            "support_ticket.replied" -> "Support Reply" to
-                "Customer service has replied to your support ticket."
+            "support_ticket.replied" ->
+                "Support Reply" to
+                    "Customer service has replied to your support ticket."
             "player.level_up" -> {
                 val level = payload["newLevel"]?.jsonPrimitive?.content ?: ""
                 val tier = payload["newTierName"]?.jsonPrimitive?.content ?: ""
@@ -231,16 +243,23 @@ public class OutboxWorker(
     /**
      * Builds the JSON payload published to the player's WebSocket channel.
      */
-    private fun buildWsPayload(event: OutboxEvent, notification: Notification?): String {
-        return buildJsonObject {
+    private fun buildWsPayload(
+        event: OutboxEvent,
+        notification: Notification?,
+    ): String =
+        buildJsonObject {
             put("eventType", event.eventType)
             put("notificationId", notification?.id?.toString() ?: "")
             put("title", notification?.title ?: "")
             put("body", notification?.body ?: "")
             put("data", event.payload)
-            put("timestamp", kotlinx.datetime.Clock.System.now().toString())
+            put(
+                "timestamp",
+                kotlinx.datetime.Clock.System
+                    .now()
+                    .toString()
+            )
         }.toString()
-    }
 
     // ── FCM push notification handlers ───────────────────────────────────
 
@@ -293,7 +312,8 @@ public class OutboxWorker(
     private suspend fun handleExchangeRequested(event: OutboxEvent) {
         val recipientId = event.payload["recipientId"]?.jsonPrimitive?.content ?: return
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(recipientId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(recipientId),
             PushNotificationPayload(
                 title = "Exchange Request",
                 body = "You received a new exchange request.",
@@ -305,7 +325,8 @@ public class OutboxWorker(
     private suspend fun handleExchangeCounterProposed(event: OutboxEvent) {
         val recipientId = event.payload["recipientId"]?.jsonPrimitive?.content ?: return
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(recipientId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(recipientId),
             PushNotificationPayload(
                 title = "Counter Proposal",
                 body = "You received a counter-proposal for your exchange.",
@@ -317,7 +338,8 @@ public class OutboxWorker(
     private suspend fun handleExchangeRejected(event: OutboxEvent) {
         val otherPlayerId = event.payload["otherPlayerId"]?.jsonPrimitive?.content ?: return
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(otherPlayerId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(otherPlayerId),
             PushNotificationPayload(
                 title = "Exchange Rejected",
                 body = "Your exchange request was rejected.",
@@ -378,7 +400,8 @@ public class OutboxWorker(
         val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
         val reason = event.payload["reason"]?.jsonPrimitive?.content ?: "Unknown error"
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(playerId),
             PushNotificationPayload(
                 title = "Payment Failed",
                 body = "Your payment could not be processed: $reason",
@@ -390,14 +413,16 @@ public class OutboxWorker(
     private suspend fun handleWithdrawalStatusChanged(event: OutboxEvent) {
         val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
         val status = event.payload["newStatus"]?.jsonPrimitive?.content ?: return
-        val body = when (status) {
-            "APPROVED" -> "Your withdrawal request has been approved."
-            "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
-            "REJECTED" -> "Your withdrawal request was rejected."
-            else -> "Your withdrawal status has been updated: $status"
-        }
+        val body =
+            when (status) {
+                "APPROVED" -> "Your withdrawal request has been approved."
+                "TRANSFERRED" -> "Your withdrawal has been transferred to your bank account."
+                "REJECTED" -> "Your withdrawal request was rejected."
+                else -> "Your withdrawal status has been updated: $status"
+            }
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(playerId),
             PushNotificationPayload(
                 title = "Withdrawal Update",
                 body = body,
@@ -424,7 +449,8 @@ public class OutboxWorker(
         val level = event.payload["newLevel"]?.jsonPrimitive?.content ?: ""
         val tier = event.payload["newTierName"]?.jsonPrimitive?.content ?: ""
         notificationService.sendPush(
-            com.prizedraw.domain.valueobjects.PlayerId.fromString(playerId),
+            com.prizedraw.domain.valueobjects.PlayerId
+                .fromString(playerId),
             PushNotificationPayload(
                 title = "Level Up!",
                 body = "Congratulations! You reached level $level ($tier).",

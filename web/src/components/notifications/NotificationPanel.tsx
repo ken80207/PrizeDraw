@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useNotificationStore, type NotificationItem } from "@/stores/notificationStore";
 import { useAuthStore } from "@/stores/authStore";
 
-interface NotificationPanelProps {
-  onClose: () => void;
-}
-
-export function NotificationPanel({ onClose }: NotificationPanelProps) {
+export function NotificationPanel() {
   const notifications = useNotificationStore((s) => s.notifications);
   const markRead = useNotificationStore((s) => s.markRead);
   const markAllRead = useNotificationStore((s) => s.markAllRead);
@@ -16,15 +12,12 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
   const setLoading = useNotificationStore((s) => s.setLoading);
   const isLoading = useNotificationStore((s) => s.isLoading);
   const accessToken = useAuthStore((s) => s.accessToken);
-  const authHeaders = { Authorization: `Bearer ${accessToken}` };
+  const authHeaders = useMemo(
+    () => ({ Authorization: `Bearer ${accessToken}` }),
+    [accessToken],
+  );
 
-  useEffect(() => {
-    if (notifications.length === 0) {
-      void fetchNotifications();
-    }
-  }, []);
-
-  async function fetchNotifications(): Promise<void> {
+  const fetchNotifications = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await fetch("/api/v1/notifications?limit=20", { headers: authHeaders });
@@ -35,20 +28,26 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [authHeaders, setLoading, setNotifications]);
+
+  useEffect(() => {
+    if (notifications.length === 0) {
+      void fetchNotifications();
+    }
+  }, [fetchNotifications, notifications.length]);
 
   const handleMarkRead = useCallback(
     async (id: string) => {
       markRead(id);
       await fetch(`/api/v1/notifications/${id}/read`, { method: "POST", headers: authHeaders });
     },
-    [markRead, accessToken],
+    [markRead, authHeaders],
   );
 
   const handleMarkAllRead = useCallback(async () => {
     markAllRead();
     await fetch("/api/v1/notifications/read-all", { method: "POST", headers: authHeaders });
-  }, [markAllRead, accessToken]);
+  }, [markAllRead, authHeaders]);
 
   return (
     <div className="absolute right-0 top-12 z-50 w-80 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">

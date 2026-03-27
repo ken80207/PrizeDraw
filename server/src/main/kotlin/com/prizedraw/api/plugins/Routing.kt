@@ -17,12 +17,12 @@ import com.prizedraw.api.routes.campaignRoutes
 import com.prizedraw.api.routes.chatRoutes
 import com.prizedraw.api.routes.couponRoutes
 import com.prizedraw.api.routes.deviceRoutes
-import com.prizedraw.api.routes.notificationRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
 import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
+import com.prizedraw.api.routes.notificationRoutes
 import com.prizedraw.api.routes.paymentRoutes
 import com.prizedraw.api.routes.playerRoutes
 import com.prizedraw.api.routes.roomRoutes

@@ -93,7 +93,7 @@ public class PlayerNotificationManager(
             try {
                 session.send(Frame.Text(message))
             } catch (e: Exception) {
-                log.warn("Failed to send notification to player {} session; removing", playerId)
+                log.warn("Failed to send notification to player {} session; removing: {}", playerId, e.message)
                 dead.add(session)
             }
         }

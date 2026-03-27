@@ -13,6 +13,10 @@ import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 
+private const val DEFAULT_LIMIT = 20
+private const val MAX_LIMIT = 50
+private const val MIN_LIMIT = 1
+
 @Serializable
 private data class NotificationListResponse(
     val notifications: List<NotificationItemDto>,
@@ -45,23 +49,24 @@ public fun Route.notificationRoutes() {
     authenticate("player") {
         get(NotificationEndpoints.LIST) {
             val playerId = call.principal<PlayerPrincipal>()!!.playerId
-            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 20
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: DEFAULT_LIMIT
             val offset = call.request.queryParameters["offset"]?.toIntOrNull() ?: 0
-            val clamped = limit.coerceIn(1, 50)
+            val clamped = limit.coerceIn(MIN_LIMIT, MAX_LIMIT)
 
             val notifications = notificationRepository.findByPlayerId(playerId.value, clamped + 1, offset)
             val hasMore = notifications.size > clamped
-            val items = notifications.take(clamped).map { n ->
-                NotificationItemDto(
-                    id = n.id.toString(),
-                    eventType = n.eventType,
-                    title = n.title,
-                    body = n.body,
-                    data = n.data,
-                    isRead = n.isRead,
-                    createdAt = n.createdAt.toString(),
-                )
-            }
+            val items =
+                notifications.take(clamped).map { n ->
+                    NotificationItemDto(
+                        id = n.id.toString(),
+                        eventType = n.eventType,
+                        title = n.title,
+                        body = n.body,
+                        data = n.data,
+                        isRead = n.isRead,
+                        createdAt = n.createdAt.toString(),
+                    )
+                }
             call.respond(HttpStatusCode.OK, NotificationListResponse(items, hasMore))
         }
 
@@ -73,16 +78,18 @@ public fun Route.notificationRoutes() {
 
         post(NotificationEndpoints.MARK_READ) {
             val playerId = call.principal<PlayerPrincipal>()!!.playerId
-            val id = call.parameters["id"] ?: run {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing id"))
-                return@post
-            }
-            val uuid = try {
-                java.util.UUID.fromString(id)
-            } catch (_: IllegalArgumentException) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid id"))
-                return@post
-            }
+            val id =
+                call.parameters["id"] ?: run {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing id"))
+                    return@post
+                }
+            val uuid =
+                try {
+                    java.util.UUID.fromString(id)
+                } catch (_: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid id"))
+                    return@post
+                }
             notificationRepository.markRead(uuid, playerId.value)
             call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
         }

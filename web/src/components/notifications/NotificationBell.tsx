@@ -43,7 +43,7 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <NotificationPanel onClose={() => setIsOpen(false)} />
+        <NotificationPanel />
       )}
     </div>
   );
