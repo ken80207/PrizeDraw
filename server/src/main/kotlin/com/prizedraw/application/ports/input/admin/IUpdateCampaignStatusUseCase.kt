@@ -23,11 +23,14 @@ public interface IUpdateCampaignStatusUseCase {
      * @param campaignId The campaign to transition.
      * @param campaignType Whether this is a KUJI or UNLIMITED campaign.
      * @param newStatus The target status.
+     * @param confirmLowMargin When true, bypasses the margin gate and activates even if
+     *   margin is below the configured threshold. Defaults to false.
      */
     public suspend fun execute(
         staffId: StaffId,
         campaignId: CampaignId,
         campaignType: CampaignType,
         newStatus: CampaignStatus,
+        confirmLowMargin: Boolean = false,
     )
 }

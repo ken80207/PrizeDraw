@@ -4,11 +4,16 @@ import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
+import com.prizedraw.domain.services.KujiPrizeInput
+import com.prizedraw.domain.services.LowMarginException
+import com.prizedraw.domain.services.MarginRiskService
+import com.prizedraw.domain.services.UnlimitedPrizeInput
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.StaffId
 import kotlinx.datetime.Clock
@@ -33,19 +38,22 @@ public class UpdateCampaignStatusUseCase(
     private val ticketBoxRepository: ITicketBoxRepository,
     private val prizeRepository: IPrizeRepository,
     private val auditRepository: IAuditRepository,
+    private val marginRiskService: MarginRiskService,
+    private val settingsRepository: ISystemSettingsRepository,
 ) : IUpdateCampaignStatusUseCase {
     override suspend fun execute(
         staffId: StaffId,
         campaignId: CampaignId,
         campaignType: CampaignType,
         newStatus: CampaignStatus,
+        confirmLowMargin: Boolean,
     ) {
         val currentStatus = resolveCurrentStatus(campaignId, campaignType)
         validateTransition(currentStatus, newStatus)
 
         when (campaignType) {
-            CampaignType.KUJI -> activateKujiIfNeeded(campaignId, newStatus)
-            CampaignType.UNLIMITED -> activateUnlimitedIfNeeded(campaignId, newStatus)
+            CampaignType.KUJI -> activateKujiIfNeeded(campaignId, newStatus, confirmLowMargin)
+            CampaignType.UNLIMITED -> activateUnlimitedIfNeeded(campaignId, newStatus, confirmLowMargin)
         }
 
         applyStatusChange(campaignId, campaignType, newStatus)
@@ -88,6 +96,7 @@ public class UpdateCampaignStatusUseCase(
     private suspend fun activateKujiIfNeeded(
         campaignId: CampaignId,
         newStatus: CampaignStatus,
+        confirmLowMargin: Boolean,
     ) {
         if (newStatus != CampaignStatus.ACTIVE) {
             return
@@ -106,11 +115,30 @@ public class UpdateCampaignStatusUseCase(
                 "All prize definitions in campaign ${campaignId.value} must have at least one photo."
             }
         }
+
+        // Margin gate
+        val campaign = campaignRepository.findKujiById(campaignId)
+            ?: error("Kuji campaign not found: $campaignId")
+        val prizes = prizeRepository.findDefinitionsByCampaign(campaignId, CampaignType.KUJI)
+        val boxCount = boxes.size
+        val threshold = settingsRepository.getMarginThresholdPct()
+        val marginResult = marginRiskService.calculateKujiMargin(
+            pricePerDraw = campaign.pricePerDraw,
+            prizes = prizes.mapNotNull { p ->
+                p.ticketCount?.let { KujiPrizeInput(ticketCount = it, prizeValue = p.prizeValue) }
+            },
+            boxCount = boxCount,
+            thresholdPct = threshold,
+        )
+        if (marginResult.belowThreshold && !confirmLowMargin) {
+            throw LowMarginException(marginResult)
+        }
     }
 
     private suspend fun activateUnlimitedIfNeeded(
         campaignId: CampaignId,
         newStatus: CampaignStatus,
+        confirmLowMargin: Boolean,
     ) {
         if (newStatus != CampaignStatus.ACTIVE) {
             return
@@ -125,6 +153,21 @@ public class UpdateCampaignStatusUseCase(
         }
         require(prizes.all { it.photos.isNotEmpty() }) {
             "All prize definitions in campaign ${campaignId.value} must have at least one photo."
+        }
+
+        // Margin gate
+        val campaign = campaignRepository.findUnlimitedById(campaignId)
+            ?: error("Unlimited campaign not found: $campaignId")
+        val threshold = settingsRepository.getMarginThresholdPct()
+        val marginResult = marginRiskService.calculateUnlimitedMargin(
+            pricePerDraw = campaign.pricePerDraw,
+            prizes = prizes.map {
+                UnlimitedPrizeInput(probabilityBps = it.probabilityBps!!, prizeValue = it.prizeValue)
+            },
+            thresholdPct = threshold,
+        )
+        if (marginResult.belowThreshold && !confirmLowMargin) {
+            throw LowMarginException(marginResult)
         }
     }
 

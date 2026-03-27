@@ -68,12 +68,15 @@ import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
 import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
+import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
+import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.ManageAnimationModesUseCase
 import com.prizedraw.application.usecases.admin.UpdateBuybackPriceUseCase
 import com.prizedraw.application.usecases.admin.UpdateCampaignStatusUseCase
 import com.prizedraw.application.usecases.admin.UpdateCampaignUseCase
 import com.prizedraw.application.usecases.admin.UpdateTradeFeeRateUseCase
+import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
 import com.prizedraw.application.usecases.auth.BindPhoneUseCase
 import com.prizedraw.application.usecases.auth.LoginUseCase
 import com.prizedraw.application.usecases.auth.LogoutUseCase
@@ -408,6 +411,9 @@ public val useCaseModule =
             CreateUnlimitedCampaignUseCase(
                 campaignRepository = get(),
                 auditRepository = get(),
+                prizeRepository = get(),
+                marginRiskService = get(),
+                settingsRepository = get(),
             )
         }
 
@@ -417,6 +423,8 @@ public val useCaseModule =
                 ticketBoxRepository = get(),
                 prizeRepository = get(),
                 auditRepository = get(),
+                marginRiskService = get(),
+                settingsRepository = get(),
             )
         }
 
@@ -425,6 +433,27 @@ public val useCaseModule =
                 campaignRepository = get(),
                 auditRepository = get(),
             )
+        }
+
+        // --- Unlimited Prize Table & Risk ---
+        single<UpdateUnlimitedPrizeTableUseCase> {
+            UpdateUnlimitedPrizeTableUseCase(
+                campaignRepository = get(),
+                prizeRepository = get(),
+                marginRiskService = get(),
+                settingsRepository = get(),
+            )
+        }
+
+        single<ApproveCampaignUseCase> {
+            ApproveCampaignUseCase(
+                campaignRepository = get(),
+                settingsRepository = get(),
+            )
+        }
+
+        single<GetRiskSettingsUseCase> {
+            GetRiskSettingsUseCase(settingsRepository = get())
         }
 
         // --- Phase 16: Animation Modes (Admin) ---

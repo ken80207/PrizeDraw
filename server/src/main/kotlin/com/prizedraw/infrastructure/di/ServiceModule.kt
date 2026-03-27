@@ -2,6 +2,7 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.api.plugins.createMeterRegistry
 import com.prizedraw.application.ports.output.IBroadcastRepository
+import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.IDrawSyncRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
@@ -36,6 +37,7 @@ public fun serviceModule(config: ApplicationConfig) =
     module {
         includes(levelServiceModule)
         single<PrometheusMeterRegistry> { createMeterRegistry() }
+        single<MarginRiskService> { MarginRiskService() }
 
         single<TokenService.RefreshTokenFamilyStore> { RefreshTokenFamilyRepositoryImpl() }
 

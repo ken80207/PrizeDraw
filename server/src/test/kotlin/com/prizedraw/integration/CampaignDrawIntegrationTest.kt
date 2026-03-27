@@ -30,10 +30,12 @@ import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
 import com.prizedraw.domain.services.KujiDrawDomainService
+import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
@@ -609,11 +611,15 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             coEvery { statusPrizeRepo.findDefinitionsByCampaign(any(), any()) } returns defs.values.toList()
             every { statusAuditRepo.record(any()) } just runs
 
+            val statusSettingsRepo = mockk<ISystemSettingsRepository>()
+            coEvery { statusSettingsRepo.getMarginThresholdPct() } returns java.math.BigDecimal("30")
             val updateStatusUseCase = UpdateCampaignStatusUseCase(
                 campaignRepository = statusCampaignRepo,
                 ticketBoxRepository = statusTicketBoxRepo,
                 prizeRepository = statusPrizeRepo,
                 auditRepository = statusAuditRepo,
+                marginRiskService = MarginRiskService(),
+                settingsRepository = statusSettingsRepo,
             )
             updateStatusUseCase.execute(
                 staffId = staffId,
@@ -878,7 +884,13 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             coEvery { createCampaignRepo2.saveUnlimited(any()) } coAnswers { firstArg() }
             every { createAuditRepo2.record(any()) } just runs
 
-            val createUnlimitedUseCase = CreateUnlimitedCampaignUseCase(createCampaignRepo2, createAuditRepo2)
+            val createUnlimitedUseCase = CreateUnlimitedCampaignUseCase(
+                campaignRepository = createCampaignRepo2,
+                auditRepository = createAuditRepo2,
+                prizeRepository = mockk(),
+                marginRiskService = MarginRiskService(),
+                settingsRepository = mockk(),
+            )
             val created = createUnlimitedUseCase.execute(
                 staffId = staffId,
                 title = "SPY×FAMILY 無限賞",
@@ -901,11 +913,15 @@ class CampaignDrawIntegrationTest : DescribeSpec({
             coEvery { statusPrizeRepo2.findDefinitionsByCampaign(any(), any()) } returns definitions
             every { statusAuditRepo2.record(any()) } just runs
 
+            val statusSettingsRepo2 = mockk<ISystemSettingsRepository>()
+            coEvery { statusSettingsRepo2.getMarginThresholdPct() } returns java.math.BigDecimal("30")
             val updateStatusUseCase2 = UpdateCampaignStatusUseCase(
                 campaignRepository = statusCampaignRepo2,
                 ticketBoxRepository = statusTicketBoxRepo2,
                 prizeRepository = statusPrizeRepo2,
                 auditRepository = statusAuditRepo2,
+                marginRiskService = MarginRiskService(),
+                settingsRepository = statusSettingsRepo2,
             )
             updateStatusUseCase2.execute(
                 staffId = staffId,
