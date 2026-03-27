@@ -107,3 +107,4 @@ DerivedData/
 !*.xcodeproj/*.pbxproj
 .kotlin/
 kotlin-js-store/
+.worktrees/
