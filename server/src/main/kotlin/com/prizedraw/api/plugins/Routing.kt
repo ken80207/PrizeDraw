@@ -17,6 +17,7 @@ import com.prizedraw.api.routes.campaignRoutes
 import com.prizedraw.api.routes.chatRoutes
 import com.prizedraw.api.routes.couponRoutes
 import com.prizedraw.api.routes.deviceRoutes
+import com.prizedraw.api.routes.notificationRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
@@ -112,6 +113,9 @@ public fun Application.configureRouting() {
 
         // Phase 9: FCM device token registration
         deviceRoutes()
+
+        // Phase 10: Notification history and read-status management
+        notificationRoutes()
 
         // Phase 4: Campaign, Draw, WebSocket
         campaignRoutes()
