@@ -1,5 +1,6 @@
 package com.prizedraw.domain.entities
 
+import com.prizedraw.contracts.enums.ApprovalStatus
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.domain.valueobjects.CampaignId
 import kotlinx.datetime.Instant
@@ -27,6 +28,9 @@ import java.util.UUID
  * @property deletedAt Soft-delete timestamp.
  * @property createdAt Creation timestamp.
  * @property updatedAt Last mutation timestamp.
+ * @property approvalStatus Approval gate status when margin falls below threshold.
+ * @property approvedBy FK to the staff member who approved or rejected this campaign.
+ * @property approvedAt Timestamp when the approval decision was recorded.
  */
 public data class UnlimitedCampaign(
     val id: CampaignId,
@@ -41,4 +45,7 @@ public data class UnlimitedCampaign(
     val deletedAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val approvalStatus: ApprovalStatus = ApprovalStatus.NOT_REQUIRED,
+    val approvedBy: UUID? = null,
+    val approvedAt: Instant? = null,
 )

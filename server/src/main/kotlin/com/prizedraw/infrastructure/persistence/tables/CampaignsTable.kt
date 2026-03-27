@@ -31,6 +31,9 @@ public object KujiCampaignsTable : Table("kuji_campaigns") {
     public val deletedAt = timestampWithTimeZone("deleted_at").nullable()
     public val createdAt = timestampWithTimeZone("created_at")
     public val updatedAt = timestampWithTimeZone("updated_at")
+    public val approvalStatus = varchar("approval_status", 32).default("NOT_REQUIRED")
+    public val approvedBy = uuid("approved_by").nullable()
+    public val approvedAt = timestampWithTimeZone("approved_at").nullable()
 
     override val primaryKey: PrimaryKey = PrimaryKey(id)
 }
@@ -55,6 +58,9 @@ public object UnlimitedCampaignsTable : Table("unlimited_campaigns") {
     public val deletedAt = timestampWithTimeZone("deleted_at").nullable()
     public val createdAt = timestampWithTimeZone("created_at")
     public val updatedAt = timestampWithTimeZone("updated_at")
+    public val approvalStatus = varchar("approval_status", 32).default("NOT_REQUIRED")
+    public val approvedBy = uuid("approved_by").nullable()
+    public val approvedAt = timestampWithTimeZone("approved_at").nullable()
 
     override val primaryKey: PrimaryKey = PrimaryKey(id)
 }

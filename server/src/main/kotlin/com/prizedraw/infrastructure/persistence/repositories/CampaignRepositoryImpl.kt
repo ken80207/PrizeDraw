@@ -1,6 +1,7 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.contracts.enums.ApprovalStatus
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.UnlimitedCampaign
@@ -78,6 +79,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
                     it[createdAt] = campaign.createdAt.toOffsetDateTime()
                     it[updatedAt] = campaign.updatedAt.toOffsetDateTime()
+                    it[approvalStatus] = campaign.approvalStatus.name
+                    it[approvedBy] = campaign.approvedBy
+                    it[approvedAt] = campaign.approvedAt?.toOffsetDateTime()
                 }
             } else {
                 KujiCampaignsTable.update({ KujiCampaignsTable.id eq campaign.id.value }) {
@@ -91,6 +95,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[soldOutAt] = campaign.soldOutAt?.toOffsetDateTime()
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
                     it[updatedAt] = campaign.updatedAt.toOffsetDateTime()
+                    it[approvalStatus] = campaign.approvalStatus.name
+                    it[approvedBy] = campaign.approvedBy
+                    it[approvedAt] = campaign.approvedAt?.toOffsetDateTime()
                 }
             }
 
@@ -171,6 +178,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
                     it[createdAt] = campaign.createdAt.toOffsetDateTime()
                     it[updatedAt] = campaign.updatedAt.toOffsetDateTime()
+                    it[approvalStatus] = campaign.approvalStatus.name
+                    it[approvedBy] = campaign.approvedBy
+                    it[approvedAt] = campaign.approvedAt?.toOffsetDateTime()
                 }
             } else {
                 UnlimitedCampaignsTable.update({ UnlimitedCampaignsTable.id eq campaign.id.value }) {
@@ -183,6 +193,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
                     it[activatedAt] = campaign.activatedAt?.toOffsetDateTime()
                     it[deletedAt] = campaign.deletedAt?.toOffsetDateTime()
                     it[updatedAt] = campaign.updatedAt.toOffsetDateTime()
+                    it[approvalStatus] = campaign.approvalStatus.name
+                    it[approvedBy] = campaign.approvedBy
+                    it[approvedAt] = campaign.approvedAt?.toOffsetDateTime()
                 }
             }
 
@@ -219,6 +232,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             deletedAt = this[KujiCampaignsTable.deletedAt]?.toInstant()?.toKotlinInstant(),
             createdAt = this[KujiCampaignsTable.createdAt].toInstant().toKotlinInstant(),
             updatedAt = this[KujiCampaignsTable.updatedAt].toInstant().toKotlinInstant(),
+            approvalStatus = ApprovalStatus.valueOf(this[KujiCampaignsTable.approvalStatus]),
+            approvedBy = this[KujiCampaignsTable.approvedBy],
+            approvedAt = this[KujiCampaignsTable.approvedAt]?.toInstant()?.toKotlinInstant(),
         )
 
     private fun ResultRow.toUnlimitedCampaign(): UnlimitedCampaign =
@@ -235,6 +251,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             deletedAt = this[UnlimitedCampaignsTable.deletedAt]?.toInstant()?.toKotlinInstant(),
             createdAt = this[UnlimitedCampaignsTable.createdAt].toInstant().toKotlinInstant(),
             updatedAt = this[UnlimitedCampaignsTable.updatedAt].toInstant().toKotlinInstant(),
+            approvalStatus = ApprovalStatus.valueOf(this[UnlimitedCampaignsTable.approvalStatus]),
+            approvedBy = this[UnlimitedCampaignsTable.approvedBy],
+            approvedAt = this[UnlimitedCampaignsTable.approvedAt]?.toInstant()?.toKotlinInstant(),
         )
 }
 

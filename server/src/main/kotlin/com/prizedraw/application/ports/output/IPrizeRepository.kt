@@ -113,4 +113,23 @@ public interface IPrizeRepository {
         newOwnerId: PlayerId,
         newState: PrizeState,
     ): PrizeInstance
+
+    /**
+     * Deletes all [PrizeDefinition]s associated with the given unlimited campaign.
+     *
+     * Used when replacing prize definitions during an unlimited campaign update.
+     *
+     * @param campaignId The unlimited campaign whose definitions should be removed.
+     */
+    public suspend fun deleteByUnlimitedCampaignId(campaignId: CampaignId)
+
+    /**
+     * Persists a batch of [PrizeDefinition]s in a single transaction.
+     *
+     * All definitions in the list are inserted. Caller is responsible for ensuring
+     * no ID conflicts exist (e.g. by calling [deleteByUnlimitedCampaignId] first).
+     *
+     * @param definitions The definitions to insert.
+     */
+    public suspend fun saveAll(definitions: List<PrizeDefinition>)
 }

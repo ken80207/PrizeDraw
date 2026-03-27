@@ -1,6 +1,7 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
@@ -32,6 +33,7 @@ import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.SystemSettingsRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.NotificationRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.PlayerDeviceRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.RoomInstanceRepositoryImpl
@@ -112,4 +114,7 @@ public val repositoryModule =
         // Task 3: Notification + Device repositories
         single<INotificationRepository> { NotificationRepositoryImpl() }
         single<IPlayerDeviceRepository> { PlayerDeviceRepositoryImpl() }
+
+        // Unlimited prize CRUD: system-level configuration
+        single<ISystemSettingsRepository> { SystemSettingsRepositoryImpl() }
     }

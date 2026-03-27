@@ -22,6 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
@@ -193,6 +194,39 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                 .where { PrizeInstancesTable.id eq instanceId.value }
                 .single()
                 .toPrizeInstance()
+        }
+
+    override suspend fun deleteByUnlimitedCampaignId(campaignId: CampaignId): Unit =
+        newSuspendedTransaction {
+            PrizeDefinitionsTable.deleteWhere {
+                PrizeDefinitionsTable.unlimitedCampaignId eq campaignId.value
+            }
+        }
+
+    override suspend fun saveAll(definitions: List<PrizeDefinition>): Unit =
+        newSuspendedTransaction {
+            definitions.forEach { definition ->
+                val photosJson =
+                    buildJsonArray {
+                        definition.photos.forEach { add(JsonPrimitive(it)) }
+                    }.toString()
+                PrizeDefinitionsTable.insert {
+                    it[id] = definition.id.value
+                    it[kujiCampaignId] = definition.kujiCampaignId?.value
+                    it[unlimitedCampaignId] = definition.unlimitedCampaignId?.value
+                    it[grade] = definition.grade
+                    it[name] = definition.name
+                    it[photos] = photosJson
+                    it[prizeValue] = definition.prizeValue
+                    it[buybackPrice] = definition.buybackPrice
+                    it[buybackEnabled] = definition.buybackEnabled
+                    it[probabilityBps] = definition.probabilityBps
+                    it[ticketCount] = definition.ticketCount
+                    it[displayOrder] = definition.displayOrder
+                    it[createdAt] = definition.createdAt.toOffsetDateTime()
+                    it[updatedAt] = definition.updatedAt.toOffsetDateTime()
+                }
+            }
         }
 
     private fun ResultRow.toPrizeDefinition(): PrizeDefinition {
