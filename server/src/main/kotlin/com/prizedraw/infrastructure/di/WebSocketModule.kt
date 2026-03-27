@@ -2,6 +2,7 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import com.prizedraw.infrastructure.websocket.ConnectionManager
+import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
 import org.koin.dsl.module
 
 /**
@@ -14,5 +15,8 @@ public val webSocketModule =
     module {
         single<ConnectionManager> {
             ConnectionManager(redisPubSub = get<RedisPubSub>())
+        }
+        single<PlayerNotificationManager> {
+            PlayerNotificationManager(redisPubSub = get<RedisPubSub>())
         }
     }
