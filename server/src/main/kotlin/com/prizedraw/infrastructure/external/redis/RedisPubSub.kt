@@ -50,7 +50,7 @@ public class RedisPubSub(
      *
      * @param channel The Redis channel to subscribe to.
      */
-    public fun subscribe(channel: String): Flow<String> {
+    public override fun subscribe(channel: String): Flow<String> {
         val messageChannel = Channel<String>(capacity = 64)
         listeners.getOrPut(channel) { mutableListOf() }.add(messageChannel)
 

@@ -41,9 +41,12 @@ import com.prizedraw.application.services.DrawSyncService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
+import com.prizedraw.api.routes.feedRoutes
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.infrastructure.websocket.ConnectionManager
 import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
 import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
+import com.prizedraw.infrastructure.websocket.feedWebSocketHandler
 import com.prizedraw.infrastructure.websocket.kujiWebSocketHandler
 import com.prizedraw.infrastructure.websocket.playerNotificationHandler
 import com.prizedraw.infrastructure.websocket.queueWebSocketHandler
@@ -78,6 +81,7 @@ import org.koin.ktor.ext.inject
 @Suppress("LongMethod")
 public fun Application.configureRouting() {
     val prometheusRegistry: PrometheusMeterRegistry by inject()
+    val feedPubSub: IPubSubService by inject()
     val connectionManager: ConnectionManager by inject()
     val drawRepository: IDrawRepository by inject()
     val prizeRepository: IPrizeRepository by inject()
@@ -151,6 +155,10 @@ public fun Application.configureRouting() {
 
         // Phase 17: Leaderboard (public, but optional auth for self-rank)
         leaderboardRoutes()
+
+        // Live draw feed — public REST endpoint + WebSocket fanout
+        feedRoutes()
+        feedWebSocketHandler(feedPubSub)
 
         // Phase 22: Player level/tier system and XP leaderboard
         levelRoutes()
