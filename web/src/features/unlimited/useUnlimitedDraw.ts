@@ -41,6 +41,15 @@ export interface UnlimitedDrawResultDto {
   prizeName: string;
   prizePhotoUrl: string;
   pointsCharged: number;
+  pityProgress?: PityProgressDto;
+}
+
+export interface PityProgressDto {
+  drawCount: number;
+  threshold: number;
+  isPityTriggered: boolean;
+  mode: string;
+  sessionExpiresAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +65,8 @@ export interface UnlimitedDrawState {
   lastResult: UnlimitedDrawResultDto | null;
   /** Accumulated draw history for the current session, newest first. */
   drawHistory: UnlimitedDrawResultDto[];
+  /** Latest pity progress snapshot, or null before first draw. */
+  pityProgress: PityProgressDto | null;
   /** True while a draw request is in flight. */
   isDrawing: boolean;
   /** True while campaign detail is loading. */
@@ -99,6 +110,7 @@ export function useUnlimitedDraw(
   const [prizes, setPrizes] = useState<PrizeDefinitionDto[]>([]);
   const [lastResult, setLastResult] = useState<UnlimitedDrawResultDto | null>(null);
   const [drawHistory, setDrawHistory] = useState<UnlimitedDrawResultDto[]>([]);
+  const [pityProgress, setPityProgress] = useState<PityProgressDto | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +143,9 @@ export function useUnlimitedDraw(
       );
       setLastResult(result);
       setDrawHistory((prev) => [result, ...prev]);
+      if (result.pityProgress) {
+        setPityProgress(result.pityProgress);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Draw failed");
     } finally {
@@ -146,6 +161,7 @@ export function useUnlimitedDraw(
     prizes,
     lastResult,
     drawHistory,
+    pityProgress,
     isDrawing,
     isLoading,
     error,
