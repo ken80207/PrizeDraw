@@ -5,6 +5,7 @@ import com.prizedraw.application.ports.output.IBannerRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
 import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
+import com.prizedraw.application.ports.output.ICampaignGradeRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.ICouponRepository
@@ -15,6 +16,7 @@ import com.prizedraw.application.ports.output.IExchangeRepository
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
 import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.application.ports.output.IFollowRepository
+import com.prizedraw.application.ports.output.IGradeTemplateRepository
 import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
@@ -41,6 +43,7 @@ import com.prizedraw.infrastructure.persistence.repositories.BannerRepositoryImp
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.CampaignFavoriteRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.CampaignGradeRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.CampaignRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.ChatRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.CouponRepositoryImpl
@@ -51,6 +54,7 @@ import com.prizedraw.infrastructure.persistence.repositories.ExchangeRepositoryI
 import com.prizedraw.infrastructure.persistence.repositories.FeatureFlagRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.FeedEventRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.FollowRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.GradeTemplateRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.LeaderboardRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.NotificationRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.OutboxRepositoryImpl
@@ -137,4 +141,8 @@ public val repositoryModule =
 
         // Banner carousel
         single<IBannerRepository> { BannerRepositoryImpl() }
+
+        // Grade templates + campaign grades (Task 6)
+        single<IGradeTemplateRepository> { GradeTemplateRepositoryImpl() }
+        single<ICampaignGradeRepository> { CampaignGradeRepositoryImpl() }
     }

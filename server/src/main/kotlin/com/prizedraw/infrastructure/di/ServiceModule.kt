@@ -11,6 +11,8 @@ import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.ports.output.ITierConfigRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
+import com.prizedraw.application.usecases.admin.CampaignGradeUseCases
+import com.prizedraw.application.usecases.admin.GradeTemplateUseCases
 import com.prizedraw.application.services.BroadcastService
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
@@ -119,6 +121,10 @@ public fun serviceModule(config: ApplicationConfig) =
 
         // Live draw presence (in-memory active session map + pub/sub events)
         single<LiveDrawService> { LiveDrawService(pubSub = get<IPubSubService>()) }
+
+        // Grade use cases (Task 6)
+        single { GradeTemplateUseCases(get()) }
+        single { CampaignGradeUseCases(get(), get(), get()) }
     }
 
 /**
