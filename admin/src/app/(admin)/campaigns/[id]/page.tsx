@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { calcUnlimitedMargin, pctToBps } from "@/lib/margin-utils";
 import { MarginDisplay } from "@/components/MarginDisplay";
+import { PityConfigSection } from "./components/PityConfigSection";
 
 interface DrawRecord {
   ticketId: string;
@@ -642,6 +643,19 @@ export default function CampaignDetailPage() {
 
           <MarginDisplay result={unlimitedMargin} />
         </div>
+      )}
+
+      {/* Pity rule config — only for UNLIMITED campaigns */}
+      {campaign.type === "UNLIMITED" && (
+        <PityConfigSection
+          campaignId={id}
+          campaignStatus={campaign.status}
+          prizeDefinitions={(campaign.prizePool ?? []).map((p) => ({
+            id: p.id,
+            grade: p.grade,
+            name: p.name,
+          }))}
+        />
       )}
 
       {/* Draw records */}
