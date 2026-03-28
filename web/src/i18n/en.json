@@ -717,6 +717,27 @@
     "title": "Developer Tools",
     "subtitle": "Internal tooling for the PrizeDraw team — not visible in production."
   },
+  "follow": {
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "following": "Following",
+    "followers": "Followers",
+    "followingCount": "{count} Following",
+    "followerCount": "{count} Followers",
+    "search": "Search Players",
+    "searchPlaceholder": "Enter player code",
+    "playerCode": "My Code",
+    "copied": "Copied!",
+    "noResults": "No player found with this code",
+    "followSuccess": "Followed",
+    "unfollowSuccess": "Unfollowed",
+    "cannotFollowSelf": "Cannot follow yourself",
+    "alreadyFollowing": "Already following this player",
+    "spectateNotification": "{nickname} is drawing in {campaign}!",
+    "rarePrizeNotification": "{nickname} drew {prize} in {campaign}!",
+    "emptyFollowing": "You're not following anyone yet",
+    "emptyFollowers": "No one is following you yet"
+  },
   "recharge": {
     "heroTitle": "Power your Fortune",
     "heroTitleHighlight": "Fortune",

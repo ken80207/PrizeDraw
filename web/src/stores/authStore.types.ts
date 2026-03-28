@@ -12,4 +12,7 @@ export interface PlayerDto {
   locale: string;
   isActive: boolean;
   createdAt: string;
+  playerCode: string;
+  followerCount: number;
+  followingCount: number;
 }

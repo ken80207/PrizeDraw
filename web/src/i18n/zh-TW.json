@@ -757,6 +757,27 @@
     "title": "Developer Tools",
     "subtitle": "Internal tooling for the PrizeDraw team — not visible in production."
   },
+  "follow": {
+    "follow": "追蹤",
+    "unfollow": "取消追蹤",
+    "following": "追蹤中",
+    "followers": "粉絲",
+    "followingCount": "{count} 追蹤中",
+    "followerCount": "{count} 粉絲",
+    "search": "搜尋玩家",
+    "searchPlaceholder": "輸入玩家代碼",
+    "playerCode": "我的代碼",
+    "copied": "已複製！",
+    "noResults": "找不到此代碼的玩家",
+    "followSuccess": "已追蹤",
+    "unfollowSuccess": "已取消追蹤",
+    "cannotFollowSelf": "無法追蹤自己",
+    "alreadyFollowing": "已經追蹤此玩家",
+    "spectateNotification": "{nickname} 正在抽 {campaign}！",
+    "rarePrizeNotification": "{nickname} 在 {campaign} 抽到了 {prize}！",
+    "emptyFollowing": "你還沒有追蹤任何人",
+    "emptyFollowers": "還沒有人追蹤你"
+  },
   "recharge": {
     "heroTitle": "為你的幸運充能",
     "heroTitleHighlight": "幸運",
