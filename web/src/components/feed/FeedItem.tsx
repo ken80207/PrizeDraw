@@ -10,8 +10,9 @@ const GRADE_COLORS: Record<string, { bg: string; border: string; text: string }>
 };
 
 function timeAgo(drawnAt: string): string {
-  const diff = Date.now() - new Date(drawnAt).getTime();
+  const diff = Math.max(0, Date.now() - new Date(drawnAt).getTime());
   const seconds = Math.floor(diff / 1000);
+  if (seconds < 5) return "剛剛";
   if (seconds < 60) return `${seconds}秒前`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}分鐘前`;

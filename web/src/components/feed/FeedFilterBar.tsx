@@ -52,7 +52,7 @@ export default function FeedFilterBar() {
       )}
 
       <div className="ml-auto flex items-center gap-1.5">
-        <span className={`w-2 h-2 rounded-full ${connected ? "bg-red-500 animate-pulse" : "bg-gray-500"}`} />
+        <span className={`w-2 h-2 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-gray-500"}`} />
         <span className="text-xs text-on-surface-variant">
           {connected ? "即時" : "離線"}
         </span>

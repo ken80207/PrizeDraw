@@ -29,7 +29,7 @@ export default function LiveMarquee({ currentPlayerId }: LiveMarqueeProps) {
         const res = await fetch(`${API_BASE}/api/v1/feed/recent?limit=10`);
         if (res.ok) {
           const data = await res.json();
-          if (!cancelled && items.length === 0) setInitialItems(data.items ?? []);
+          if (!cancelled && useFeedStore.getState().items.length === 0) setInitialItems(data.items ?? []);
         }
       } catch {
         // Silently fail
