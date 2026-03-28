@@ -88,6 +88,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                     it[probabilityBps] = definition.probabilityBps
                     it[ticketCount] = definition.ticketCount
                     it[displayOrder] = definition.displayOrder
+                    it[isRare] = definition.isRare
                     it[createdAt] = definition.createdAt.toOffsetDateTime()
                     it[updatedAt] = definition.updatedAt.toOffsetDateTime()
                 }
@@ -95,6 +96,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                 PrizeDefinitionsTable.update({ PrizeDefinitionsTable.id eq definition.id.value }) {
                     it[buybackPrice] = definition.buybackPrice
                     it[buybackEnabled] = definition.buybackEnabled
+                    it[isRare] = definition.isRare
                     it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
                 }
             }
@@ -222,6 +224,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                     it[probabilityBps] = definition.probabilityBps
                     it[ticketCount] = definition.ticketCount
                     it[displayOrder] = definition.displayOrder
+                    it[isRare] = definition.isRare
                     it[createdAt] = definition.createdAt.toOffsetDateTime()
                     it[updatedAt] = definition.updatedAt.toOffsetDateTime()
                 }
@@ -251,6 +254,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             probabilityBps = this[PrizeDefinitionsTable.probabilityBps],
             ticketCount = this[PrizeDefinitionsTable.ticketCount],
             displayOrder = this[PrizeDefinitionsTable.displayOrder],
+            isRare = this[PrizeDefinitionsTable.isRare],
             createdAt = this[PrizeDefinitionsTable.createdAt].toInstant().toKotlinInstant(),
             updatedAt = this[PrizeDefinitionsTable.updatedAt].toInstant().toKotlinInstant(),
         )

@@ -24,6 +24,7 @@ import kotlinx.datetime.Instant
  * @property probabilityBps Draw probability in basis points of 0.0001%. Null for kuji prizes.
  * @property ticketCount Number of tickets in the box assigned to this definition. Null for unlimited prizes.
  * @property displayOrder Rendering order within the campaign's prize list.
+ * @property isRare Whether this prize triggers follower notifications when drawn.
  * @property createdAt Creation timestamp.
  * @property updatedAt Last mutation timestamp.
  */
@@ -40,6 +41,8 @@ public data class PrizeDefinition(
     val probabilityBps: Int?,
     val ticketCount: Int?,
     val displayOrder: Int,
+    /** Whether this prize triggers follower notifications when drawn. */
+    val isRare: Boolean = false,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {

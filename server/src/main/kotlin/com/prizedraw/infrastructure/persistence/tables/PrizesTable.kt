@@ -31,6 +31,7 @@ public object PrizeDefinitionsTable : Table("prize_definitions") {
     public val probabilityBps = integer("probability_bps").nullable()
     public val ticketCount = integer("ticket_count").nullable()
     public val displayOrder = integer("display_order").default(0)
+    public val isRare = bool("is_rare").default(false)
     public val createdAt = timestampWithTimeZone("created_at")
     public val updatedAt = timestampWithTimeZone("updated_at")
 
