@@ -1,8 +1,12 @@
 package com.prizedraw.application.usecases.admin
 
+import com.prizedraw.application.events.FavoriteCampaignActivated
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.INotificationRepository
+import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
@@ -10,6 +14,7 @@ import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
+import com.prizedraw.domain.entities.Notification
 import com.prizedraw.domain.services.KujiPrizeInput
 import com.prizedraw.domain.services.LowMarginException
 import com.prizedraw.domain.services.MarginRiskService
@@ -33,6 +38,7 @@ private const val PROBABILITY_SUM_TARGET = 1_000_000
  *
  * For unlimited DRAFT → ACTIVE, validates that `SUM(probabilityBps) == 1,000,000`.
  */
+@Suppress("LongParameterList")
 public class UpdateCampaignStatusUseCase(
     private val campaignRepository: ICampaignRepository,
     private val ticketBoxRepository: ITicketBoxRepository,
@@ -40,6 +46,9 @@ public class UpdateCampaignStatusUseCase(
     private val auditRepository: IAuditRepository,
     private val marginRiskService: MarginRiskService,
     private val settingsRepository: ISystemSettingsRepository,
+    private val favoriteRepo: ICampaignFavoriteRepository,
+    private val notificationRepo: INotificationRepository,
+    private val outboxRepo: IOutboxRepository,
 ) : IUpdateCampaignStatusUseCase {
     override suspend fun execute(
         staffId: StaffId,
@@ -58,6 +67,11 @@ public class UpdateCampaignStatusUseCase(
 
         applyStatusChange(campaignId, campaignType, newStatus)
         recordAudit(staffId, campaignId, campaignType, currentStatus, newStatus)
+
+        if (newStatus == CampaignStatus.ACTIVE) {
+            val title = resolveCampaignTitle(campaignId, campaignType)
+            notifyFavoritingPlayers(campaignType, campaignId, title)
+        }
     }
 
     private suspend fun resolveCurrentStatus(
@@ -117,19 +131,22 @@ public class UpdateCampaignStatusUseCase(
         }
 
         // Margin gate
-        val campaign = campaignRepository.findKujiById(campaignId)
-            ?: error("Kuji campaign not found: $campaignId")
+        val campaign =
+            campaignRepository.findKujiById(campaignId)
+                ?: error("Kuji campaign not found: $campaignId")
         val prizes = prizeRepository.findDefinitionsByCampaign(campaignId, CampaignType.KUJI)
         val boxCount = boxes.size
         val threshold = settingsRepository.getMarginThresholdPct()
-        val marginResult = marginRiskService.calculateKujiMargin(
-            pricePerDraw = campaign.pricePerDraw,
-            prizes = prizes.mapNotNull { p ->
-                p.ticketCount?.let { KujiPrizeInput(ticketCount = it, prizeValue = p.prizeValue) }
-            },
-            boxCount = boxCount,
-            thresholdPct = threshold,
-        )
+        val marginResult =
+            marginRiskService.calculateKujiMargin(
+                pricePerDraw = campaign.pricePerDraw,
+                prizes =
+                    prizes.mapNotNull { p ->
+                        p.ticketCount?.let { KujiPrizeInput(ticketCount = it, prizeValue = p.prizeValue) }
+                    },
+                boxCount = boxCount,
+                thresholdPct = threshold,
+            )
         if (marginResult.belowThreshold && !confirmLowMargin) {
             throw LowMarginException(marginResult)
         }
@@ -156,16 +173,19 @@ public class UpdateCampaignStatusUseCase(
         }
 
         // Margin gate
-        val campaign = campaignRepository.findUnlimitedById(campaignId)
-            ?: error("Unlimited campaign not found: $campaignId")
+        val campaign =
+            campaignRepository.findUnlimitedById(campaignId)
+                ?: error("Unlimited campaign not found: $campaignId")
         val threshold = settingsRepository.getMarginThresholdPct()
-        val marginResult = marginRiskService.calculateUnlimitedMargin(
-            pricePerDraw = campaign.pricePerDraw,
-            prizes = prizes.map {
-                UnlimitedPrizeInput(probabilityBps = it.probabilityBps!!, prizeValue = it.prizeValue)
-            },
-            thresholdPct = threshold,
-        )
+        val marginResult =
+            marginRiskService.calculateUnlimitedMargin(
+                pricePerDraw = campaign.pricePerDraw,
+                prizes =
+                    prizes.map {
+                        UnlimitedPrizeInput(probabilityBps = it.probabilityBps!!, prizeValue = it.prizeValue)
+                    },
+                thresholdPct = threshold,
+            )
         if (marginResult.belowThreshold && !confirmLowMargin) {
             throw LowMarginException(marginResult)
         }
@@ -179,6 +199,55 @@ public class UpdateCampaignStatusUseCase(
         when (campaignType) {
             CampaignType.KUJI -> campaignRepository.updateKujiStatus(campaignId, newStatus)
             CampaignType.UNLIMITED -> campaignRepository.updateUnlimitedStatus(campaignId, newStatus)
+        }
+    }
+
+    private suspend fun resolveCampaignTitle(
+        campaignId: CampaignId,
+        campaignType: CampaignType,
+    ): String =
+        when (campaignType) {
+            CampaignType.KUJI ->
+                campaignRepository.findKujiById(campaignId)?.title
+                    ?: error("Kuji campaign not found: ${campaignId.value}")
+            CampaignType.UNLIMITED ->
+                campaignRepository.findUnlimitedById(campaignId)?.title
+                    ?: error("Unlimited campaign not found: ${campaignId.value}")
+        }
+
+    private suspend fun notifyFavoritingPlayers(
+        campaignType: CampaignType,
+        campaignId: CampaignId,
+        title: String,
+    ) {
+        val playerIds = favoriteRepo.findPlayerIdsByCampaign(campaignType, campaignId)
+        if (playerIds.isEmpty()) return
+
+        val notifications =
+            playerIds.map { playerId ->
+                Notification(
+                    playerId = playerId,
+                    eventType = "favorite.campaign_activated",
+                    title = "收藏的活動已上架",
+                    body = "你收藏的『$title』已上架！",
+                    data =
+                        mapOf(
+                            "campaignId" to campaignId.value.toString(),
+                            "campaignType" to campaignType.name,
+                        ),
+                    dedupKey = "favorite.campaign_activated:${campaignId.value}:$playerId",
+                )
+            }
+        notificationRepo.batchInsertIgnore(notifications)
+
+        playerIds.forEach { playerId ->
+            outboxRepo.enqueue(
+                FavoriteCampaignActivated(
+                    campaignId = campaignId.value,
+                    campaignType = campaignType.name,
+                    playerId = playerId,
+                ),
+            )
         }
     }
 

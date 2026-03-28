@@ -2,6 +2,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.domain.entities.Notification
+import com.prizedraw.infrastructure.persistence.inTransaction
 import com.prizedraw.infrastructure.persistence.tables.NotificationsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
@@ -14,9 +15,9 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import com.prizedraw.infrastructure.persistence.inTransaction
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -45,6 +46,24 @@ public class NotificationRepositoryImpl : INotificationRepository {
                 .single()
                 .toNotification()
         }
+
+    override suspend fun batchInsertIgnore(notifications: List<Notification>) {
+        if (notifications.isEmpty()) return
+        inTransaction {
+            NotificationsTable.batchInsert(notifications, ignore = true) { n ->
+                this[NotificationsTable.id] = n.id
+                this[NotificationsTable.playerId] = n.playerId
+                this[NotificationsTable.eventType] = n.eventType
+                this[NotificationsTable.title] = n.title
+                this[NotificationsTable.body] = n.body
+                this[NotificationsTable.data] = serializeData(n.data)
+                this[NotificationsTable.isRead] = n.isRead
+                this[NotificationsTable.dedupKey] = n.dedupKey
+                this[NotificationsTable.createdAt] =
+                    OffsetDateTime.ofInstant(n.createdAt.toJavaInstant(), ZoneOffset.UTC)
+            }
+        }
+    }
 
     override suspend fun findByPlayerId(
         playerId: UUID,

@@ -7,6 +7,16 @@ import java.util.UUID
 public interface INotificationRepository {
     public suspend fun save(notification: Notification): Notification
 
+    /**
+     * Persists a batch of [Notification] records using INSERT IGNORE semantics.
+     *
+     * Rows whose [Notification.dedupKey] already exists in the table are silently skipped,
+     * making this safe to call multiple times for the same logical event.
+     *
+     * @param notifications The list of notifications to insert.
+     */
+    public suspend fun batchInsertIgnore(notifications: List<Notification>)
+
     public suspend fun findByPlayerId(
         playerId: UUID,
         limit: Int = 20,

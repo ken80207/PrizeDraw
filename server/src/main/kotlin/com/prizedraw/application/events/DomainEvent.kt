@@ -167,3 +167,35 @@ public data class PlayerLevelUp(
     override val aggregateType: String = "Player"
     override val aggregateId: UUID = playerId
 }
+
+/** Emitted when a player creates a new marketplace trade listing. */
+public data class TradeListingCreated(
+    val tradeOrderId: UUID,
+    val sellerId: UUID,
+) : DomainEvent {
+    override val eventType: String = "trade.listing.created"
+    override val aggregateType: String = "TradeListing"
+    override val aggregateId: UUID = tradeOrderId
+}
+
+/** Emitted when a probability-based unlimited draw is successfully completed by a player. */
+public data class UnlimitedDrawCompleted(
+    val prizeInstanceId: UUID,
+    val playerId: UUID,
+    val campaignId: UUID,
+) : DomainEvent {
+    override val eventType: String = "draw.unlimited.completed"
+    override val aggregateType: String = "PrizeInstance"
+    override val aggregateId: UUID = prizeInstanceId
+}
+
+/** Emitted when a campaign is activated and a player who favorited it should be notified. */
+public data class FavoriteCampaignActivated(
+    val campaignId: UUID,
+    val campaignType: String,
+    val playerId: UUID,
+) : DomainEvent {
+    override val eventType: String = "favorite.campaign_activated"
+    override val aggregateType: String = "Campaign"
+    override val aggregateId: UUID = campaignId
+}

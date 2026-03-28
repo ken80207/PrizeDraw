@@ -30,6 +30,9 @@ import com.prizedraw.application.ports.input.draw.IDrawUnlimitedUseCase
 import com.prizedraw.application.ports.input.exchange.ICancelExchangeRequestUseCase
 import com.prizedraw.application.ports.input.exchange.ICreateExchangeRequestUseCase
 import com.prizedraw.application.ports.input.exchange.IRespondExchangeRequestUseCase
+import com.prizedraw.application.ports.input.favorite.IAddFavoriteUseCase
+import com.prizedraw.application.ports.input.favorite.IGetFavoritesUseCase
+import com.prizedraw.application.ports.input.favorite.IRemoveFavoriteUseCase
 import com.prizedraw.application.ports.input.leaderboard.IGetLeaderboardUseCase
 import com.prizedraw.application.ports.input.payment.IConfirmPaymentWebhookUseCase
 import com.prizedraw.application.ports.input.payment.ICreatePaymentOrderUseCase
@@ -48,30 +51,49 @@ import com.prizedraw.application.ports.input.support.IReplySupportTicketUseCase
 import com.prizedraw.application.ports.input.trade.ICancelTradeListingUseCase
 import com.prizedraw.application.ports.input.trade.ICreateTradeListingUseCase
 import com.prizedraw.application.ports.input.trade.IPurchaseTradeListingUseCase
-import com.prizedraw.application.ports.input.favorite.IAddFavoriteUseCase
-import com.prizedraw.application.ports.input.favorite.IGetFavoritesUseCase
-import com.prizedraw.application.ports.input.favorite.IRemoveFavoriteUseCase
 import com.prizedraw.application.ports.input.withdrawal.IApproveWithdrawalUseCase
 import com.prizedraw.application.ports.input.withdrawal.ICreateWithdrawalRequestUseCase
 import com.prizedraw.application.ports.input.withdrawal.IRejectWithdrawalUseCase
+import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.IBuybackRepository
+import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
+import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.ICouponRepository
+import com.prizedraw.application.ports.output.IDistributedLockService
 import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
+import com.prizedraw.application.ports.output.IDrawRepository
+import com.prizedraw.application.ports.output.IExchangeRepository
+import com.prizedraw.application.ports.output.IFeatureFlagRepository
+import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.IOAuthTokenValidator
+import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
 import com.prizedraw.application.ports.output.IPaymentOrderRepository
+import com.prizedraw.application.ports.output.IPlayerRepository
+import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IQueueEntryRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
+import com.prizedraw.application.ports.output.IServerAnnouncementRepository
+import com.prizedraw.application.ports.output.IShippingRepository
 import com.prizedraw.application.ports.output.ISmsService
+import com.prizedraw.application.ports.output.IStaffRepository
+import com.prizedraw.application.ports.output.ISupportRepository
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
+import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalGateway
+import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.application.services.KujiQueueService
 import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
 import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
-import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.ManageAnimationModesUseCase
 import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
@@ -94,6 +116,9 @@ import com.prizedraw.application.usecases.draw.DrawUnlimitedUseCase
 import com.prizedraw.application.usecases.exchange.CancelExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.CreateExchangeRequestUseCase
 import com.prizedraw.application.usecases.exchange.RespondExchangeRequestUseCase
+import com.prizedraw.application.usecases.favorite.AddFavoriteUseCase
+import com.prizedraw.application.usecases.favorite.GetFavoritesUseCase
+import com.prizedraw.application.usecases.favorite.RemoveFavoriteUseCase
 import com.prizedraw.application.usecases.leaderboard.GetLeaderboardUseCase
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
 import com.prizedraw.application.usecases.payment.ConfirmPaymentWebhookUseCase
@@ -109,39 +134,14 @@ import com.prizedraw.application.usecases.shipping.FulfillShippingOrderUseCase
 import com.prizedraw.application.usecases.trade.CancelTradeListingUseCase
 import com.prizedraw.application.usecases.trade.CreateTradeListingUseCase
 import com.prizedraw.application.usecases.trade.PurchaseTradeListingUseCase
-import com.prizedraw.application.usecases.favorite.AddFavoriteUseCase
-import com.prizedraw.application.usecases.favorite.GetFavoritesUseCase
-import com.prizedraw.application.usecases.favorite.RemoveFavoriteUseCase
 import com.prizedraw.application.usecases.withdrawal.ApproveWithdrawalUseCase
 import com.prizedraw.application.usecases.withdrawal.CreateWithdrawalRequestUseCase
 import com.prizedraw.application.usecases.withdrawal.RejectWithdrawalUseCase
 import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
-import com.prizedraw.domain.services.UnlimitedDrawDomainService
-import com.prizedraw.application.ports.output.IAuditRepository
-import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
-import com.prizedraw.application.ports.output.ICampaignRepository
-import com.prizedraw.application.ports.output.ICouponRepository
-import com.prizedraw.application.ports.output.IDistributedLockService
-import com.prizedraw.application.ports.output.IDrawRepository
-import com.prizedraw.application.ports.output.IOutboxRepository
-import com.prizedraw.application.ports.output.IPlayerRepository
-import com.prizedraw.application.ports.output.IPrizeRepository
-import com.prizedraw.application.ports.output.IPubSubService
-import com.prizedraw.application.ports.output.ITicketBoxRepository
-import com.prizedraw.application.ports.output.IBuybackRepository
-import com.prizedraw.application.ports.output.IExchangeRepository
-import com.prizedraw.application.ports.output.IFeatureFlagRepository
-import com.prizedraw.application.ports.output.ILeaderboardRepository
-import com.prizedraw.application.ports.output.IServerAnnouncementRepository
-import com.prizedraw.application.ports.output.IShippingRepository
-import com.prizedraw.application.ports.output.IStaffRepository
-import com.prizedraw.application.ports.output.ISupportRepository
-import com.prizedraw.application.ports.output.ISystemSettingsRepository
-import com.prizedraw.application.ports.output.ITradeRepository
-import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.domain.services.MarginRiskService
+import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.infrastructure.external.redis.DistributedLock
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import org.koin.dsl.module
@@ -460,6 +460,9 @@ public val useCaseModule =
                 auditRepository = get<IAuditRepository>(),
                 marginRiskService = get<MarginRiskService>(),
                 settingsRepository = get<ISystemSettingsRepository>(),
+                favoriteRepo = get(),
+                notificationRepo = get(),
+                outboxRepo = get(),
             )
         }
 

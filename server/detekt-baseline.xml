@@ -1,0 +1,100 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>BracesOnIfStatements:AdminPlayerSyncTest.kt$AdminPlayerSyncTest$else</ID>
+    <ID>BracesOnIfStatements:AdminPlayerSyncTest.kt$AdminPlayerSyncTest$if</ID>
+    <ID>BracesOnIfStatements:CORS.kt$else</ID>
+    <ID>BracesOnIfStatements:CORS.kt$if</ID>
+    <ID>BracesOnIfStatements:CampaignDrawIntegrationTest.kt$CampaignDrawIntegrationTest$else</ID>
+    <ID>BracesOnIfStatements:CampaignDrawIntegrationTest.kt$CampaignDrawIntegrationTest$if</ID>
+    <ID>BracesOnIfStatements:CampaignRoutes.kt$else</ID>
+    <ID>BracesOnIfStatements:CampaignRoutes.kt$if</ID>
+    <ID>BracesOnIfStatements:CreatePaymentOrderUseCaseTest.kt$CreatePaymentOrderUseCaseTest$if</ID>
+    <ID>BracesOnIfStatements:CreateWithdrawalRequestUseCaseTest.kt$CreateWithdrawalRequestUseCaseTest$else</ID>
+    <ID>BracesOnIfStatements:CreateWithdrawalRequestUseCaseTest.kt$CreateWithdrawalRequestUseCaseTest$if</ID>
+    <ID>BracesOnIfStatements:DrawCore.kt$DrawCore$if</ID>
+    <ID>BracesOnIfStatements:DrawCoreFinancialIntegrityTest.kt$DrawCoreFinancialIntegrityTest$if</ID>
+    <ID>BracesOnIfStatements:DrawKujiUseCase.kt$DrawKujiUseCase$else</ID>
+    <ID>BracesOnIfStatements:DrawKujiUseCase.kt$DrawKujiUseCase$if</ID>
+    <ID>BracesOnIfStatements:DrawRepositoryImpl.kt$DrawRepositoryImpl$if</ID>
+    <ID>BracesOnIfStatements:DrawUnlimitedUseCase.kt$DrawUnlimitedUseCase$if</ID>
+    <ID>BracesOnIfStatements:ExchangeUseCasesTest.kt$ExchangeUseCasesTest$if</ID>
+    <ID>BracesOnIfStatements:KujiWebSocketHandler.kt$if</ID>
+    <ID>BracesOnIfStatements:NotificationRepositoryImpl.kt$NotificationRepositoryImpl$if</ID>
+    <ID>BracesOnIfStatements:OutboxRepositoryImpl.kt$OutboxRepositoryImpl$if</ID>
+    <ID>BracesOnIfStatements:PaymentOrderRepositoryImpl.kt$PaymentOrderRepositoryImpl$if</ID>
+    <ID>BracesOnIfStatements:TicketInventoryIntegrityTest.kt$TicketInventoryIntegrityTest$if</ID>
+    <ID>BracesOnIfStatements:UnlimitedDrawIntegrityTest.kt$UnlimitedDrawIntegrityTest$if</ID>
+    <ID>BracesOnIfStatements:UpdateCampaignStatusUseCase.kt$UpdateCampaignStatusUseCase$if</ID>
+    <ID>BracesOnIfStatements:WithdrawalRepositoryImpl.kt$WithdrawalRepositoryImpl$if</ID>
+    <ID>CyclomaticComplexMethod:CampaignDrawIntegrationTest.kt$CampaignDrawIntegrationTest$fun buildKujiFakes( campaign: KujiCampaign, box: TicketBox, allTickets: List&lt;DrawTicket&gt;, defsByGrade: Map&lt;String, PrizeDefinition&gt;, players: List&lt;Player&gt;, state: ScenarioState, // Optional override: which player is the active session holder. // When null each call returns the first player — tests that need multi-player // sessions pass a mutable reference via activePlayerRef. activePlayerRef: AtomicReference&lt;Player&gt;? = null, ): KujiFakeRepos</ID>
+    <ID>CyclomaticComplexMethod:Security.kt$public fun Application.configureSecurity()</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:DrawCoreFinancialIntegrityTest.kt$DrawCoreFinancialIntegrityTest$(price, qty, discount, expected)</ID>
+    <ID>LargeClass:CampaignDrawIntegrationTest.kt$CampaignDrawIntegrationTest : DescribeSpec</ID>
+    <ID>LargeClass:CouponUseCasesTest.kt$CouponUseCasesTest : DescribeSpec</ID>
+    <ID>LargeClass:ExchangeUseCasesTest.kt$ExchangeUseCasesTest : DescribeSpec</ID>
+    <ID>LargeClass:TicketInventoryIntegrityTest.kt$TicketInventoryIntegrityTest : DescribeSpec</ID>
+    <ID>LongMethod:ApproveWithdrawalUseCase.kt$ApproveWithdrawalUseCase$override suspend fun execute( staffId: UUID, withdrawalId: UUID, ): WithdrawalRequestDto</ID>
+    <ID>LongMethod:BuybackUseCase.kt$BuybackUseCase$override suspend fun execute( playerId: PlayerId, prizeInstanceId: PrizeInstanceId, ): Int</ID>
+    <ID>LongMethod:CampaignDrawIntegrationTest.kt$CampaignDrawIntegrationTest$fun buildKujiFakes( campaign: KujiCampaign, box: TicketBox, allTickets: List&lt;DrawTicket&gt;, defsByGrade: Map&lt;String, PrizeDefinition&gt;, players: List&lt;Player&gt;, state: ScenarioState, // Optional override: which player is the active session holder. // When null each call returns the first player — tests that need multi-player // sessions pass a mutable reference via activePlayerRef. activePlayerRef: AtomicReference&lt;Player&gt;? = null, ): KujiFakeRepos</ID>
+    <ID>LongMethod:CampaignRoutes.kt$public fun Route.campaignRoutes()</ID>
+    <ID>LongMethod:CreateKujiCampaignUseCase.kt$CreateKujiCampaignUseCase$override suspend fun execute( staffId: StaffId, title: String, description: String?, coverImageUrl: String?, pricePerDraw: Int, drawSessionSeconds: Int, boxes: List&lt;CreateKujiBoxRequest&gt;, ): KujiCampaign</ID>
+    <ID>LongMethod:DrawKujiUseCase.kt$DrawKujiUseCase$override suspend fun execute( playerId: PlayerId, ticketBoxId: UUID, ticketIds: List&lt;UUID&gt;, quantity: Int, playerCouponId: UUID?, ): DrawResultDto</ID>
+    <ID>LongMethod:FavoriteRoutes.kt$public fun Route.favoriteRoutes()</ID>
+    <ID>LongMethod:PaymentRoutes.kt$public fun Route.paymentRoutes()</ID>
+    <ID>LongMethod:RespondExchangeRequestUseCase.kt$RespondExchangeRequestUseCase$override suspend fun execute( responderId: PlayerId, requestId: UUID, response: RespondExchangeRequest, ): ExchangeOfferDto</ID>
+    <ID>LongMethod:Security.kt$public fun Application.configureSecurity()</ID>
+    <ID>LongMethod:TicketInventoryIntegrityTest.kt$TicketInventoryIntegrityTest$fun buildFakes( campaign: KujiCampaign, boxTicketMap: Map&lt;UUID, List&lt;DrawTicket&gt;&gt;, defsByGrade: Map&lt;String, PrizeDefinition&gt;, player: Player, allBoxes: List&lt;TicketBox&gt;, ): FakeRepos</ID>
+    <ID>MagicNumber:AdminCampaignRoutes.kt$200</ID>
+    <ID>MagicNumber:AdminCampaignRoutes.kt$50</ID>
+    <ID>MagicNumber:AdminDashboardRoutes.kt$10</ID>
+    <ID>MagicNumber:AdminPlayerRoutes.kt$200</ID>
+    <ID>MagicNumber:AdminPlayerRoutes.kt$50</ID>
+    <ID>MagicNumber:AdminPrizesRoutes.kt$200</ID>
+    <ID>MagicNumber:AdminPrizesRoutes.kt$500</ID>
+    <ID>MagicNumber:AdminTradeRoutes.kt$100</ID>
+    <ID>MagicNumber:AdminTradeRoutes.kt$200</ID>
+    <ID>MagicNumber:CampaignRoutes.kt$100</ID>
+    <ID>MagicNumber:CampaignRoutes.kt$20</ID>
+    <ID>MagicNumber:CreateUnlimitedCampaignUseCase.kt$CreateUnlimitedCampaignUseCase$1_000_000</ID>
+    <ID>MagicNumber:FavoriteRoutes.kt$100</ID>
+    <ID>MagicNumber:FavoriteRoutes.kt$20</ID>
+    <ID>MagicNumber:GetRiskSettingsUseCase.kt$GetRiskSettingsUseCase$100.0</ID>
+    <ID>MagicNumber:KujiWebSocketHandler.kt$16L</ID>
+    <ID>MagicNumber:MarginRiskService.kt$MarginRiskService$100</ID>
+    <ID>MagicNumber:MarginRiskService.kt$MarginRiskService$4</ID>
+    <ID>MagicNumber:PaymentRoutes.kt$100_000</ID>
+    <ID>MagicNumber:PlayerDevicesTable.kt$PlayerDevicesTable$128</ID>
+    <ID>MagicNumber:PlayerDevicesTable.kt$PlayerDevicesTable$32</ID>
+    <ID>MagicNumber:PlayerDevicesTable.kt$PlayerDevicesTable$512</ID>
+    <ID>MagicNumber:StaffTokenService.kt$StaffTokenService$32</ID>
+    <ID>MagicNumber:SystemSettingsTable.kt$SystemSettingsTable$128</ID>
+    <ID>MagicNumber:TokenService.kt$TokenService$32</ID>
+    <ID>MagicNumber:UpdateUnlimitedPrizeTableUseCase.kt$UpdateUnlimitedPrizeTableUseCase$1_000_000</ID>
+    <ID>MaxLineLength:CampaignRoutes.kt$*</ID>
+    <ID>MaxLineLength:ExternalModule.kt$"Stub LINE messaging service must not be used in production. Bind a real ILineMessagingService implementation."</ID>
+    <ID>MaxLineLength:ExternalModule.kt$"Stub OAuth token validator must not be used in production. Bind a real IOAuthTokenValidator implementation."</ID>
+    <ID>MaxLineLength:ExternalModule.kt$"Stub withdrawal gateway must not be used in production. Bind a real IWithdrawalGateway implementation."</ID>
+    <ID>MaxLineLength:Security.kt$"FATAL: DEV_BYPASS_AUTH=true is not allowed in production. Unset DEV_BYPASS_AUTH or remove the production environment marker."</ID>
+    <ID>SwallowedException:ApproveWithdrawalUseCase.kt$ApproveWithdrawalUseCase$gatewayException: Exception</ID>
+    <ID>TooGenericExceptionCaught:ApproveWithdrawalUseCase.kt$ApproveWithdrawalUseCase$gatewayException: Exception</ID>
+    <ID>TooGenericExceptionCaught:DrawKujiUseCase.kt$DrawKujiUseCase$ex: Exception</ID>
+    <ID>TooGenericExceptionCaught:DrawUnlimitedUseCase.kt$DrawUnlimitedUseCase$ex: Exception</ID>
+    <ID>TooManyFunctions:IPrizeRepository.kt$IPrizeRepository</ID>
+    <ID>UnusedParameter:ApproveCampaignUseCase.kt$ApproveCampaignUseCase$campaignId: CampaignId</ID>
+    <ID>UnusedParameter:ApproveCampaignUseCase.kt$ApproveCampaignUseCase$reason: String? = null</ID>
+    <ID>UnusedParameter:ApproveCampaignUseCase.kt$ApproveCampaignUseCase$staffId: StaffId</ID>
+    <ID>UnusedParameter:CreateWithdrawalRequestUseCaseTest.kt$CreateWithdrawalRequestUseCaseTest$playerId: PlayerId</ID>
+    <ID>UnusedParameter:DrawCoreFinancialIntegrityTest.kt$DrawCoreFinancialIntegrityTest$outboxRepo: IOutboxRepository = mockk(relaxed = true)</ID>
+    <ID>UnusedParameter:DrawCoreFinancialIntegrityTest.kt$DrawCoreFinancialIntegrityTest$txRepo: IDrawPointTransactionRepository = mockk(relaxed = true)</ID>
+    <ID>UnusedParameter:DrawCoreTest.kt$DrawCoreTest$outboxRepo: IOutboxRepository = mockk(relaxed = true)</ID>
+    <ID>UnusedParameter:DrawCoreTest.kt$DrawCoreTest$txRepo: IDrawPointTransactionRepository = mockk(relaxed = true)</ID>
+    <ID>UnusedParameter:UpdateUnlimitedPrizeTableUseCase.kt$UpdateUnlimitedPrizeTableUseCase$staffId: StaffId</ID>
+    <ID>UnusedPrivateMember:OutboxWorker.kt$OutboxWorker$private suspend fun handleBuybackCompleted(event: OutboxEvent)</ID>
+    <ID>UnusedPrivateMember:OutboxWorker.kt$OutboxWorker$private suspend fun handlePaymentConfirmed(event: OutboxEvent)</ID>
+    <ID>UnusedPrivateProperty:ApproveCampaignUseCase.kt$ApproveCampaignUseCase$private val campaignRepository: ICampaignRepository</ID>
+    <ID>UnusedPrivateProperty:DrawCore.kt$DrawCore$private val log = LoggerFactory.getLogger(DrawCore::class.java)</ID>
+    <ID>UnusedPrivateProperty:PaymentIdempotencyTest.kt$PaymentIdempotencyTest$val player = makePlayer(id = playerId, drawBalance = 0)</ID>
+  </CurrentIssues>
+</SmellBaseline>
