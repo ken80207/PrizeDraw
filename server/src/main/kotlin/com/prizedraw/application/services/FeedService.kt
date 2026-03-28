@@ -1,24 +1,36 @@
 package com.prizedraw.application.services
 
+import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.contracts.dto.feed.DrawFeedEventDto
 import com.prizedraw.contracts.enums.CampaignType
+import com.prizedraw.domain.entities.FeedEvent
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 /**
- * Application service that publishes draw results to the live feed Redis channel.
+ * Application service that publishes draw results to the live feed Redis channel and
+ * persists them to the denormalised [feed_events] table.
  *
- * Each completed draw triggers [publishDrawEvent], which serialises a [DrawFeedEventDto]
- * into a JSON envelope and broadcasts it to all subscribers on the `feed:draws` channel.
- * The call is fire-and-forget: failures are logged at WARN level but never propagate to
+ * Each completed draw triggers [publishDrawEvent], which:
+ * 1. Saves a [FeedEvent] row to the database (no N+1; all display data is captured inline).
+ * 2. Serialises a [DrawFeedEventDto] envelope and broadcasts it on the `feed:draws` channel.
+ *
+ * Both steps are fire-and-forget: failures are logged at WARN level but never propagate to
  * the caller, ensuring feed publishing never blocks or rolls back a draw transaction.
  *
+ * The [getRecentEvents] method serves the REST initial-load endpoint directly from the
+ * database, covering both KUJI and UNLIMITED draw types.
+ *
  * @param pubSub Output port for Redis pub/sub publishing.
+ * @param feedEventRepository Output port for persisting and querying feed events.
  */
 public class FeedService(
     private val pubSub: IPubSubService,
+    private val feedEventRepository: IFeedEventRepository,
 ) {
     private val log = LoggerFactory.getLogger(FeedService::class.java)
 
@@ -103,30 +115,46 @@ public class FeedService(
     )
 
     /**
-     * Publishes a pre-assembled [DrawFeedEvent] to the live feed channel.
+     * Persists the draw result to [feed_events] then broadcasts it to the live feed channel.
      *
      * Prefer calling this overload when the event fields are already grouped,
      * e.g. in batch or retry scenarios.
      *
-     * @param event The draw feed event to broadcast.
+     * @param event The draw feed event to persist and broadcast.
      */
     @Suppress("TooGenericExceptionCaught") // fire-and-forget: all publish failures are non-fatal
     public suspend fun publishDrawEvent(event: DrawFeedEvent) {
         try {
-            val dto =
-                DrawFeedEventDto(
-                    drawId = event.drawId,
-                    playerId = event.playerId,
-                    playerNickname = event.playerNickname,
-                    playerAvatarUrl = event.playerAvatarUrl,
-                    campaignId = event.campaignId,
-                    campaignTitle = event.campaignTitle,
-                    campaignType = event.campaignType,
-                    prizeGrade = event.prizeGrade,
-                    prizeName = event.prizeName,
-                    prizePhotoUrl = event.prizePhotoUrl,
-                    drawnAt = event.drawnAt,
-                )
+            val feedEvent = FeedEvent(
+                id = UUID.randomUUID(),
+                drawId = event.drawId,
+                playerId = UUID.fromString(event.playerId),
+                playerNickname = event.playerNickname,
+                playerAvatarUrl = event.playerAvatarUrl,
+                campaignId = UUID.fromString(event.campaignId),
+                campaignTitle = event.campaignTitle,
+                campaignType = event.campaignType,
+                prizeGrade = event.prizeGrade,
+                prizeName = event.prizeName,
+                prizePhotoUrl = event.prizePhotoUrl,
+                drawnAt = event.drawnAt,
+                createdAt = Clock.System.now(),
+            )
+            feedEventRepository.save(feedEvent)
+
+            val dto = DrawFeedEventDto(
+                drawId = event.drawId,
+                playerId = event.playerId,
+                playerNickname = event.playerNickname,
+                playerAvatarUrl = event.playerAvatarUrl,
+                campaignId = event.campaignId,
+                campaignTitle = event.campaignTitle,
+                campaignType = event.campaignType,
+                prizeGrade = event.prizeGrade,
+                prizeName = event.prizeName,
+                prizePhotoUrl = event.prizePhotoUrl,
+                drawnAt = event.drawnAt,
+            )
             val json = Json.encodeToString(DrawFeedEventDto.serializer(), dto)
             val envelope = """{"type":"feed_event","data":$json}"""
             pubSub.publish(CHANNEL, envelope)
@@ -134,6 +162,32 @@ public class FeedService(
             log.warn("Failed to publish feed event for draw ${event.drawId}: ${ex.message}")
         }
     }
+
+    /**
+     * Returns the most recent draw events for the REST initial-load endpoint.
+     *
+     * Reads directly from the [feed_events] table, which covers both KUJI and UNLIMITED
+     * draws with a single indexed query.
+     *
+     * @param limit Maximum number of events to return.
+     * @return [DrawFeedEventDto] list ordered newest-first.
+     */
+    public suspend fun getRecentEvents(limit: Int): List<DrawFeedEventDto> =
+        feedEventRepository.findRecent(limit).map { event ->
+            DrawFeedEventDto(
+                drawId = event.drawId,
+                playerId = event.playerId.toString(),
+                playerNickname = event.playerNickname,
+                playerAvatarUrl = event.playerAvatarUrl,
+                campaignId = event.campaignId.toString(),
+                campaignTitle = event.campaignTitle,
+                campaignType = event.campaignType,
+                prizeGrade = event.prizeGrade,
+                prizeName = event.prizeName,
+                prizePhotoUrl = event.prizePhotoUrl,
+                drawnAt = event.drawnAt,
+            )
+        }
 
     private companion object {
         const val CHANNEL = "feed:draws"

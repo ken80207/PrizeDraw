@@ -14,6 +14,7 @@ import com.prizedraw.contracts.enums.OAuthProvider
 import com.prizedraw.domain.entities.Player
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
@@ -175,6 +176,8 @@ class UnlimitedDrawIntegrityTest :
                     auditRepository = auditRepo,
                     domainService = UnlimitedDrawDomainService(),
                     redisClient = redisClient,
+                    feedService = mockk(relaxed = true),
+                    playerRepository = playerRepo,
                 ),
             )
         }

@@ -26,6 +26,7 @@ import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
@@ -265,6 +266,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -338,6 +340,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -427,6 +430,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -527,6 +531,8 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
+                            playerRepository = playerRepo,
                         ),
                     )
 
@@ -612,6 +618,8 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
+                            playerRepository = playerRepo,
                         ),
                     )
 

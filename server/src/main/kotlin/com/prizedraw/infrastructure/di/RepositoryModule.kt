@@ -1,6 +1,7 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
@@ -33,6 +34,7 @@ import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.FeedEventRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.SystemSettingsRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
@@ -117,4 +119,7 @@ public val repositoryModule =
 
         // Unlimited prize CRUD: system-level configuration
         single<ISystemSettingsRepository> { SystemSettingsRepositoryImpl() }
+
+        // Live draw feed: denormalised event store (eliminates N+1, covers kuji + unlimited)
+        single<IFeedEventRepository> { FeedEventRepositoryImpl() }
     }

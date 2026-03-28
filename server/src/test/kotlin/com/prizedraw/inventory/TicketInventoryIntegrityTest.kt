@@ -22,6 +22,7 @@ import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.TicketBoxStatus
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
@@ -497,6 +498,7 @@ class TicketInventoryIntegrityTest :
                     auditRepository = fakes.auditRepo,
                     domainService = KujiDrawDomainService(),
                     redisPubSub = fakes.redisPubSub,
+                    feedService = mockk(relaxed = true),
                 ),
             )
 

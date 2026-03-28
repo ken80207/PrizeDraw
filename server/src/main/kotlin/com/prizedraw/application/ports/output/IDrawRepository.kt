@@ -62,17 +62,6 @@ public interface IDrawRepository {
     ): DrawTicket
 
     /**
-     * Returns the most recent drawn tickets across all campaigns, ordered by drawnAt DESC.
-     *
-     * Only tickets with status DRAWN are included. Use [limit] to cap the result set.
-     * Intended for the public live-draw feed endpoint.
-     *
-     * @param limit Maximum number of records to return.
-     * @return Ordered list of [DrawTicket] entries, newest first.
-     */
-    public suspend fun findRecentDrawn(limit: Int): List<DrawTicket>
-
-    /**
      * Returns drawn ticket records for all ticket boxes belonging to [campaignId],
      * joined with prize definition and player data.
      *

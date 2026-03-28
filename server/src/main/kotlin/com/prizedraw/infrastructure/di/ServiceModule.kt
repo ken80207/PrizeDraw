@@ -2,6 +2,7 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.api.plugins.createMeterRegistry
 import com.prizedraw.application.ports.output.IBroadcastRepository
+import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.IDrawSyncRepository
@@ -107,10 +108,11 @@ public fun serviceModule(config: ApplicationConfig) =
             )
         }
 
-        // Live draw feed (broadcasts draw events to /ws/feed clients)
+        // Live draw feed (broadcasts draw events to /ws/feed clients; persists to feed_events)
         single<FeedService> {
             FeedService(
                 pubSub = get<IPubSubService>(),
+                feedEventRepository = get<IFeedEventRepository>(),
             )
         }
     }

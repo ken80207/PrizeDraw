@@ -86,16 +86,6 @@ public class DrawRepositoryImpl : IDrawRepository {
                 .toDrawTicket()
         }
 
-    override suspend fun findRecentDrawn(limit: Int): List<DrawTicket> =
-        newSuspendedTransaction {
-            DrawTicketsTable
-                .selectAll()
-                .where { DrawTicketsTable.status eq DrawTicketStatus.DRAWN }
-                .orderBy(DrawTicketsTable.drawnAt, SortOrder.DESC)
-                .limit(limit)
-                .map { it.toDrawTicket() }
-        }
-
     override suspend fun findDrawnByCampaign(
         campaignId: CampaignId,
         limit: Int,
