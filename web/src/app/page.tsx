@@ -8,6 +8,7 @@ import { CampaignCardSkeleton } from "@/components/LoadingSkeleton";
 import { apiClient } from "@/services/apiClient";
 import { useAuthStore } from "@/stores/authStore";
 import LiveMarquee from "@/components/feed/LiveMarquee";
+import { LiveDrawMarquee } from "@/components/feed/LiveDrawMarquee";
 import { BannerCarousel, type BannerData } from "@/components/BannerCarousel";
 
 // ---------------------------------------------------------------------------
@@ -112,6 +113,9 @@ export default function HomePage() {
           }
         />
       </section>
+
+      {/* ── Live Draw Marquee ────────────────────────────────────────── */}
+      <LiveDrawMarquee />
 
       {/* ── Live Feed Marquee ────────────────────────────────────────── */}
       <LiveMarquee currentPlayerId={currentPlayerId} />
