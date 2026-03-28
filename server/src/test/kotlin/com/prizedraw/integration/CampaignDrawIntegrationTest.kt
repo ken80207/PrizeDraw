@@ -442,6 +442,8 @@ class CampaignDrawIntegrationTest :
                 val defId = PrizeDefinitionId(rawUuid)
                 defsByGrade.values.find { it.id == defId }
             }
+            // Return all definitions for the campaign; none are rare so no follow notifications fire.
+            coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns defsByGrade.values.toList()
             coEvery { prizeRepo.saveInstance(any()) } coAnswers {
                 val instance = firstArg<com.prizedraw.domain.entities.PrizeInstance>()
                 state.savedInstanceCount.incrementAndGet()

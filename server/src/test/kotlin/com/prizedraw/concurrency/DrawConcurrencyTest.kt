@@ -229,6 +229,8 @@ class DrawConcurrencyTest :
                 coEvery { playerRepo.findById(playerB.id) } returns playerB
                 coEvery { playerRepo.updateBalance(playerA.id, any(), any(), any()) } returns true
                 coEvery { prizeRepo.findDefinitionById(defId) } returns makeDef()
+                // Return definitions with isRare=false so no follow notifications fire.
+                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns listOf(makeDef())
                 coEvery { prizeRepo.saveInstance(any()) } answers { firstArg() }
                 coEvery { drawRepo.markDrawn(any(), any(), any(), any()) } answers {
                     ticket.copy(
@@ -389,6 +391,8 @@ class DrawConcurrencyTest :
                 coEvery { playerRepo.findById(player.id) } returns player
                 coEvery { playerRepo.updateBalance(player.id, any(), any(), any()) } returns true
                 coEvery { prizeRepo.findDefinitionById(defId) } returns makeDef()
+                // Return definitions with isRare=false so no follow notifications fire.
+                coEvery { prizeRepo.findDefinitionsByCampaign(any(), any()) } returns listOf(makeDef())
                 coEvery { prizeRepo.saveInstance(any()) } answers { firstArg() }
                 coEvery { drawRepo.markDrawn(any(), any(), any(), any()) } answers {
                     ticket.copy(
