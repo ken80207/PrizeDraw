@@ -110,4 +110,64 @@ public interface ICampaignRepository {
         id: CampaignId,
         status: CampaignStatus,
     )
+
+    // --- Batch lookups ---
+
+    /**
+     * Fetches multiple [KujiCampaign]s by their IDs in a single query.
+     *
+     * Soft-deleted campaigns are excluded. The order of results is not guaranteed.
+     *
+     * @param ids The campaign IDs to fetch.
+     * @return All non-deleted campaigns whose IDs appear in [ids].
+     */
+    public suspend fun findKujiByIds(ids: List<CampaignId>): List<KujiCampaign>
+
+    /**
+     * Fetches multiple [UnlimitedCampaign]s by their IDs in a single query.
+     *
+     * Soft-deleted campaigns are excluded. The order of results is not guaranteed.
+     *
+     * @param ids The campaign IDs to fetch.
+     * @return All non-deleted campaigns whose IDs appear in [ids].
+     */
+    public suspend fun findUnlimitedByIds(ids: List<CampaignId>): List<UnlimitedCampaign>
+
+    /**
+     * Returns all active [KujiCampaign]s that have not yet had a low-stock notification dispatched.
+     *
+     * Used by the low-stock notification worker to identify campaigns requiring a notification.
+     *
+     * @return Active campaigns with [KujiCampaign.lowStockNotifiedAt] equal to null.
+     */
+    public suspend fun findActiveKujiCampaignsNotLowStockNotified(): List<KujiCampaign>
+
+    /**
+     * Returns the total number of tickets across all ticket boxes for a campaign.
+     *
+     * @param campaignId The campaign's unique identifier.
+     * @return Sum of [TicketBox.totalTickets] for all boxes belonging to this campaign.
+     */
+    public suspend fun countTotalTickets(campaignId: CampaignId): Int
+
+    /**
+     * Returns the number of remaining (undrawn) tickets for a campaign.
+     *
+     * Counts draw tickets whose `drawn_by_player_id` is null across all boxes of
+     * the campaign. This is a read-through aggregation; the result is not cached.
+     *
+     * @param campaignId The campaign's unique identifier.
+     * @return Number of available draw tickets.
+     */
+    public suspend fun countRemainingTickets(campaignId: CampaignId): Int
+
+    /**
+     * Records that a low-stock push notification has been sent for a campaign.
+     *
+     * Sets `low_stock_notified_at` to the current UTC timestamp so the notification
+     * worker does not re-send for the same campaign.
+     *
+     * @param campaignId The campaign to mark.
+     */
+    public suspend fun markLowStockNotified(campaignId: CampaignId)
 }

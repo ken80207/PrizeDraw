@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.prizedraw.infrastructure.persistence.tables
 
 import org.jetbrains.exposed.sql.Table
@@ -26,6 +28,15 @@ public object NotificationsTable : Table("notifications") {
 
     /** Whether the player has acknowledged this notification. */
     public val isRead = bool("is_read").default(false)
+
+    /**
+     * Optional deduplication key.
+     *
+     * When non-null, a unique index on this column prevents duplicate notifications
+     * for the same logical event (e.g. re-triggered webhooks). Set at insert time;
+     * never updated after creation.
+     */
+    public val dedupKey = varchar("dedup_key", 256).nullable()
 
     /** Creation timestamp. */
     public val createdAt = timestampWithTimeZone("created_at")

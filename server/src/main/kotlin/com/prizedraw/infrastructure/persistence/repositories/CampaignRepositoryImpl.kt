@@ -6,7 +6,10 @@ import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.UnlimitedCampaign
 import com.prizedraw.domain.valueobjects.CampaignId
+import com.prizedraw.infrastructure.persistence.inTransaction
+import com.prizedraw.infrastructure.persistence.tables.DrawTicketsTable
 import com.prizedraw.infrastructure.persistence.tables.KujiCampaignsTable
+import com.prizedraw.infrastructure.persistence.tables.TicketBoxesTable
 import com.prizedraw.infrastructure.persistence.tables.UnlimitedCampaignsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
@@ -14,17 +17,19 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
+@Suppress("TooManyFunctions")
 public class CampaignRepositoryImpl : ICampaignRepository {
     // --- Kuji Campaigns ---
 
     override suspend fun findKujiById(id: CampaignId): KujiCampaign? =
-        newSuspendedTransaction {
+        inTransaction {
             KujiCampaignsTable
                 .selectAll()
                 .where { (KujiCampaignsTable.id eq id.value) and (KujiCampaignsTable.deletedAt.isNull()) }
@@ -33,7 +38,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun findAllKuji(status: CampaignStatus?): List<KujiCampaign> =
-        newSuspendedTransaction {
+        inTransaction {
             KujiCampaignsTable
                 .selectAll()
                 .where {
@@ -47,7 +52,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun findActiveKujiCampaigns(): List<KujiCampaign> =
-        newSuspendedTransaction {
+        inTransaction {
             KujiCampaignsTable
                 .selectAll()
                 .where {
@@ -57,7 +62,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun saveKuji(campaign: KujiCampaign): KujiCampaign =
-        newSuspendedTransaction {
+        inTransaction {
             val existing =
                 KujiCampaignsTable
                     .selectAll()
@@ -112,7 +117,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         id: CampaignId,
         status: CampaignStatus,
     ): Unit =
-        newSuspendedTransaction {
+        inTransaction {
             KujiCampaignsTable.update({ KujiCampaignsTable.id eq id.value }) {
                 it[KujiCampaignsTable.status] = status
                 it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
@@ -122,7 +127,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
     // --- Unlimited Campaigns ---
 
     override suspend fun findUnlimitedById(id: CampaignId): UnlimitedCampaign? =
-        newSuspendedTransaction {
+        inTransaction {
             UnlimitedCampaignsTable
                 .selectAll()
                 .where {
@@ -133,7 +138,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun findAllUnlimited(status: CampaignStatus?): List<UnlimitedCampaign> =
-        newSuspendedTransaction {
+        inTransaction {
             UnlimitedCampaignsTable
                 .selectAll()
                 .where {
@@ -147,7 +152,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun findActiveUnlimitedCampaigns(): List<UnlimitedCampaign> =
-        newSuspendedTransaction {
+        inTransaction {
             UnlimitedCampaignsTable
                 .selectAll()
                 .where {
@@ -157,7 +162,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         }
 
     override suspend fun saveUnlimited(campaign: UnlimitedCampaign): UnlimitedCampaign =
-        newSuspendedTransaction {
+        inTransaction {
             val existing =
                 UnlimitedCampaignsTable
                     .selectAll()
@@ -210,10 +215,79 @@ public class CampaignRepositoryImpl : ICampaignRepository {
         id: CampaignId,
         status: CampaignStatus,
     ): Unit =
-        newSuspendedTransaction {
+        inTransaction {
             UnlimitedCampaignsTable.update({ UnlimitedCampaignsTable.id eq id.value }) {
                 it[UnlimitedCampaignsTable.status] = status
                 it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
+            }
+        }
+
+    // --- Batch lookups ---
+
+    override suspend fun findKujiByIds(ids: List<CampaignId>): List<KujiCampaign> {
+        if (ids.isEmpty()) { return emptyList() }
+        return inTransaction {
+            KujiCampaignsTable
+                .selectAll()
+                .where {
+                    (KujiCampaignsTable.id inList ids.map { it.value }) and
+                        KujiCampaignsTable.deletedAt.isNull()
+                }.map { it.toKujiCampaign() }
+        }
+    }
+
+    override suspend fun findUnlimitedByIds(ids: List<CampaignId>): List<UnlimitedCampaign> {
+        if (ids.isEmpty()) { return emptyList() }
+        return inTransaction {
+            UnlimitedCampaignsTable
+                .selectAll()
+                .where {
+                    (UnlimitedCampaignsTable.id inList ids.map { it.value }) and
+                        UnlimitedCampaignsTable.deletedAt.isNull()
+                }.map { it.toUnlimitedCampaign() }
+        }
+    }
+
+    override suspend fun findActiveKujiCampaignsNotLowStockNotified(): List<KujiCampaign> =
+        inTransaction {
+            KujiCampaignsTable
+                .selectAll()
+                .where {
+                    (KujiCampaignsTable.status eq CampaignStatus.ACTIVE) and
+                        KujiCampaignsTable.deletedAt.isNull() and
+                        KujiCampaignsTable.lowStockNotifiedAt.isNull()
+                }.map { it.toKujiCampaign() }
+        }
+
+    override suspend fun countTotalTickets(campaignId: CampaignId): Int =
+        inTransaction {
+            TicketBoxesTable
+                .select(TicketBoxesTable.totalTickets.sum())
+                .where { TicketBoxesTable.kujiCampaignId eq campaignId.value }
+                .singleOrNull()
+                ?.get(TicketBoxesTable.totalTickets.sum())
+                ?: 0
+        }
+
+    override suspend fun countRemainingTickets(campaignId: CampaignId): Int =
+        inTransaction {
+            DrawTicketsTable
+                .innerJoin(
+                    TicketBoxesTable,
+                    { DrawTicketsTable.ticketBoxId },
+                    { TicketBoxesTable.id },
+                ).selectAll()
+                .where {
+                    (TicketBoxesTable.kujiCampaignId eq campaignId.value) and
+                        DrawTicketsTable.drawnByPlayerId.isNull()
+                }.count()
+                .toInt()
+        }
+
+    override suspend fun markLowStockNotified(campaignId: CampaignId): Unit =
+        inTransaction {
+            KujiCampaignsTable.update({ KujiCampaignsTable.id eq campaignId.value }) {
+                it[lowStockNotifiedAt] = OffsetDateTime.now(ZoneOffset.UTC)
             }
         }
 
@@ -235,6 +309,7 @@ public class CampaignRepositoryImpl : ICampaignRepository {
             approvalStatus = ApprovalStatus.valueOf(this[KujiCampaignsTable.approvalStatus]),
             approvedBy = this[KujiCampaignsTable.approvedBy],
             approvedAt = this[KujiCampaignsTable.approvedAt]?.toInstant()?.toKotlinInstant(),
+            lowStockNotifiedAt = this[KujiCampaignsTable.lowStockNotifiedAt]?.toInstant()?.toKotlinInstant(),
         )
 
     private fun ResultRow.toUnlimitedCampaign(): UnlimitedCampaign =

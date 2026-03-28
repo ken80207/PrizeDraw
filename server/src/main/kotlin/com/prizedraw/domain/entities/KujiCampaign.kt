@@ -48,4 +48,6 @@ public data class KujiCampaign(
     val approvalStatus: ApprovalStatus = ApprovalStatus.NOT_REQUIRED,
     val approvedBy: UUID? = null,
     val approvedAt: Instant? = null,
+    /** Timestamp when the low-stock push notification was dispatched. Null until the notification fires. */
+    val lowStockNotifiedAt: Instant? = null,
 )

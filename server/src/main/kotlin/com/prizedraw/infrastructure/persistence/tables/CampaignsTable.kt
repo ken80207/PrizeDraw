@@ -36,6 +36,9 @@ public object KujiCampaignsTable : Table("kuji_campaigns") {
     public val approvedBy = uuid("approved_by").nullable()
     public val approvedAt = timestampWithTimeZone("approved_at").nullable()
 
+    /** Timestamp when the low-stock push notification was dispatched. Null until the notification fires. */
+    public val lowStockNotifiedAt = timestampWithTimeZone("low_stock_notified_at").nullable()
+
     override val primaryKey: PrimaryKey = PrimaryKey(id)
 }
 

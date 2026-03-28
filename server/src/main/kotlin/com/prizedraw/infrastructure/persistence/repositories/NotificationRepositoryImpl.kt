@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import com.prizedraw.infrastructure.persistence.inTransaction
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -27,7 +27,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun save(notification: Notification): Notification =
-        newSuspendedTransaction {
+        inTransaction {
             NotificationsTable.insert {
                 it[id] = notification.id
                 it[playerId] = notification.playerId
@@ -36,6 +36,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
                 it[body] = notification.body
                 it[data] = serializeData(notification.data)
                 it[isRead] = notification.isRead
+                it[dedupKey] = notification.dedupKey
                 it[createdAt] = OffsetDateTime.ofInstant(notification.createdAt.toJavaInstant(), ZoneOffset.UTC)
             }
             NotificationsTable
@@ -50,7 +51,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
         limit: Int,
         offset: Int,
     ): List<Notification> =
-        newSuspendedTransaction {
+        inTransaction {
             NotificationsTable
                 .selectAll()
                 .where { NotificationsTable.playerId eq playerId }
@@ -63,7 +64,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
         id: UUID,
         playerId: UUID,
     ): Boolean =
-        newSuspendedTransaction {
+        inTransaction {
             val updatedRows =
                 NotificationsTable.update({
                     (NotificationsTable.id eq id) and
@@ -76,7 +77,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
         }
 
     override suspend fun markAllRead(playerId: UUID): Int =
-        newSuspendedTransaction {
+        inTransaction {
             NotificationsTable.update({
                 (NotificationsTable.playerId eq playerId) and
                     (NotificationsTable.isRead eq false)
@@ -86,7 +87,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
         }
 
     override suspend fun countUnread(playerId: UUID): Int =
-        newSuspendedTransaction {
+        inTransaction {
             NotificationsTable
                 .selectAll()
                 .where {
@@ -120,6 +121,7 @@ public class NotificationRepositoryImpl : INotificationRepository {
             body = this[NotificationsTable.body],
             data = deserializeData(this[NotificationsTable.data]),
             isRead = this[NotificationsTable.isRead],
+            dedupKey = this[NotificationsTable.dedupKey],
             createdAt = this[NotificationsTable.createdAt].toInstant().toKotlinInstant(),
         )
 }
