@@ -5,6 +5,7 @@ import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.contracts.enums.PrizeState
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.PrizeInstance
+import com.prizedraw.domain.valueobjects.CampaignGradeId
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
@@ -89,6 +90,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                     it[ticketCount] = definition.ticketCount
                     it[displayOrder] = definition.displayOrder
                     it[isRare] = definition.isRare
+                    it[campaignGradeId] = definition.campaignGradeId?.value
                     it[createdAt] = definition.createdAt.toOffsetDateTime()
                     it[updatedAt] = definition.updatedAt.toOffsetDateTime()
                 }
@@ -225,6 +227,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                     it[ticketCount] = definition.ticketCount
                     it[displayOrder] = definition.displayOrder
                     it[isRare] = definition.isRare
+                    it[campaignGradeId] = definition.campaignGradeId?.value
                     it[createdAt] = definition.createdAt.toOffsetDateTime()
                     it[updatedAt] = definition.updatedAt.toOffsetDateTime()
                 }
@@ -246,6 +249,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             kujiCampaignId = this[PrizeDefinitionsTable.kujiCampaignId]?.let { CampaignId(it) },
             unlimitedCampaignId = this[PrizeDefinitionsTable.unlimitedCampaignId]?.let { CampaignId(it) },
             grade = this[PrizeDefinitionsTable.grade],
+            campaignGradeId = this[PrizeDefinitionsTable.campaignGradeId]?.let { CampaignGradeId(it) },
             name = this[PrizeDefinitionsTable.name],
             photos = photos,
             prizeValue = this[PrizeDefinitionsTable.prizeValue],
