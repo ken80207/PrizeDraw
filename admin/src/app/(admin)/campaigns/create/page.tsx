@@ -7,7 +7,6 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { calcUnlimitedMargin, pctToBps } from "@/lib/margin-utils";
 import { MarginDisplay } from "@/components/MarginDisplay";
 import { GradeEditor, type GradeItem } from "@/components/GradeEditor";
-import { GradeBadge } from "@/components/GradeBadge";
 
 type CampaignType = "kuji" | "unlimited";
 
