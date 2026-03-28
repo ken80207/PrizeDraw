@@ -516,12 +516,14 @@ class CampaignDrawIntegrationTest :
                     outboxRepository = fakes.outboxRepo,
                     auditRepository = fakes.auditRepo,
                     domainService = KujiDrawDomainService(),
-                    pubSub = fakes.redisPubSub,
+                    redisPubSub = fakes.redisPubSub,
                     drawCore =
                         DrawCore(
                             DrawCoreDeps(
                                 playerRepository = fakes.playerRepo,
                                 prizeRepository = fakes.prizeRepo,
+                                drawPointTxRepository = fakes.drawPointTxRepo,
+                                outboxRepository = fakes.outboxRepo,
                             )
                         ),
                     feedService = mockk(relaxed = true),
@@ -916,6 +918,8 @@ class CampaignDrawIntegrationTest :
                                     DrawCoreDeps(
                                         playerRepository = playerRepo,
                                         prizeRepository = prizeRepo,
+                                        drawPointTxRepository = drawPointTxRepo,
+                                        outboxRepository = outboxRepo,
                                     )
                                 ),
                             feedService = mockk(relaxed = true),

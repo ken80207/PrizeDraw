@@ -106,7 +106,7 @@ class QueueConcurrencyTest :
                         distributedLock = distributedLock,
                         queueRepository = queueRepo,
                         queueEntryRepository = queueEntryRepo,
-                        redisPubSub = redisPubSub,
+                        pubSub = redisPubSub,
                     )
 
                 shouldThrow<QueueOperationException> {
@@ -151,7 +151,7 @@ class QueueConcurrencyTest :
                         distributedLock = distributedLock,
                         queueRepository = queueRepo,
                         queueEntryRepository = queueEntryRepo,
-                        redisPubSub = redisPubSub,
+                        pubSub = redisPubSub,
                     )
 
                 val entry = service.joinQueue(player, boxId, sessionSeconds = 300)
@@ -193,7 +193,7 @@ class QueueConcurrencyTest :
                         distributedLock = distributedLock,
                         queueRepository = queueRepo,
                         queueEntryRepository = queueEntryRepo,
-                        redisPubSub = redisPubSub,
+                        pubSub = redisPubSub,
                     )
 
                 // Must not throw; terminal entry check is a no-op
@@ -261,7 +261,7 @@ class QueueConcurrencyTest :
                         distributedLock = distributedLock,
                         queueRepository = queueRepo,
                         queueEntryRepository = queueEntryRepo,
-                        redisPubSub = redisPubSub,
+                        pubSub = redisPubSub,
                     )
 
                 val newQueueEntry = service.switchBox(player, fromBoxId, toBoxId, sessionSeconds = 300)
@@ -300,7 +300,7 @@ class QueueConcurrencyTest :
                         distributedLock = distributedLock,
                         queueRepository = queueRepo,
                         queueEntryRepository = queueEntryRepo,
-                        redisPubSub = redisPubSub,
+                        pubSub = redisPubSub,
                     )
 
                 // Must not throw
