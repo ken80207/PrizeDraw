@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 export interface CampaignCardData {
   id: string;
@@ -12,6 +13,7 @@ export interface CampaignCardData {
   totalTickets?: number;
   viewerCount?: number;
   isHot?: boolean;
+  isFavorited?: boolean;
 }
 
 interface CampaignCardProps {
@@ -72,7 +74,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           )}
 
           {/* Type badge */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2">
             <span
               className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
                 campaign.type === "無限賞"
@@ -83,6 +85,14 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
               {typeBadge}
             </span>
           </div>
+
+          {/* Favorite button */}
+          <FavoriteButton
+            campaignType={campaign.type === "無限賞" ? "unlimited" : "kuji"}
+            campaignId={campaign.id}
+            initialFavorited={campaign.isFavorited ?? false}
+            className="absolute top-2 right-2 text-2xl"
+          />
         </div>
 
         {/* Card body */}

@@ -128,6 +128,18 @@ export const apiClient = {
   },
 
   /**
+   * Performs a PUT request with an optional JSON body and returns the parsed JSON response (if any).
+   *
+   * @param path API path.
+   * @param body Optional request body (will be JSON-serialised).
+   * @param options Optional fetch options.
+   * @returns Parsed response body, or undefined for 204 responses.
+   */
+  put<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+    return request<T>("PUT", path, body, options);
+  },
+
+  /**
    * Performs a DELETE request and returns the parsed JSON response (if any).
    *
    * @param path API path.

@@ -24,6 +24,7 @@ import { useDrawInputSync } from "@/hooks/useDrawInputSync";
 import { ScratchReveal } from "@/animations/ScratchReveal";
 import { FlipReveal } from "@/animations/FlipReveal";
 import { toast } from "@/components/Toast";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DTOs
@@ -37,6 +38,7 @@ interface KujiCampaignDto {
   pricePerDraw: number;
   drawSessionSeconds: number;
   status: string;
+  isFavorited?: boolean;
 }
 
 interface TicketBoxDto {
@@ -1214,6 +1216,14 @@ export default function CampaignDetailPage() {
           <h1 className="flex-1 truncate font-headline text-sm font-bold text-on-surface sm:text-base">
             {campaign.title}
           </h1>
+
+          {/* Favorite button */}
+          <FavoriteButton
+            campaignType="kuji"
+            campaignId={campaign.id}
+            initialFavorited={campaign.isFavorited ?? false}
+            className="shrink-0 text-2xl px-1"
+          />
 
           {/* Live indicators */}
           <div className="flex shrink-0 items-center gap-2">
