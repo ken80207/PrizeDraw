@@ -16,7 +16,7 @@ import io.ktor.server.routing.post
 import io.ktor.utils.io.toByteArray
 import java.util.UUID
 
-private val ALLOWED_CONTENT_TYPES = setOf("image/jpeg", "image/png", "image/webp")
+private val allowedContentTypes = setOf("image/jpeg", "image/png", "image/webp")
 private const val MAX_FILE_SIZE = 5L * 1024 * 1024
 
 /**
@@ -25,6 +25,7 @@ private const val MAX_FILE_SIZE = 5L * 1024 * 1024
  * Receives multipart form data, uploads to S3, returns the CDN URL.
  * Requires [StaffRole.OPERATOR] or above.
  */
+@Suppress("CyclomaticComplexMethod")
 public fun Route.storageUploadRoute() {
     val storageService: IStorageService by inject()
 
@@ -38,7 +39,7 @@ public fun Route.storageUploadRoute() {
         multipart.forEachPart { part ->
             if (validationError == null && part is PartData.FileItem && part.name == "file") {
                 val contentType = part.contentType?.toString() ?: ""
-                if (contentType !in ALLOWED_CONTENT_TYPES) {
+                if (contentType !in allowedContentTypes) {
                     validationError = "Unsupported file type: $contentType"
                     part.dispose()
                     return@forEachPart
@@ -51,12 +52,13 @@ public fun Route.storageUploadRoute() {
                     return@forEachPart
                 }
 
-                val ext = when (contentType) {
-                    "image/jpeg" -> "jpg"
-                    "image/png" -> "png"
-                    "image/webp" -> "webp"
-                    else -> "bin"
-                }
+                val ext =
+                    when (contentType) {
+                        "image/jpeg" -> "jpg"
+                        "image/png" -> "png"
+                        "image/webp" -> "webp"
+                        else -> "bin"
+                    }
                 val key = "uploads/${UUID.randomUUID()}.$ext"
                 uploadedUrl = storageService.upload(key, bytes, contentType)
             }

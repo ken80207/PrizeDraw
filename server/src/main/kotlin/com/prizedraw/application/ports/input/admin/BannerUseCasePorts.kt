@@ -20,6 +20,7 @@ public interface ICreateBannerUseCase {
 }
 
 public interface IUpdateBannerUseCase {
+    @Suppress("LongParameterList")
     public suspend fun execute(
         actorStaffId: StaffId,
         id: UUID,
@@ -34,7 +35,12 @@ public interface IUpdateBannerUseCase {
 }
 
 public interface IDeactivateBannerUseCase {
-    public suspend fun execute(actorStaffId: StaffId, id: UUID): Banner
+    public suspend fun execute(
+        actorStaffId: StaffId,
+        id: UUID,
+    ): Banner
 }
 
-public class BannerNotFoundException(id: UUID) : NoSuchElementException("Banner '$id' not found")
+public class BannerNotFoundException(
+    id: UUID,
+) : NoSuchElementException("Banner '$id' not found")

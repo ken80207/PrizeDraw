@@ -10,7 +10,10 @@ import java.util.UUID
 public class DeactivateBannerUseCase(
     private val bannerRepository: IBannerRepository,
 ) : IDeactivateBannerUseCase {
-    override suspend fun execute(actorStaffId: StaffId, id: UUID): Banner =
+    override suspend fun execute(
+        actorStaffId: StaffId,
+        id: UUID,
+    ): Banner =
         bannerRepository.deactivate(id, actorStaffId.value)
             ?: throw BannerNotFoundException(id)
 }

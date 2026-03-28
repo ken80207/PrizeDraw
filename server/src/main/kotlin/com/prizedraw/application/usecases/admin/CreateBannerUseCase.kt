@@ -14,20 +14,21 @@ public class CreateBannerUseCase(
         require(command.imageUrl.isNotBlank()) { "Image URL must not be blank" }
 
         val now = Clock.System.now()
-        val banner = Banner(
-            id = UUID.randomUUID(),
-            imageUrl = command.imageUrl.trim(),
-            linkType = command.linkType?.trim(),
-            linkUrl = command.linkUrl?.trim(),
-            sortOrder = command.sortOrder,
-            isActive = true,
-            scheduledStart = command.scheduledStart,
-            scheduledEnd = command.scheduledEnd,
-            createdBy = command.actorStaffId.value,
-            updatedBy = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val banner =
+            Banner(
+                id = UUID.randomUUID(),
+                imageUrl = command.imageUrl.trim(),
+                linkType = command.linkType?.trim(),
+                linkUrl = command.linkUrl?.trim(),
+                sortOrder = command.sortOrder,
+                isActive = true,
+                scheduledStart = command.scheduledStart,
+                scheduledEnd = command.scheduledEnd,
+                createdBy = command.actorStaffId.value,
+                updatedBy = null,
+                createdAt = now,
+                updatedAt = now,
+            )
         return bannerRepository.save(banner)
     }
 }

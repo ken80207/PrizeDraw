@@ -33,7 +33,7 @@ private const val BANNERS_CACHE_KEY = "banners:active"
  * All routes require `authenticate("staff")` in the parent scope (enforced in Routing.kt)
  * and [StaffRole.OPERATOR] or above (enforced per handler).
  *
- * - GET    [BannerEndpoints.ADMIN_BANNERS]       — list all banners
+ * - GET [BannerEndpoints.ADMIN_BANNERS]       — list all banners
  * - POST   [BannerEndpoints.ADMIN_BANNERS]       — create new banner
  * - PATCH  [BannerEndpoints.ADMIN_BANNER_BY_ID]  — partial update
  * - DELETE [BannerEndpoints.ADMIN_BANNER_BY_ID]  — deactivate

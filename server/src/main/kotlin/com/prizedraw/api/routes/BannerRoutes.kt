@@ -30,13 +30,14 @@ public fun Route.bannerRoutes() {
 
     get(BannerEndpoints.BANNERS) {
         val cached = cacheService.get(CACHE_KEY)
-        val banners: List<BannerDto> = if (cached != null) {
-            json.decodeFromString(cached)
-        } else {
-            val active = bannerRepository.findAllActive().map { it.toPublicDto() }
-            cacheService.set(CACHE_KEY, json.encodeToString(active), CACHE_TTL_SECONDS)
-            active
-        }
+        val banners: List<BannerDto> =
+            if (cached != null) {
+                json.decodeFromString(cached)
+            } else {
+                val active = bannerRepository.findAllActive().map { it.toPublicDto() }
+                cacheService.set(CACHE_KEY, json.encodeToString(active), CACHE_TTL_SECONDS)
+                active
+            }
         call.response.header("Cache-Control", "public, max-age=60")
         call.respond(HttpStatusCode.OK, banners)
     }

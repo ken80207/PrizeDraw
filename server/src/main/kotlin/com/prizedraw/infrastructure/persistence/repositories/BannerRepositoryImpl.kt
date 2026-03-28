@@ -19,7 +19,6 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 public class BannerRepositoryImpl : IBannerRepository {
-
     override suspend fun findAllActive(): List<Banner> =
         newSuspendedTransaction {
             val now = OffsetDateTime.now(ZoneOffset.UTC)
@@ -29,8 +28,7 @@ public class BannerRepositoryImpl : IBannerRepository {
                     (BannersTable.isActive eq true) and
                         ((BannersTable.scheduledStart.isNull()) or (BannersTable.scheduledStart lessEq now)) and
                         ((BannersTable.scheduledEnd.isNull()) or (BannersTable.scheduledEnd greater now))
-                }
-                .orderBy(BannersTable.sortOrder to SortOrder.ASC, BannersTable.createdAt to SortOrder.DESC)
+                }.orderBy(BannersTable.sortOrder to SortOrder.ASC, BannersTable.createdAt to SortOrder.DESC)
                 .map { it.toBanner() }
         }
 
@@ -107,7 +105,10 @@ public class BannerRepositoryImpl : IBannerRepository {
                 .toBanner()
         }
 
-    override suspend fun deactivate(id: UUID, updatedBy: UUID): Banner? =
+    override suspend fun deactivate(
+        id: UUID,
+        updatedBy: UUID,
+    ): Banner? =
         newSuspendedTransaction {
             val existing =
                 BannersTable

@@ -3,6 +3,7 @@ package com.prizedraw.infrastructure.persistence.tables
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
+@Suppress("MagicNumber")
 public object BannersTable : Table("banners") {
     public val id = uuid("id").autoGenerate()
     public val imageUrl = text("image_url")
