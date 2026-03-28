@@ -71,11 +71,12 @@ public class LoginUseCase(
         val nickname =
             validationResult.name
                 ?: "Player-${UUID.randomUUID().toString().take(SHORT_ID_LENGTH)}"
+        val playerCode = generateUniquePlayerCode()
         val newPlayer =
             Player(
                 id = PlayerId.generate(),
                 nickname = nickname,
-                playerCode = PlayerCodeGenerator.generate(),
+                playerCode = playerCode,
                 avatarUrl = null,
                 phoneNumber = null,
                 phoneVerifiedAt = null,
@@ -122,9 +123,20 @@ public class LoginUseCase(
         )
     }
 
+    private suspend fun generateUniquePlayerCode(): String {
+        repeat(MAX_CODE_RETRIES) {
+            val code = PlayerCodeGenerator.generate()
+            if (playerRepository.findByPlayerCode(code) == null) {
+                return code
+            }
+        }
+        error("Failed to generate unique player code after $MAX_CODE_RETRIES attempts")
+    }
+
     private companion object {
         const val ACCESS_TOKEN_EXPIRES_IN_SECONDS = 900L
         const val SHORT_ID_LENGTH = 8
         const val DEFAULT_LOCALE = "zh-TW"
+        const val MAX_CODE_RETRIES = 5
     }
 }

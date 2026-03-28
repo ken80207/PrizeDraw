@@ -59,7 +59,12 @@ class FavoriteNotificationIntegrationTest :
             pricePerDraw = 100,
             drawSessionSeconds = 30,
             status = status,
-            activatedAt = if (status == CampaignStatus.ACTIVE) now else null,
+            activatedAt =
+                if (status == CampaignStatus.ACTIVE) {
+                    now
+                } else {
+                    null
+                },
             soldOutAt = null,
             createdByStaffId = UUID.randomUUID(),
             deletedAt = null,

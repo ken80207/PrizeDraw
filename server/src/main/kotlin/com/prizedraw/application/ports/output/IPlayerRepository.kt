@@ -11,6 +11,7 @@ import com.prizedraw.domain.valueobjects.PlayerId
  * All database-interacting operations are `suspend` functions to integrate with the Ktor /
  * coroutine execution model. Implementations live in the infrastructure layer.
  */
+@Suppress("TooManyFunctions")
 public interface IPlayerRepository {
     /**
      * Finds a [Player] by their surrogate primary key.

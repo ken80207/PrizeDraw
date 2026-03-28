@@ -14,7 +14,7 @@ BEGIN
         WHILE collision LOOP
             new_code := '';
             FOR i IN 1..8 LOOP
-                new_code := new_code || substr(charset, floor(random() * 30 + 1)::int, 1);
+                new_code := new_code || substr(charset, floor(random() * 31 + 1)::int, 1);
             END LOOP;
             collision := EXISTS(SELECT 1 FROM players WHERE player_code = new_code);
         END LOOP;
