@@ -8,6 +8,7 @@ import { CampaignCardSkeleton } from "@/components/LoadingSkeleton";
 import { apiClient } from "@/services/apiClient";
 import { useAuthStore } from "@/stores/authStore";
 import LiveMarquee from "@/components/feed/LiveMarquee";
+import { BannerCarousel, type BannerData } from "@/components/BannerCarousel";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -21,19 +22,24 @@ export default function HomePage() {
   const currentPlayerId: string | null = player?.id ?? null;
 
   const [campaigns, setCampaigns] = useState<CampaignCardData[]>([]);
+  const [banners, setBanners] = useState<BannerData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [kujiRes, unlimitedRes] = await Promise.all([
+        const [kujiRes, unlimitedRes, bannersRes] = await Promise.all([
           apiClient.get<CampaignCardData[]>("/api/v1/campaigns/kuji").catch(() => [] as CampaignCardData[]),
           apiClient.get<CampaignCardData[]>("/api/v1/campaigns/unlimited").catch(() => [] as CampaignCardData[]),
+          apiClient.get<BannerData[]>("/api/v1/banners").catch(() => [] as BannerData[]),
         ]);
         const kujiWithType = (kujiRes ?? []).map((c) => ({ ...c, type: "一番賞" as const }));
         const unlimitedWithType = (unlimitedRes ?? []).map((c) => ({ ...c, type: "無限賞" as const }));
-        if (!cancelled) setCampaigns([...kujiWithType, ...unlimitedWithType].slice(0, 8));
+        if (!cancelled) {
+          setCampaigns([...kujiWithType, ...unlimitedWithType].slice(0, 8));
+          setBanners((bannersRes ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder));
+        }
       } catch {
         // Silently fall back to empty
       } finally {
@@ -49,57 +55,62 @@ export default function HomePage() {
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <section className="p-6 lg:p-10">
-        <div className="relative w-full h-[400px] lg:h-[500px] rounded-lg lg:rounded-xl overflow-hidden group">
-          {/* Fallback gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container-low" />
+        <BannerCarousel
+          banners={banners}
+          fallback={
+            <div className="relative w-full h-[400px] lg:h-[500px] rounded-lg lg:rounded-xl overflow-hidden group">
+              {/* Fallback gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container-low" />
 
-          {/* Cover image if campaigns are loaded */}
-          {campaigns[0]?.coverImageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={campaigns[0].coverImageUrl}
-              alt={t("featuredEvent")}
-              className="absolute inset-0 w-full h-full object-cover brightness-50 transition-transform duration-700 group-hover:scale-105"
-            />
-          )}
+              {/* Cover image if campaigns are loaded */}
+              {campaigns[0]?.coverImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={campaigns[0].coverImageUrl}
+                  alt={t("featuredEvent")}
+                  className="absolute inset-0 w-full h-full object-cover brightness-50 transition-transform duration-700 group-hover:scale-105"
+                />
+              )}
 
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-surface-dim via-transparent to-transparent" />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-surface-dim via-transparent to-transparent" />
 
-          {/* Hero content */}
-          <div className="absolute bottom-0 left-0 p-8 lg:p-12 w-full max-w-2xl">
-            <span className="inline-block px-4 py-1 mb-4 rounded-full bg-primary/20 text-primary border border-primary/30 text-xs font-bold uppercase tracking-widest font-headline">
-              {t("featuredEvent")}
-            </span>
-            <h2 className="text-4xl lg:text-6xl font-black font-headline text-white mb-4 leading-tight">
-              {campaigns[0]?.title ?? t("heroTitle")}
-            </h2>
-            <p className="text-on-surface-variant text-lg mb-8 max-w-md">
-              {t("heroDescription")}
-            </p>
-            <div className="flex items-center gap-4 flex-wrap">
-              <Link
-                href={campaigns[0] ? `/campaigns/${campaigns[0].id}` : "/campaigns"}
-                className="px-8 py-4 bg-gradient-to-tr from-primary to-primary-container text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
-              >
-                {t("drawNow")}{campaigns[0] ? ` - ${campaigns[0].pricePerDraw} pts` : ""}
-              </Link>
-              <Link
-                href="/campaigns"
-                className="px-8 py-4 border border-outline-variant/30 text-white font-bold rounded-xl hover:bg-white/5 transition-colors"
-              >
-                {t("viewPrizeList")}
-              </Link>
+              {/* Hero content */}
+              <div className="absolute bottom-0 left-0 p-8 lg:p-12 w-full max-w-2xl">
+                <span className="inline-block px-4 py-1 mb-4 rounded-full bg-primary/20 text-primary border border-primary/30 text-xs font-bold uppercase tracking-widest font-headline">
+                  {t("featuredEvent")}
+                </span>
+                <h2 className="text-4xl lg:text-6xl font-black font-headline text-white mb-4 leading-tight">
+                  {campaigns[0]?.title ?? t("heroTitle")}
+                </h2>
+                <p className="text-on-surface-variant text-lg mb-8 max-w-md">
+                  {t("heroDescription")}
+                </p>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Link
+                    href={campaigns[0] ? `/campaigns/${campaigns[0].id}` : "/campaigns"}
+                    className="px-8 py-4 bg-gradient-to-tr from-primary to-primary-container text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
+                  >
+                    {t("drawNow")}{campaigns[0] ? ` - ${campaigns[0].pricePerDraw} pts` : ""}
+                  </Link>
+                  <Link
+                    href="/campaigns"
+                    className="px-8 py-4 border border-outline-variant/30 text-white font-bold rounded-xl hover:bg-white/5 transition-colors"
+                  >
+                    {t("viewPrizeList")}
+                  </Link>
+                </div>
+              </div>
+
+              {/* Carousel indicators */}
+              <div className="absolute right-12 bottom-12 hidden lg:flex flex-col gap-3">
+                <div className="w-1 h-12 bg-primary rounded-full" />
+                <div className="w-1 h-12 bg-white/20 rounded-full" />
+                <div className="w-1 h-12 bg-white/20 rounded-full" />
+              </div>
             </div>
-          </div>
-
-          {/* Carousel indicators */}
-          <div className="absolute right-12 bottom-12 hidden lg:flex flex-col gap-3">
-            <div className="w-1 h-12 bg-primary rounded-full" />
-            <div className="w-1 h-12 bg-white/20 rounded-full" />
-            <div className="w-1 h-12 bg-white/20 rounded-full" />
-          </div>
-        </div>
+          }
+        />
       </section>
 
       {/* ── Live Feed Marquee ────────────────────────────────────────── */}
