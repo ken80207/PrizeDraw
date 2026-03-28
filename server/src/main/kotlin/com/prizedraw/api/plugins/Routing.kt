@@ -27,6 +27,7 @@ import com.prizedraw.api.routes.followRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
 import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
+import com.prizedraw.api.routes.liveDrawRoutes
 import com.prizedraw.api.routes.notificationRoutes
 import com.prizedraw.api.routes.paymentRoutes
 import com.prizedraw.api.routes.playerRoutes
@@ -175,6 +176,9 @@ public fun Application.configureRouting() {
 
         // Phase 17: Leaderboard (public, but optional auth for self-rank)
         leaderboardRoutes()
+
+        // Live draw marquee — public REST snapshot of active sessions
+        liveDrawRoutes()
 
         // Live draw feed — public REST endpoint + WebSocket fanout
         feedRoutes()
