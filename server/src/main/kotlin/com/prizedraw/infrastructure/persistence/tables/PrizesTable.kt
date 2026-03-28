@@ -32,6 +32,7 @@ public object PrizeDefinitionsTable : Table("prize_definitions") {
     public val ticketCount = integer("ticket_count").nullable()
     public val displayOrder = integer("display_order").default(0)
     public val isRare = bool("is_rare").default(false)
+    public val campaignGradeId = uuid("campaign_grade_id").nullable()
     public val createdAt = timestampWithTimeZone("created_at")
     public val updatedAt = timestampWithTimeZone("updated_at")
 
