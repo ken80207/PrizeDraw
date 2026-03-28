@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -67,11 +69,40 @@ private fun CampaignList(
     campaigns: List<KujiCampaignDto>,
     onCampaignSelected: (String) -> Unit,
 ) {
+    // TODO(T109): Replace preview banners with real banner data fetched from the API.
+    val previewBanners =
+        remember {
+            listOf(
+                BannerItem(
+                    id = "banner-1",
+                    imageUrl = "https://placehold.co/800x450/FF6B35/FFFFFF?text=Campaign+1",
+                ),
+                BannerItem(
+                    id = "banner-2",
+                    imageUrl = "https://placehold.co/800x450/4ECDC4/FFFFFF?text=Campaign+2",
+                ),
+                BannerItem(
+                    id = "banner-3",
+                    imageUrl = "https://placehold.co/800x450/45B7D1/FFFFFF?text=Campaign+3",
+                ),
+            )
+        }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item(key = "banner-carousel") {
+            BannerCarousel(
+                banners = previewBanners,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .padding(bottom = 4.dp),
+            )
+        }
         items(campaigns, key = { it.id }) { campaign ->
             KujiCampaignCardStub(
                 campaign = campaign,
