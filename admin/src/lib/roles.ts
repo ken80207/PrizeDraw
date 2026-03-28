@@ -28,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/prizes', icon: '🏆', label: '賞品管理', minRole: 'OPERATOR' },
   { href: '/coupons', icon: '🎟', label: '優惠券', minRole: 'OPERATOR' },
   { href: '/leaderboard', icon: '🏅', label: '排行榜', minRole: 'OPERATOR' },
+  { href: '/banners', icon: '🖼', label: '輪播橫幅', minRole: 'OPERATOR' },
   { href: '/payments', icon: '💳', label: '金流紀錄', minRole: 'ADMIN' },
 ];
 
