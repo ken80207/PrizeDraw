@@ -82,6 +82,7 @@ import com.prizedraw.application.ports.output.IOAuthTokenValidator
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
 import com.prizedraw.application.ports.output.IPaymentOrderRepository
+import com.prizedraw.application.ports.output.IPityRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IPubSubService
@@ -112,6 +113,8 @@ import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
 import com.prizedraw.application.usecases.admin.DeactivateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.DeactivateBannerUseCase
+import com.prizedraw.application.usecases.admin.DeletePityRuleUseCase
+import com.prizedraw.application.usecases.admin.GetPityRuleUseCase
 import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.ManageAnimationModesUseCase
 import com.prizedraw.application.usecases.admin.UpdateAnnouncementUseCase
@@ -121,6 +124,7 @@ import com.prizedraw.application.usecases.admin.UpdateCampaignStatusUseCase
 import com.prizedraw.application.usecases.admin.UpdateCampaignUseCase
 import com.prizedraw.application.usecases.admin.UpdateTradeFeeRateUseCase
 import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
+import com.prizedraw.application.usecases.admin.UpsertPityRuleUseCase
 import com.prizedraw.application.usecases.auth.BindPhoneUseCase
 import com.prizedraw.application.usecases.auth.LoginUseCase
 import com.prizedraw.application.usecases.auth.LogoutUseCase
@@ -724,5 +728,23 @@ public val useCaseModule =
         }
         single<IBatchFollowStatusUseCase> {
             BatchFollowStatusUseCase(followRepository = get<IFollowRepository>())
+        }
+
+        // --- Pity System ---
+        single<GetPityRuleUseCase> {
+            GetPityRuleUseCase(
+                pityRepository = get<IPityRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+            )
+        }
+        single<UpsertPityRuleUseCase> {
+            UpsertPityRuleUseCase(
+                pityRepository = get<IPityRepository>(),
+                campaignRepository = get<ICampaignRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+            )
+        }
+        single<DeletePityRuleUseCase> {
+            DeletePityRuleUseCase(pityRepository = get<IPityRepository>())
         }
     }

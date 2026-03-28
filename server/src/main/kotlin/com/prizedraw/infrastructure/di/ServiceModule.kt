@@ -11,8 +11,6 @@ import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.ports.output.ITierConfigRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
-import com.prizedraw.application.usecases.admin.CampaignGradeUseCases
-import com.prizedraw.application.usecases.admin.GradeTemplateUseCases
 import com.prizedraw.application.services.BroadcastService
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
@@ -22,7 +20,10 @@ import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.StaffTokenService
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.application.usecases.admin.CampaignGradeUseCases
+import com.prizedraw.application.usecases.admin.GradeTemplateUseCases
 import com.prizedraw.domain.services.MarginRiskService
+import com.prizedraw.domain.services.PityDomainService
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import com.prizedraw.infrastructure.persistence.repositories.RefreshTokenFamilyRepositoryImpl
@@ -44,6 +45,7 @@ public fun serviceModule(config: ApplicationConfig) =
         includes(levelServiceModule)
         single<PrometheusMeterRegistry> { createMeterRegistry() }
         single<MarginRiskService> { MarginRiskService() }
+        single<PityDomainService> { PityDomainService() }
 
         single<TokenService.RefreshTokenFamilyStore> { RefreshTokenFamilyRepositoryImpl() }
 

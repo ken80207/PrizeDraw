@@ -79,6 +79,7 @@ public fun Route.adminCampaignRoutes() {
     adminCampaignMutationRoutes()
     adminCampaignBoxRoutes()
     adminCampaignPrizeAndRiskRoutes()
+    adminPityRoutes()
 }
 
 // --- Create routes ---

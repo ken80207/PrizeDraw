@@ -21,6 +21,7 @@ import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentOrderRepository
+import com.prizedraw.application.ports.output.IPityRepository
 import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
@@ -59,6 +60,7 @@ import com.prizedraw.infrastructure.persistence.repositories.LeaderboardReposito
 import com.prizedraw.infrastructure.persistence.repositories.NotificationRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.OutboxRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.PaymentOrderRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.PityRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.PlayerDeviceRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.PlayerRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.PrizeRepositoryImpl
@@ -145,4 +147,7 @@ public val repositoryModule =
         // Grade templates + campaign grades (Task 6)
         single<IGradeTemplateRepository> { GradeTemplateRepositoryImpl() }
         single<ICampaignGradeRepository> { CampaignGradeRepositoryImpl() }
+
+        // Pity system
+        single<IPityRepository> { PityRepositoryImpl() }
     }
