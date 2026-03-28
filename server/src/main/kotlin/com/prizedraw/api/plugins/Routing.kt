@@ -5,6 +5,7 @@ import com.prizedraw.api.routes.adminAnnouncementRoutes
 import com.prizedraw.api.routes.adminBannerRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminDashboardRoutes
+import com.prizedraw.api.routes.adminGradeRoutes
 import com.prizedraw.api.routes.adminLeaderboardConfigRoutes
 import com.prizedraw.api.routes.adminPlayerRoutes
 import com.prizedraw.api.routes.adminPricingRoutes
@@ -201,6 +202,7 @@ public fun Application.configureRouting() {
             adminDashboardRoutes()
 
             adminCampaignRoutes()
+            adminGradeRoutes()
             adminPricingRoutes()
 
             // Phase 14: Staff management + Audit log (ADMIN role enforced per handler)

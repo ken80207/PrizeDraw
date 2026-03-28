@@ -6,6 +6,7 @@ import com.prizedraw.api.plugins.satisfies
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
+import com.prizedraw.application.ports.output.ICampaignGradeRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
@@ -28,11 +29,13 @@ import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
 import com.prizedraw.contracts.dto.campaign.TicketBoxDto
 import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDetailDto
 import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
+import com.prizedraw.contracts.dto.grade.CampaignGradeDto
 import com.prizedraw.contracts.endpoints.AdminEndpoints
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.contracts.enums.StaffRole
 import com.prizedraw.contracts.enums.TicketBoxStatus
+import com.prizedraw.domain.entities.CampaignGrade
 import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.TicketBox
@@ -126,6 +129,7 @@ private fun Route.adminCampaignQueryRoutes() {
     val ticketBoxRepository: ITicketBoxRepository by inject()
     val prizeRepository: IPrizeRepository by inject()
     val drawRepository: IDrawRepository by inject()
+    val campaignGradeRepository: ICampaignGradeRepository by inject()
 
     get(AdminEndpoints.CAMPAIGNS) {
         call.requireStaff(StaffRole.OPERATOR) ?: return@get
@@ -150,6 +154,7 @@ private fun Route.adminCampaignQueryRoutes() {
                 campaignRepository,
                 ticketBoxRepository,
                 prizeRepository,
+                campaignGradeRepository,
             )
         if (response == null) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "Campaign not found"))
@@ -361,6 +366,7 @@ private suspend fun buildCampaignDetail(
     campaignRepository: ICampaignRepository,
     ticketBoxRepository: ITicketBoxRepository,
     prizeRepository: IPrizeRepository,
+    campaignGradeRepository: ICampaignGradeRepository,
 ): Any? =
     when (typeParam.lowercase()) {
         "unlimited" -> {
@@ -370,9 +376,12 @@ private suspend fun buildCampaignDetail(
                     campaignId,
                     CampaignType.UNLIMITED,
                 )
+            val grades = campaignGradeRepository.findByCampaignId(campaignId)
+            val gradeMap = grades.associateBy { it.id }
             UnlimitedCampaignDetailDto(
                 campaign = campaign.toDto(),
-                prizes = prizes.map { it.toDto() },
+                prizes = prizes.map { it.toDto(gradeMap) },
+                grades = grades.map { it.toDto() },
             )
         }
         else -> {
@@ -383,10 +392,13 @@ private suspend fun buildCampaignDetail(
                     campaignId,
                     CampaignType.KUJI,
                 )
+            val grades = campaignGradeRepository.findByCampaignId(campaignId)
+            val gradeMap = grades.associateBy { it.id }
             KujiCampaignDetailDto(
                 campaign = campaign.toDto(),
                 boxes = boxes.map { it.toDto() },
-                prizes = prizes.map { it.toDto() },
+                prizes = prizes.map { it.toDto(gradeMap) },
+                grades = grades.map { it.toDto() },
             )
         }
     }
@@ -428,10 +440,22 @@ private fun TicketBox.toDto(): TicketBoxDto =
         displayOrder = displayOrder,
     )
 
-private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
-    PrizeDefinitionDto(
+private fun CampaignGrade.toDto(): CampaignGradeDto =
+    CampaignGradeDto(
         id = id.value.toString(),
-        grade = grade,
+        name = name,
+        displayOrder = displayOrder,
+        colorCode = colorCode,
+        bgColorCode = bgColorCode,
+    )
+
+private fun PrizeDefinition.toDto(
+    gradeMap: Map<com.prizedraw.domain.valueobjects.CampaignGradeId, CampaignGrade> = emptyMap(),
+): PrizeDefinitionDto {
+    val grade = campaignGradeId?.let { gradeMap[it] }
+    return PrizeDefinitionDto(
+        id = id.value.toString(),
+        grade = this.grade,
         name = name,
         photos = photos,
         prizeValue = prizeValue,
@@ -440,7 +464,10 @@ private fun PrizeDefinition.toDto(): PrizeDefinitionDto =
         probabilityBps = probabilityBps,
         ticketCount = ticketCount,
         displayOrder = displayOrder,
+        campaignGradeId = campaignGradeId?.value?.toString(),
+        campaignGrade = grade?.toDto(),
     )
+}
 
 private fun KujiCampaign.toAdminListItem(): Map<String, String> =
     mapOf(
