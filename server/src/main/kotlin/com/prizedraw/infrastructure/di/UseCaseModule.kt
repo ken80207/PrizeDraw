@@ -33,6 +33,13 @@ import com.prizedraw.application.ports.input.exchange.IRespondExchangeRequestUse
 import com.prizedraw.application.ports.input.favorite.IAddFavoriteUseCase
 import com.prizedraw.application.ports.input.favorite.IGetFavoritesUseCase
 import com.prizedraw.application.ports.input.favorite.IRemoveFavoriteUseCase
+import com.prizedraw.application.ports.input.follow.IBatchFollowStatusUseCase
+import com.prizedraw.application.ports.input.follow.IFollowPlayerUseCase
+import com.prizedraw.application.ports.input.follow.IGetFollowStatusUseCase
+import com.prizedraw.application.ports.input.follow.IGetFollowersListUseCase
+import com.prizedraw.application.ports.input.follow.IGetFollowingListUseCase
+import com.prizedraw.application.ports.input.follow.ISearchPlayerByCodeUseCase
+import com.prizedraw.application.ports.input.follow.IUnfollowPlayerUseCase
 import com.prizedraw.application.ports.input.leaderboard.IGetLeaderboardUseCase
 import com.prizedraw.application.ports.input.payment.IConfirmPaymentWebhookUseCase
 import com.prizedraw.application.ports.input.payment.ICreatePaymentOrderUseCase
@@ -64,6 +71,7 @@ import com.prizedraw.application.ports.output.IDrawPointTransactionRepository
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IExchangeRepository
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
+import com.prizedraw.application.ports.output.IFollowRepository
 import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.IOAuthTokenValidator
 import com.prizedraw.application.ports.output.IOutboxRepository
@@ -120,6 +128,13 @@ import com.prizedraw.application.usecases.exchange.RespondExchangeRequestUseCase
 import com.prizedraw.application.usecases.favorite.AddFavoriteUseCase
 import com.prizedraw.application.usecases.favorite.GetFavoritesUseCase
 import com.prizedraw.application.usecases.favorite.RemoveFavoriteUseCase
+import com.prizedraw.application.usecases.follow.BatchFollowStatusUseCase
+import com.prizedraw.application.usecases.follow.FollowPlayerUseCase
+import com.prizedraw.application.usecases.follow.GetFollowStatusUseCase
+import com.prizedraw.application.usecases.follow.GetFollowersListUseCase
+import com.prizedraw.application.usecases.follow.GetFollowingListUseCase
+import com.prizedraw.application.usecases.follow.SearchPlayerByCodeUseCase
+import com.prizedraw.application.usecases.follow.UnfollowPlayerUseCase
 import com.prizedraw.application.usecases.leaderboard.GetLeaderboardUseCase
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
 import com.prizedraw.application.usecases.payment.ConfirmPaymentWebhookUseCase
@@ -635,5 +650,40 @@ public val useCaseModule =
                 favoriteRepository = get<ICampaignFavoriteRepository>(),
                 campaignRepository = get<ICampaignRepository>(),
             )
+        }
+
+        // --- Follow System ---
+        single<IFollowPlayerUseCase> {
+            FollowPlayerUseCase(
+                followRepository = get<IFollowRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+            )
+        }
+        single<IUnfollowPlayerUseCase> {
+            UnfollowPlayerUseCase(followRepository = get<IFollowRepository>())
+        }
+        single<IGetFollowingListUseCase> {
+            GetFollowingListUseCase(
+                followRepository = get<IFollowRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+            )
+        }
+        single<IGetFollowersListUseCase> {
+            GetFollowersListUseCase(
+                followRepository = get<IFollowRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+            )
+        }
+        single<IGetFollowStatusUseCase> {
+            GetFollowStatusUseCase(followRepository = get<IFollowRepository>())
+        }
+        single<ISearchPlayerByCodeUseCase> {
+            SearchPlayerByCodeUseCase(
+                playerRepository = get<IPlayerRepository>(),
+                followRepository = get<IFollowRepository>(),
+            )
+        }
+        single<IBatchFollowStatusUseCase> {
+            BatchFollowStatusUseCase(followRepository = get<IFollowRepository>())
         }
     }
