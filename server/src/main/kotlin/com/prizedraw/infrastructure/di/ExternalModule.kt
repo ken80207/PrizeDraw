@@ -8,6 +8,7 @@ import com.prizedraw.application.ports.output.IOAuthTokenValidator
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
 import com.prizedraw.application.ports.output.IPlayerDeviceRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.ISmsService
 import com.prizedraw.application.ports.output.IStorageService
 import com.prizedraw.application.ports.output.IWithdrawalGateway
@@ -54,6 +55,8 @@ public fun externalModule(config: ApplicationConfig) =
         single<RedisPubSub> {
             RedisPubSub(get<RedisClient>())
         }
+
+        single<IPubSubService> { get<RedisPubSub>() }
 
         single<IStorageService> {
             val s3Config =
