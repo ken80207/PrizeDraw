@@ -1,5 +1,6 @@
 package com.prizedraw.infrastructure.di
 
+import com.prizedraw.application.ports.input.admin.IAddTicketBoxUseCase
 import com.prizedraw.application.ports.input.admin.ICreateAnnouncementUseCase
 import com.prizedraw.application.ports.input.admin.ICreateBannerUseCase
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
@@ -103,6 +104,7 @@ import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.application.usecases.admin.AddTicketBoxUseCase
 import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateBannerUseCase
@@ -496,6 +498,18 @@ public val useCaseModule =
             UpdateCampaignUseCase(
                 campaignRepository = get<ICampaignRepository>(),
                 auditRepository = get<IAuditRepository>(),
+            )
+        }
+
+        single<IAddTicketBoxUseCase> {
+            AddTicketBoxUseCase(
+                campaignRepository = get<ICampaignRepository>(),
+                ticketBoxRepository = get<ITicketBoxRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                favoriteRepo = get(),
+                notificationRepo = get(),
+                outboxRepo = get(),
             )
         }
 

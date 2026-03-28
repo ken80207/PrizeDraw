@@ -3,6 +3,7 @@ package com.prizedraw.api.routes
 import com.prizedraw.api.mappers.toDto
 import com.prizedraw.api.plugins.StaffPrincipal
 import com.prizedraw.api.plugins.satisfies
+import com.prizedraw.application.ports.input.admin.IAddTicketBoxUseCase
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
@@ -18,6 +19,7 @@ import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.InvalidCampaignTransitionException
 import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
 import com.prizedraw.contracts.dto.admin.ChangeCampaignStatusRequest
+import com.prizedraw.contracts.dto.admin.CreateKujiBoxRequest
 import com.prizedraw.contracts.dto.admin.CreateKujiCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.CreateUnlimitedCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.RiskSettingsUpdateRequest
@@ -220,6 +222,24 @@ private fun Route.adminCampaignMutationRoutes() {
             )
         }.fold(
             onSuccess = { call.respond(HttpStatusCode.NoContent) },
+            onFailure = { e -> call.respondError(e) },
+        )
+    }
+
+    val addTicketBox: IAddTicketBoxUseCase by inject()
+
+    post(AdminEndpoints.CAMPAIGN_BOXES) {
+        val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
+        val campaignId = call.parseCampaignId() ?: return@post
+        val boxes = call.receive<List<CreateKujiBoxRequest>>()
+        runCatching {
+            addTicketBox.execute(
+                staffId = staff.staffId,
+                campaignId = campaignId,
+                boxes = boxes,
+            )
+        }.fold(
+            onSuccess = { created -> call.respond(HttpStatusCode.Created, created.map { it.toDto() }) },
             onFailure = { e -> call.respondError(e) },
         )
     }
