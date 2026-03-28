@@ -6,7 +6,7 @@ import com.prizedraw.domain.entities.GradeTemplateItem
 import kotlinx.datetime.Clock
 import java.util.UUID
 
-private val COLOR_CODE_REGEX = Regex("^#[0-9A-Fa-f]{6,8}$")
+private val colorCodeRegex = Regex("^#[0-9A-Fa-f]{6,8}$")
 
 /**
  * Application-layer use cases for managing [GradeTemplate] presets.
@@ -138,10 +138,10 @@ public class GradeTemplateUseCases(
 
     private fun validateItemColors(items: List<ItemInput>) {
         for (item in items) {
-            require(COLOR_CODE_REGEX.matches(item.colorCode)) {
+            require(colorCodeRegex.matches(item.colorCode)) {
                 "Invalid colorCode '${item.colorCode}' for item '${item.name}'. Must match ^#[0-9A-Fa-f]{6,8}$"
             }
-            require(COLOR_CODE_REGEX.matches(item.bgColorCode)) {
+            require(colorCodeRegex.matches(item.bgColorCode)) {
                 "Invalid bgColorCode '${item.bgColorCode}' for item '${item.name}'. Must match ^#[0-9A-Fa-f]{6,8}$"
             }
         }

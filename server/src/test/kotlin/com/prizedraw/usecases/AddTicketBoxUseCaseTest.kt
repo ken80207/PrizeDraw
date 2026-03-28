@@ -9,7 +9,6 @@ import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.usecases.admin.AddTicketBoxUseCase
-import com.prizedraw.application.usecases.admin.AdminCampaignNotFoundException
 import com.prizedraw.contracts.dto.admin.CreateKujiBoxRequest
 import com.prizedraw.contracts.dto.admin.CreateKujiTicketRangeRequest
 import com.prizedraw.contracts.enums.ApprovalStatus
@@ -62,8 +61,18 @@ class AddTicketBoxUseCaseTest :
             pricePerDraw = 100,
             drawSessionSeconds = 30,
             status = status,
-            activatedAt = if (status == CampaignStatus.ACTIVE) now else null,
-            soldOutAt = if (status == CampaignStatus.SOLD_OUT) now else null,
+            activatedAt =
+                if (status == CampaignStatus.ACTIVE) {
+                    now
+                } else {
+                    null
+                },
+            soldOutAt =
+                if (status == CampaignStatus.SOLD_OUT) {
+                    now
+                } else {
+                    null
+                },
             createdByStaffId = UUID.randomUUID(),
             deletedAt = null,
             createdAt = now,
@@ -335,7 +344,8 @@ class AddTicketBoxUseCaseTest :
 
                 coEvery { campaignRepo.findKujiById(campaignId) } returns activeCampaign
                 coEvery { ticketBoxRepo.findByCampaignId(campaignId) } returns listOf(existingBox)
-                coEvery { prizeRepo.findDefinitionsByCampaign(campaignId, CampaignType.KUJI) } returns listOf(existingPrize)
+                coEvery { prizeRepo.findDefinitionsByCampaign(campaignId, CampaignType.KUJI) } returns
+                    listOf(existingPrize)
 
                 val savedBoxSlot = slot<TicketBox>()
                 coEvery { ticketBoxRepo.save(capture(savedBoxSlot)) } answers { firstArg() }

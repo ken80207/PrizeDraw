@@ -35,19 +35,21 @@ import java.util.UUID
  * [StaffRole.OPERATOR] or above (enforced inline per handler).
  *
  * Grade Template routes:
- * - GET    [AdminEndpoints.GRADE_TEMPLATES]        -- list all templates
+ * - GET [AdminEndpoints.GRADE_TEMPLATES]        -- list all templates
  * - POST   [AdminEndpoints.GRADE_TEMPLATES]        -- create template
- * - PUT    [AdminEndpoints.GRADE_TEMPLATE_BY_ID]   -- update template
+ * - PUT [AdminEndpoints.GRADE_TEMPLATE_BY_ID]   -- update template
  * - DELETE [AdminEndpoints.GRADE_TEMPLATE_BY_ID]   -- delete template
  *
  * Campaign Grade routes:
- * - GET    [AdminEndpoints.CAMPAIGN_GRADES]        -- list campaign grades
+ * - GET [AdminEndpoints.CAMPAIGN_GRADES]        -- list campaign grades
  * - POST   [AdminEndpoints.CAMPAIGN_GRADES_APPLY]  -- apply template to campaign
- * - PUT    [AdminEndpoints.CAMPAIGN_GRADES]        -- batch update campaign grades
+ * - PUT [AdminEndpoints.CAMPAIGN_GRADES]        -- batch update campaign grades
  */
 public fun Route.adminGradeRoutes() {
     adminGradeTemplateRoutes()
+    adminGradeTemplateUpdateRoutes()
     adminCampaignGradeRoutes()
+    adminCampaignGradeBatchUpdateRoute()
 }
 
 // --- Grade Template routes ---
@@ -68,14 +70,15 @@ private fun Route.adminGradeTemplateRoutes() {
             gradeTemplateUseCases.createTemplate(
                 staffId = staff.staffId.value,
                 name = req.name,
-                items = req.items.map { item ->
-                    GradeTemplateUseCases.ItemInput(
-                        name = item.name,
-                        displayOrder = item.displayOrder,
-                        colorCode = item.colorCode,
-                        bgColorCode = item.bgColorCode,
-                    )
-                },
+                items =
+                    req.items.map { item ->
+                        GradeTemplateUseCases.ItemInput(
+                            name = item.name,
+                            displayOrder = item.displayOrder,
+                            colorCode = item.colorCode,
+                            bgColorCode = item.bgColorCode,
+                        )
+                    },
             )
         }.fold(
             onSuccess = { template -> call.respond(HttpStatusCode.Created, template.toDto()) },
@@ -90,6 +93,19 @@ private fun Route.adminGradeTemplateRoutes() {
         )
     }
 
+    delete(AdminEndpoints.GRADE_TEMPLATE_BY_ID) {
+        call.requireStaff(StaffRole.OPERATOR) ?: return@delete
+        val templateId = call.parseTemplateId() ?: return@delete
+        gradeTemplateUseCases.deleteTemplate(templateId)
+        call.respond(HttpStatusCode.NoContent)
+    }
+}
+
+// --- Grade Template update route ---
+
+private fun Route.adminGradeTemplateUpdateRoutes() {
+    val gradeTemplateUseCases: GradeTemplateUseCases by inject()
+
     put(AdminEndpoints.GRADE_TEMPLATE_BY_ID) {
         call.requireStaff(StaffRole.OPERATOR) ?: return@put
         val templateId = call.parseTemplateId() ?: return@put
@@ -98,14 +114,15 @@ private fun Route.adminGradeTemplateRoutes() {
             gradeTemplateUseCases.updateTemplate(
                 id = templateId,
                 name = req.name,
-                items = req.items.map { item ->
-                    GradeTemplateUseCases.ItemInput(
-                        name = item.name,
-                        displayOrder = item.displayOrder,
-                        colorCode = item.colorCode,
-                        bgColorCode = item.bgColorCode,
-                    )
-                },
+                items =
+                    req.items.map { item ->
+                        GradeTemplateUseCases.ItemInput(
+                            name = item.name,
+                            displayOrder = item.displayOrder,
+                            colorCode = item.colorCode,
+                            bgColorCode = item.bgColorCode,
+                        )
+                    },
             )
         }.fold(
             onSuccess = { template ->
@@ -124,13 +141,6 @@ private fun Route.adminGradeTemplateRoutes() {
                 }
             },
         )
-    }
-
-    delete(AdminEndpoints.GRADE_TEMPLATE_BY_ID) {
-        call.requireStaff(StaffRole.OPERATOR) ?: return@delete
-        val templateId = call.parseTemplateId() ?: return@delete
-        gradeTemplateUseCases.deleteTemplate(templateId)
-        call.respond(HttpStatusCode.NoContent)
     }
 }
 
@@ -171,6 +181,12 @@ private fun Route.adminCampaignGradeRoutes() {
             },
         )
     }
+}
+
+// --- Campaign Grade batch update route ---
+
+private fun Route.adminCampaignGradeBatchUpdateRoute() {
+    val campaignGradeUseCases: CampaignGradeUseCases by inject()
 
     put(AdminEndpoints.CAMPAIGN_GRADES) {
         call.requireStaff(StaffRole.OPERATOR) ?: return@put
@@ -179,15 +195,16 @@ private fun Route.adminCampaignGradeRoutes() {
         runCatching {
             campaignGradeUseCases.batchUpdate(
                 campaignId = campaignId,
-                grades = req.grades.map { g ->
-                    CampaignGradeUseCases.GradeInput(
-                        id = g.id,
-                        name = g.name,
-                        displayOrder = g.displayOrder,
-                        colorCode = g.colorCode,
-                        bgColorCode = g.bgColorCode,
-                    )
-                },
+                grades =
+                    req.grades.map { g ->
+                        CampaignGradeUseCases.GradeInput(
+                            id = g.id,
+                            name = g.name,
+                            displayOrder = g.displayOrder,
+                            colorCode = g.colorCode,
+                            bgColorCode = g.bgColorCode,
+                        )
+                    },
             )
         }.fold(
             onSuccess = { grades -> call.respond(HttpStatusCode.OK, grades.map { it.toDto() }) },
@@ -253,15 +270,16 @@ private fun GradeTemplate.toDto(): GradeTemplateDto =
     GradeTemplateDto(
         id = id.toString(),
         name = name,
-        items = items.map { item ->
-            GradeTemplateItemDto(
-                id = item.id.toString(),
-                name = item.name,
-                displayOrder = item.displayOrder,
-                colorCode = item.colorCode,
-                bgColorCode = item.bgColorCode,
-            )
-        },
+        items =
+            items.map { item ->
+                GradeTemplateItemDto(
+                    id = item.id.toString(),
+                    name = item.name,
+                    displayOrder = item.displayOrder,
+                    colorCode = item.colorCode,
+                    bgColorCode = item.bgColorCode,
+                )
+            },
     )
 
 private fun CampaignGrade.toDto(): CampaignGradeDto =

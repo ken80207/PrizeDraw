@@ -77,6 +77,7 @@ public fun Route.adminCampaignRoutes() {
     adminCampaignCreateRoutes()
     adminCampaignQueryRoutes()
     adminCampaignMutationRoutes()
+    adminCampaignBoxRoutes()
     adminCampaignPrizeAndRiskRoutes()
 }
 
@@ -225,7 +226,11 @@ private fun Route.adminCampaignMutationRoutes() {
             onFailure = { e -> call.respondError(e) },
         )
     }
+}
 
+// --- Ticket box (restock) routes ---
+
+private fun Route.adminCampaignBoxRoutes() {
     val addTicketBox: IAddTicketBoxUseCase by inject()
 
     post(AdminEndpoints.CAMPAIGN_BOXES) {

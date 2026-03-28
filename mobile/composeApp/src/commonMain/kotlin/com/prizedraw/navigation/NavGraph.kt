@@ -33,8 +33,8 @@ import com.prizedraw.screens.draw.DrawRevealScreen
 import com.prizedraw.screens.exchange.ExchangeCounterProposeScreen
 import com.prizedraw.screens.exchange.ExchangeOfferScreen
 import com.prizedraw.screens.home.HomeScreen
-import com.prizedraw.screens.onboarding.OnboardingScreen
 import com.prizedraw.screens.leaderboard.LeaderboardScreen
+import com.prizedraw.screens.onboarding.OnboardingScreen
 import com.prizedraw.screens.prize.MyPrizesScreen
 import com.prizedraw.screens.settings.SettingsScreen
 import com.prizedraw.screens.status.AnnouncementBanner

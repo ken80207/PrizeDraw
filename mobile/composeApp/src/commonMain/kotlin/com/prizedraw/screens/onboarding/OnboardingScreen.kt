@@ -16,9 +16,7 @@ import androidx.compose.ui.Modifier
  * @param onComplete Called when onboarding finishes (or is skipped).
  */
 @Composable
-public fun OnboardingScreen(
-    onComplete: () -> Unit,
-) {
+public fun OnboardingScreen(onComplete: () -> Unit) {
     // TODO: Replace with actual onboarding UI (HorizontalPager walkthrough)
     LaunchedEffect(Unit) {
         onComplete()

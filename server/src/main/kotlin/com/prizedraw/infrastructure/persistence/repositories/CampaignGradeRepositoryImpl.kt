@@ -19,7 +19,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 public class CampaignGradeRepositoryImpl : ICampaignGradeRepository {
-
     override suspend fun findByCampaignId(campaignId: CampaignId): List<CampaignGrade> =
         newSuspendedTransaction {
             CampaignGradesTable
@@ -63,7 +62,10 @@ public class CampaignGradeRepositoryImpl : ICampaignGradeRepository {
                 .map { it.toCampaignGrade() }
         }
 
-    override suspend fun replaceAll(campaignId: CampaignId, grades: List<CampaignGrade>): List<CampaignGrade> =
+    override suspend fun replaceAll(
+        campaignId: CampaignId,
+        grades: List<CampaignGrade>,
+    ): List<CampaignGrade> =
         newSuspendedTransaction {
             CampaignGradesTable.deleteWhere {
                 (kujiCampaignId eq campaignId.value) or
@@ -93,7 +95,9 @@ public class CampaignGradeRepositoryImpl : ICampaignGradeRepository {
     override suspend fun delete(id: CampaignGradeId): Boolean =
         newSuspendedTransaction {
             val refs = countPrizeReferences(id)
-            if (refs > 0) return@newSuspendedTransaction false
+            if (refs > 0) {
+                return@newSuspendedTransaction false
+            }
             CampaignGradesTable.deleteWhere { CampaignGradesTable.id eq id.value }
             true
         }

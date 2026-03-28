@@ -10,7 +10,7 @@ import com.prizedraw.domain.valueobjects.CampaignId
 import kotlinx.datetime.Clock
 import java.util.UUID
 
-private val COLOR_CODE_REGEX = Regex("^#[0-9A-Fa-f]{6,8}$")
+private val colorCodeRegex = Regex("^#[0-9A-Fa-f]{6,8}$")
 
 /**
  * Application-layer use cases for managing campaign-scoped [CampaignGrade] entries.
@@ -199,11 +199,23 @@ public class CampaignGradeUseCases(
         colorCode: String,
         bgColorCode: String,
         now: kotlinx.datetime.Instant,
-    ): CampaignGrade =
-        CampaignGrade(
+    ): CampaignGrade {
+        val kujiCampaignId =
+            if (isKuji) {
+                campaignId
+            } else {
+                null
+            }
+        val unlimitedCampaignId =
+            if (!isKuji) {
+                campaignId
+            } else {
+                null
+            }
+        return CampaignGrade(
             id = gradeId,
-            kujiCampaignId = if (isKuji) campaignId else null,
-            unlimitedCampaignId = if (!isKuji) campaignId else null,
+            kujiCampaignId = kujiCampaignId,
+            unlimitedCampaignId = unlimitedCampaignId,
             name = name.trim(),
             displayOrder = displayOrder,
             colorCode = colorCode,
@@ -211,13 +223,14 @@ public class CampaignGradeUseCases(
             createdAt = now,
             updatedAt = now,
         )
+    }
 
     private fun validateGradeColors(grades: List<GradeInput>) {
         for (grade in grades) {
-            require(COLOR_CODE_REGEX.matches(grade.colorCode)) {
+            require(colorCodeRegex.matches(grade.colorCode)) {
                 "Invalid colorCode '${grade.colorCode}' for grade '${grade.name}'. Must match ^#[0-9A-Fa-f]{6,8}$"
             }
-            require(COLOR_CODE_REGEX.matches(grade.bgColorCode)) {
+            require(colorCodeRegex.matches(grade.bgColorCode)) {
                 "Invalid bgColorCode '${grade.bgColorCode}' for grade '${grade.name}'. Must match ^#[0-9A-Fa-f]{6,8}$"
             }
         }

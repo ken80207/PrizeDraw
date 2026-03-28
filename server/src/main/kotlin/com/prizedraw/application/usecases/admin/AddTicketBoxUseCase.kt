@@ -14,6 +14,7 @@ import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
+import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.Notification
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.TicketBox
@@ -50,7 +51,6 @@ public class AddTicketBoxUseCase(
     private val notificationRepo: INotificationRepository,
     private val outboxRepo: IOutboxRepository,
 ) : IAddTicketBoxUseCase {
-
     override suspend fun execute(
         staffId: StaffId,
         campaignId: CampaignId,
@@ -68,17 +68,39 @@ public class AddTicketBoxUseCase(
         }
 
         val wasSoldOut = campaign.status == CampaignStatus.SOLD_OUT
-
         val now = Clock.System.now()
 
-        // Determine starting displayOrder for new boxes
-        val existingBoxes = ticketBoxRepository.findByCampaignId(campaignId)
-        val nextBoxOrder = if (existingBoxes.isEmpty()) 0 else existingBoxes.maxOf { it.displayOrder } + 1
+        val createdBoxes = createBoxesAndPrizes(campaignId, boxes, now)
 
-        // Determine starting displayOrder for new prize definitions
+        if (wasSoldOut) {
+            handleRestock(campaign, campaignId, now)
+        }
+
+        recordAudit(staffId, campaignId, boxes.size, now)
+
+        return createdBoxes
+    }
+
+    private suspend fun createBoxesAndPrizes(
+        campaignId: CampaignId,
+        boxes: List<CreateKujiBoxRequest>,
+        now: kotlinx.datetime.Instant,
+    ): List<TicketBox> {
+        val existingBoxes = ticketBoxRepository.findByCampaignId(campaignId)
+        val nextBoxOrder =
+            if (existingBoxes.isEmpty()) {
+                0
+            } else {
+                existingBoxes.maxOf { it.displayOrder } + 1
+            }
+
         val existingPrizes = prizeRepository.findDefinitionsByCampaign(campaignId, CampaignType.KUJI)
         var prizeDisplayOrder =
-            if (existingPrizes.isEmpty()) 0 else existingPrizes.maxOf { it.displayOrder } + 1
+            if (existingPrizes.isEmpty()) {
+                0
+            } else {
+                existingPrizes.maxOf { it.displayOrder } + 1
+            }
 
         val createdBoxes = mutableListOf<TicketBox>()
         for ((boxIndex, boxReq) in boxes.withIndex()) {
@@ -97,50 +119,62 @@ public class AddTicketBoxUseCase(
                 )
             val savedBox = ticketBoxRepository.save(ticketBox)
             createdBoxes.add(savedBox)
-
-            for (rangeReq in boxReq.ticketRanges) {
-                val ticketCount = rangeReq.rangeEnd - rangeReq.rangeStart + 1
-                require(ticketCount > 0) {
-                    "Invalid ticket range: ${rangeReq.rangeStart}-${rangeReq.rangeEnd}"
-                }
-
-                val photos = listOfNotNull(rangeReq.photoUrl)
-                val prizeDefinition =
-                    PrizeDefinition(
-                        id = PrizeDefinitionId(UUID.randomUUID()),
-                        kujiCampaignId = campaignId,
-                        unlimitedCampaignId = null,
-                        grade = rangeReq.grade,
-                        name = rangeReq.prizeName,
-                        photos = photos,
-                        prizeValue = rangeReq.prizeValue,
-                        buybackPrice = 0,
-                        buybackEnabled = true,
-                        probabilityBps = null,
-                        ticketCount = ticketCount,
-                        displayOrder = prizeDisplayOrder++,
-                        createdAt = now,
-                        updatedAt = now,
-                    )
-                prizeRepository.saveDefinition(prizeDefinition)
+            savePrizeDefinitions(campaignId, boxReq, prizeDisplayOrder, now).also { count ->
+                prizeDisplayOrder += count
             }
         }
+        return createdBoxes
+    }
 
-        if (wasSoldOut) {
-            val restockedCampaign =
-                campaign.copy(
-                    status = CampaignStatus.ACTIVE,
-                    soldOutAt = null,
-                    lowStockNotifiedAt = null,
+    private suspend fun savePrizeDefinitions(
+        campaignId: CampaignId,
+        boxReq: CreateKujiBoxRequest,
+        startDisplayOrder: Int,
+        now: kotlinx.datetime.Instant,
+    ): Int {
+        var count = 0
+        for (rangeReq in boxReq.ticketRanges) {
+            val ticketCount = rangeReq.rangeEnd - rangeReq.rangeStart + 1
+            require(ticketCount > 0) {
+                "Invalid ticket range: ${rangeReq.rangeStart}-${rangeReq.rangeEnd}"
+            }
+            val prizeDefinition =
+                PrizeDefinition(
+                    id = PrizeDefinitionId(UUID.randomUUID()),
+                    kujiCampaignId = campaignId,
+                    unlimitedCampaignId = null,
+                    grade = rangeReq.grade,
+                    name = rangeReq.prizeName,
+                    photos = listOfNotNull(rangeReq.photoUrl),
+                    prizeValue = rangeReq.prizeValue,
+                    buybackPrice = 0,
+                    buybackEnabled = true,
+                    probabilityBps = null,
+                    ticketCount = ticketCount,
+                    displayOrder = startDisplayOrder + count,
+                    createdAt = now,
                     updatedAt = now,
                 )
-            campaignRepository.saveKuji(restockedCampaign)
-            notifyFavoritingPlayers(campaignId, campaign.title, now)
+            prizeRepository.saveDefinition(prizeDefinition)
+            count++
         }
+        return count
+    }
 
-        recordAudit(staffId, campaignId, boxes.size, now)
-
-        return createdBoxes
+    private suspend fun handleRestock(
+        campaign: KujiCampaign,
+        campaignId: CampaignId,
+        now: kotlinx.datetime.Instant,
+    ) {
+        val restockedCampaign =
+            campaign.copy(
+                status = CampaignStatus.ACTIVE,
+                soldOutAt = null,
+                lowStockNotifiedAt = null,
+                updatedAt = now,
+            )
+        campaignRepository.saveKuji(restockedCampaign)
+        notifyFavoritingPlayers(campaignId, campaign.title, now)
     }
 
     private suspend fun notifyFavoritingPlayers(
@@ -149,7 +183,9 @@ public class AddTicketBoxUseCase(
         now: kotlinx.datetime.Instant,
     ) {
         val playerIds = favoriteRepo.findPlayerIdsByCampaign(CampaignType.KUJI, campaignId)
-        if (playerIds.isEmpty()) return
+        if (playerIds.isEmpty()) {
+            return
+        }
 
         val epochMillis = now.toEpochMilliseconds()
         val notifications =
