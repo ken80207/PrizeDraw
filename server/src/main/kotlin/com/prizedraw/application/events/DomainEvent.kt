@@ -210,6 +210,18 @@ public data class FavoriteCampaignLowStock(
     override val aggregateId: UUID = campaignId
 }
 
+/** Emitted when a sold-out kuji campaign is restocked and a favoriting player should be notified. */
+public data class FavoriteCampaignRestocked(
+    val campaignId: UUID,
+    val campaignType: String,
+    val campaignTitle: String,
+    val playerId: UUID,
+) : DomainEvent {
+    override val eventType: String = "favorite.campaign_restocked"
+    override val aggregateType: String = "Campaign"
+    override val aggregateId: UUID = campaignId
+}
+
 /** Emitted when a player starts drawing; triggers fan-out to followers. */
 public data class FollowingDrawStarted(
     val playerId: UUID,
