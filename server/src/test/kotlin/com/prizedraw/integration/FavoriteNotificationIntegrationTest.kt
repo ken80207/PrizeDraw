@@ -188,7 +188,12 @@ class FavoriteNotificationIntegrationTest :
                 val notifications = notificationsSlot.captured
                 notifications shouldHaveSize 2
                 notifications.all { it.eventType == "favorite.campaign_activated" } shouldBe true
-                notifications.all { it.dedupKey?.startsWith("favorite.campaign_activated:${campaignId.value}:") == true } shouldBe true
+                notifications.all {
+                    it.dedupKey?.startsWith(
+                        "favorite.campaign_activated:${campaignId.value}:"
+                    ) == true
+                } shouldBe
+                    true
                 notifications.map { it.playerId }.toSet() shouldBe setOf(player1, player2)
             }
 

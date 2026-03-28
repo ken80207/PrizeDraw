@@ -2,7 +2,6 @@ package com.prizedraw.integration
 
 import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.contracts.enums.CampaignType
-import com.prizedraw.domain.valueobjects.CampaignId
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearAllMocks

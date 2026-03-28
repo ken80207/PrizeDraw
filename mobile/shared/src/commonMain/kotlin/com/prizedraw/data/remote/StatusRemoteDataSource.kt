@@ -29,6 +29,5 @@ public class StatusRemoteDataSource(
      * @throws io.ktor.client.plugins.ClientRequestException on 4xx responses.
      * @throws io.ktor.client.plugins.ServerResponseException on 5xx responses.
      */
-    public suspend fun fetchServerStatus(): ServerStatusResponse =
-        httpClient.get(StatusEndpoints.STATUS).body()
+    public suspend fun fetchServerStatus(): ServerStatusResponse = httpClient.get(StatusEndpoints.STATUS).body()
 }

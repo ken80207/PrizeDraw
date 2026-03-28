@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlin.math.abs
 import kotlin.math.min
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,18 +79,22 @@ private val PERF_SHADOW = Color(0x40000000)
 private val PERF_HIGHLIGHT = Color(0x99FFFFFF)
 
 // ── Grade badge colours ───────────────────────────────────────────────────────
-private data class GradeColor(val bg: Color, val text: Color)
-
-private val GRADE_COLORS: Map<String, GradeColor> = mapOf(
-    "A賞"    to GradeColor(Color(0xFFEF4444), Color.White),
-    "B賞"    to GradeColor(Color(0xFFF97316), Color.White),
-    "C賞"    to GradeColor(Color(0xFF3B82F6), Color.White),
-    "D賞"    to GradeColor(Color(0xFF22C55E), Color.White),
-    "E賞"    to GradeColor(Color(0xFFA855F7), Color.White),
-    "F賞"    to GradeColor(Color(0xFFEC4899), Color.White),
-    "Last賞" to GradeColor(Color(0xFFF59E0B), Color.White),
-    "LAST賞" to GradeColor(Color(0xFFF59E0B), Color.White),
+private data class GradeColor(
+    val bg: Color,
+    val text: Color,
 )
+
+private val GRADE_COLORS: Map<String, GradeColor> =
+    mapOf(
+        "A賞" to GradeColor(Color(0xFFEF4444), Color.White),
+        "B賞" to GradeColor(Color(0xFFF97316), Color.White),
+        "C賞" to GradeColor(Color(0xFF3B82F6), Color.White),
+        "D賞" to GradeColor(Color(0xFF22C55E), Color.White),
+        "E賞" to GradeColor(Color(0xFFA855F7), Color.White),
+        "F賞" to GradeColor(Color(0xFFEC4899), Color.White),
+        "Last賞" to GradeColor(Color(0xFFF59E0B), Color.White),
+        "LAST賞" to GradeColor(Color(0xFFF59E0B), Color.White),
+    )
 private val DEFAULT_GRADE_COLOR = GradeColor(Color(0xFF6B7280), Color.White)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,10 +130,11 @@ private fun tearXFromProgress(
     progress: Float,
     direction: TearDirection,
     W: Float,
-): Float = when (direction) {
-    TearDirection.LEFT  -> progress * W
-    TearDirection.RIGHT -> W - progress * W
-}
+): Float =
+    when (direction) {
+        TearDirection.LEFT -> progress * W
+        TearDirection.RIGHT -> W - progress * W
+    }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Drawing helpers
@@ -149,19 +153,19 @@ private fun DrawScope.drawTicketBody(
     prizeName: String?,
     textMeasurer: androidx.compose.ui.text.TextMeasurer,
 ) {
-    val W = size.width
-    val H = size.height
+    val w = size.width
+    val h = size.height
 
     // ── Card background ───────────────────────────────────────────────────
     drawRect(color = TICKET_BG)
 
     // ── Subtle horizontal texture lines ──────────────────────────────────
     var lineY = coverH + 8f
-    while (lineY < H) {
+    while (lineY < h) {
         drawLine(
             color = TICKET_LINE_COLOR,
             start = Offset(8f, lineY),
-            end = Offset(W - 8f, lineY),
+            end = Offset(w - 8f, lineY),
             strokeWidth = 1f,
         )
         lineY += 6f
@@ -174,7 +178,7 @@ private fun DrawScope.drawTicketBody(
     drawLine(
         color = PERF_SHADOW,
         start = Offset(4f, coverH - 0.5f),
-        end = Offset(W - 4f, coverH - 0.5f),
+        end = Offset(w - 4f, coverH - 0.5f),
         strokeWidth = 1f,
         pathEffect = dashEffect,
     )
@@ -182,77 +186,89 @@ private fun DrawScope.drawTicketBody(
     drawLine(
         color = PERF_HIGHLIGHT,
         start = Offset(4f, coverH + 0.5f),
-        end = Offset(W - 4f, coverH + 0.5f),
+        end = Offset(w - 4f, coverH + 0.5f),
         strokeWidth = 1f,
         pathEffect = dashEffect,
     )
 
     // ── Ticket number ─────────────────────────────────────────────────────
-    val numResult = textMeasurer.measure(
-        text = "No. 一番賞",
-        style = TextStyle(
-            color = Color(0xFF999080),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-        ),
-    )
+    val numResult =
+        textMeasurer.measure(
+            text = "No. 一番賞",
+            style =
+                TextStyle(
+                    color = Color(0xFF999080),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+        )
     drawText(
         textLayoutResult = numResult,
-        topLeft = Offset(
-            x = (W - numResult.size.width) / 2f,
-            y = coverH + 16f,
-        ),
+        topLeft =
+            Offset(
+                x = (w - numResult.size.width) / 2f,
+                y = coverH + 16f,
+            ),
     )
 
     // ── Prize grade badge ─────────────────────────────────────────────────
     if (prizeGrade != null) {
         val colors = GRADE_COLORS[prizeGrade] ?: DEFAULT_GRADE_COLOR
-        val badgeResult = textMeasurer.measure(
-            text = prizeGrade,
-            style = TextStyle(
-                color = colors.text,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
+        val badgeResult =
+            textMeasurer.measure(
+                text = prizeGrade,
+                style =
+                    TextStyle(
+                        color = colors.text,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+            )
         val badgeW = badgeResult.size.width + 28f
         val badgeH = badgeResult.size.height + 10f
-        val badgeX = (W - badgeW) / 2f
-        val badgeY = H - badgeH - (if (prizeName != null) 42f else 20f)
+        val badgeX = (w - badgeW) / 2f
+        val badgeY = h - badgeH - (if (prizeName != null) 42f else 20f)
 
-        val badgePath = Path().apply {
-            addRoundRect(RoundRect(
-                rect = Rect(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH),
-                cornerRadius = CornerRadius(6f, 6f),
-            ))
-        }
+        val badgePath =
+            Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH),
+                        cornerRadius = CornerRadius(6f, 6f),
+                    )
+                )
+            }
         drawPath(path = badgePath, color = colors.bg)
         drawText(
             textLayoutResult = badgeResult,
-            topLeft = Offset(
-                x = (W - badgeResult.size.width) / 2f,
-                y = badgeY + 5f,
-            ),
+            topLeft =
+                Offset(
+                    x = (w - badgeResult.size.width) / 2f,
+                    y = badgeY + 5f,
+                ),
         )
     }
 
     // ── Prize name ────────────────────────────────────────────────────────
     if (prizeName != null) {
-        val nameResult = textMeasurer.measure(
-            text = prizeName,
-            style = TextStyle(
-                color = Color(0xFF5C4A30),
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-            ),
-        )
-        val nameY = H - nameResult.size.height - 12f
+        val nameResult =
+            textMeasurer.measure(
+                text = prizeName,
+                style =
+                    TextStyle(
+                        color = Color(0xFF5C4A30),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                    ),
+            )
+        val nameY = h - nameResult.size.height - 12f
         drawText(
             textLayoutResult = nameResult,
-            topLeft = Offset(
-                x = (W - nameResult.size.width) / 2f,
-                y = nameY,
-            ),
+            topLeft =
+                Offset(
+                    x = (w - nameResult.size.width) / 2f,
+                    y = nameY,
+                ),
         )
     }
 }
@@ -270,88 +286,98 @@ private fun DrawScope.drawCoverStrip(
     shimmerPhase: Float,
     textMeasurer: androidx.compose.ui.text.TextMeasurer,
 ) {
-    val W = size.width
+    val w = size.width
     if (clipEndX <= clipStartX) return
 
     // Clip to the un-torn portion
-    val clipPath = Path().apply {
-        addRect(Rect(clipStartX, 0f, clipEndX, coverH))
-    }
+    val clipPath =
+        Path().apply {
+            addRect(Rect(clipStartX, 0f, clipEndX, coverH))
+        }
     clipPath(clipPath) {
         // ── Base metallic gradient (horizontal) ──────────────────────────
         drawRect(
-            brush = Brush.horizontalGradient(
-                colorStops = arrayOf(
-                    0.00f to COVER_C1,
-                    0.20f to COVER_C2,
-                    0.45f to COVER_C3,
-                    0.70f to COVER_C4,
-                    1.00f to COVER_C5,
+            brush =
+                Brush.horizontalGradient(
+                    colorStops =
+                        arrayOf(
+                            0.00f to COVER_C1,
+                            0.20f to COVER_C2,
+                            0.45f to COVER_C3,
+                            0.70f to COVER_C4,
+                            1.00f to COVER_C5,
+                        ),
+                    startX = 0f,
+                    endX = w,
                 ),
-                startX = 0f,
-                endX = W,
-            ),
-            size = Size(W, coverH),
+            size = Size(w, coverH),
         )
 
         // ── Vertical sheen ────────────────────────────────────────────────
         drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color(0x59FFFFFF),  // top highlight
-                    Color(0x14FFFFFF),  // mid
-                    Color(0x26000000),  // bottom shadow
+            brush =
+                Brush.verticalGradient(
+                    colors =
+                        listOf(
+                            Color(0x59FFFFFF), // top highlight
+                            Color(0x14FFFFFF), // mid
+                            Color(0x26000000), // bottom shadow
+                        ),
+                    startY = 0f,
+                    endY = coverH,
                 ),
-                startY = 0f,
-                endY = coverH,
-            ),
-            size = Size(W, coverH),
+            size = Size(w, coverH),
         )
 
         // ── Shimmer sweep ─────────────────────────────────────────────────
-        val shimX = shimmerPhase * (W + 80f) - 40f
+        val shimX = shimmerPhase * (w + 80f) - 40f
         drawRect(
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color(0x8CFFFFFF),
-                    Color.Transparent,
+            brush =
+                Brush.horizontalGradient(
+                    colors =
+                        listOf(
+                            Color.Transparent,
+                            Color(0x8CFFFFFF),
+                            Color.Transparent,
+                        ),
+                    startX = shimX - 40f,
+                    endX = shimX + 40f,
                 ),
-                startX = shimX - 40f,
-                endX = shimX + 40f,
-            ),
-            size = Size(W, coverH),
+            size = Size(w, coverH),
         )
 
         // ── Cover text ────────────────────────────────────────────────────
-        val textResult = textMeasurer.measure(
-            text = "一番賞　封條",
-            style = TextStyle(
-                color = Color(0xB3504030),
-                fontSize = min(coverH * 0.35f, 14f).sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
+        val textResult =
+            textMeasurer.measure(
+                text = "一番賞　封條",
+                style =
+                    TextStyle(
+                        color = Color(0xB3504030),
+                        fontSize = min(coverH * 0.35f, 14f).sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+            )
         drawText(
             textLayoutResult = textResult,
-            topLeft = Offset(
-                x = (W - textResult.size.width) / 2f,
-                y = (coverH - textResult.size.height) / 2f,
-            ),
+            topLeft =
+                Offset(
+                    x = (w - textResult.size.width) / 2f,
+                    y = (coverH - textResult.size.height) / 2f,
+                ),
         )
 
         // ── Top border highlight ──────────────────────────────────────────
         drawRect(
             color = Color(0x8CFFFFFF),
             topLeft = Offset(0f, 0f),
-            size = Size(W, 2f),
+            size = Size(w, 2f),
         )
 
         // ── Bottom border shadow ──────────────────────────────────────────
         drawRect(
             color = Color(0x33000000),
             topLeft = Offset(0f, coverH - 2f),
-            size = Size(W, 2f),
+            size = Size(w, 2f),
         )
     }
 }
@@ -377,29 +403,33 @@ private fun DrawScope.drawCurlEffect(
 
     // ── Drop shadow below the curl ────────────────────────────────────────
     drawRect(
-        brush = Brush.linearGradient(
-            colors = listOf(Color(0x33000000), Color.Transparent),
-            start = Offset(tearX, coverH),
-            end = Offset(tearX - curlSign * 18f, coverH + 14f),
-        ),
-        topLeft = Offset(
-            x = if (direction == TearDirection.LEFT) tearX - 20f else tearX,
-            y = coverH - 4f,
-        ),
+        brush =
+            Brush.linearGradient(
+                colors = listOf(Color(0x33000000), Color.Transparent),
+                start = Offset(tearX, coverH),
+                end = Offset(tearX - curlSign * 18f, coverH + 14f),
+            ),
+        topLeft =
+            Offset(
+                x = if (direction == TearDirection.LEFT) tearX - 20f else tearX,
+                y = coverH - 4f,
+            ),
         size = Size(20f, 18f),
         alpha = 0.22f * alpha,
     )
 
     // ── Back-of-cover colour ──────────────────────────────────────────────
-    val backBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFD8D8D8),
-            Color(0xFFEFEFEF),
-            Color(0x4CF0F0F0),
-        ),
-        start = Offset(tearX, coverH),
-        end = Offset(tearX - curlSign * curlExtent, coverH - CURL_HEIGHT),
-    )
+    val backBrush =
+        Brush.linearGradient(
+            colors =
+                listOf(
+                    Color(0xFFD8D8D8),
+                    Color(0xFFEFEFEF),
+                    Color(0x4CF0F0F0),
+                ),
+            start = Offset(tearX, coverH),
+            end = Offset(tearX - curlSign * curlExtent, coverH - CURL_HEIGHT),
+        )
 
     // Control point and end point for the quadratic bezier curl shape
     val cp1x = tearX - curlSign * curlExtent * 0.4f
@@ -408,28 +438,31 @@ private fun DrawScope.drawCurlEffect(
     val endY = coverH - CURL_HEIGHT * 0.8f
     val stripW = coverH * 0.85f
 
-    val curlPath = Path().apply {
-        moveTo(tearX, coverH)
-        quadraticTo(cp1x, cp1y, endX, endY)
-        lineTo(endX, endY - stripW * 0.25f)
-        quadraticTo(cp1x, cp1y - stripW * 0.3f, tearX, coverH - stripW * 0.15f)
-        close()
-    }
+    val curlPath =
+        Path().apply {
+            moveTo(tearX, coverH)
+            quadraticTo(cp1x, cp1y, endX, endY)
+            lineTo(endX, endY - stripW * 0.25f)
+            quadraticTo(cp1x, cp1y - stripW * 0.3f, tearX, coverH - stripW * 0.15f)
+            close()
+        }
 
     drawPath(path = curlPath, brush = backBrush, alpha = alpha * 0.88f)
 
     // ── Edge highlight on the curl ────────────────────────────────────────
-    val curlEdgePath = Path().apply {
-        moveTo(tearX, coverH)
-        quadraticTo(cp1x, cp1y, endX, endY)
-    }
+    val curlEdgePath =
+        Path().apply {
+            moveTo(tearX, coverH)
+            quadraticTo(cp1x, cp1y, endX, endY)
+        }
     drawPath(
         path = curlEdgePath,
         color = Color(0xB3FFFFFF),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = 1.5f,
-            cap = StrokeCap.Round,
-        ),
+        style =
+            androidx.compose.ui.graphics.drawscope.Stroke(
+                width = 1.5f,
+                cap = StrokeCap.Round,
+            ),
         alpha = 0.4f * alpha,
     )
 }
@@ -546,8 +579,12 @@ public fun TearAnimation(
         tearOffTransX.snapTo(0f)
         tearOffAlpha.snapTo(1f)
 
-        val targetX = if (tearDirection == TearDirection.LEFT) -canvasWidth * 1.2f
-                      else canvasWidth * 1.2f
+        val targetX =
+            if (tearDirection == TearDirection.LEFT) {
+                -canvasWidth * 1.2f
+            } else {
+                canvasWidth * 1.2f
+            }
 
         coroutineScope {
             listOf(
@@ -583,69 +620,73 @@ public fun TearAnimation(
 
         if (!revealed) {
             // Effective values (spring-back overrides live drag values)
-            val effectiveProgress = when {
-                snappingBack -> springProgress.value
-                else         -> progress
-            }
+            val effectiveProgress =
+                when {
+                    snappingBack -> springProgress.value
+                    else -> progress
+                }
 
             Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(tearingOff, snappingBack) {
-                        if (tearingOff || snappingBack) return@pointerInput
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                val W = size.width.toFloat()
-                                val edgeZone = W * EDGE_ZONE_RATIO
-                                // Only begin a tear when touching near the left or right edge
-                                val side = when {
-                                    offset.x <= edgeZone      -> TearDirection.LEFT
-                                    offset.x >= W - edgeZone  -> TearDirection.RIGHT
-                                    else                       -> null
-                                }
-                                if (side == null) return@detectDragGestures
-                                isDragging = true
-                                tearDirection = side
-                                startX = offset.x
-                                currentX = offset.x
-                                progress = 0f
-                                canvasWidth = W
-                                hasInteracted = true
-                                onProgress?.invoke(0f)
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                if (!isDragging) return@detectDragGestures
-                                currentX = change.position.x
-                                val p = computeTearProgress(
-                                    startX = startX,
-                                    currentX = currentX,
-                                    direction = tearDirection,
-                                    canvasW = canvasWidth,
-                                )
-                                progress = p
-                                onProgress?.invoke(p)
-                            },
-                            onDragEnd = {
-                                isDragging = false
-                                if (progress >= REVEAL_THRESHOLD) {
-                                    tearingOff = true
-                                } else {
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(tearingOff, snappingBack) {
+                            if (tearingOff || snappingBack) return@pointerInput
+                            detectDragGestures(
+                                onDragStart = { offset ->
+                                    val w = size.width.toFloat()
+                                    val edgeZone = w * EDGE_ZONE_RATIO
+                                    // Only begin a tear when touching near the left or right edge
+                                    val side =
+                                        when {
+                                            offset.x <= edgeZone -> TearDirection.LEFT
+                                            offset.x >= w - edgeZone -> TearDirection.RIGHT
+                                            else -> null
+                                        }
+                                    if (side == null) return@detectDragGestures
+                                    isDragging = true
+                                    tearDirection = side
+                                    startX = offset.x
+                                    currentX = offset.x
+                                    progress = 0f
+                                    canvasWidth = w
+                                    hasInteracted = true
+                                    onProgress?.invoke(0f)
+                                },
+                                onDrag = { change, _ ->
+                                    change.consume()
+                                    if (!isDragging) return@detectDragGestures
+                                    currentX = change.position.x
+                                    val p =
+                                        computeTearProgress(
+                                            startX = startX,
+                                            currentX = currentX,
+                                            direction = tearDirection,
+                                            canvasW = canvasWidth,
+                                        )
+                                    progress = p
+                                    onProgress?.invoke(p)
+                                },
+                                onDragEnd = {
+                                    isDragging = false
+                                    if (progress >= REVEAL_THRESHOLD) {
+                                        tearingOff = true
+                                    } else {
+                                        snappingBack = true
+                                    }
+                                },
+                                onDragCancel = {
+                                    isDragging = false
                                     snappingBack = true
-                                }
-                            },
-                            onDragCancel = {
-                                isDragging = false
-                                snappingBack = true
-                            },
-                        )
-                    },
+                                },
+                            )
+                        },
             ) {
-                val W = size.width
-                val H = size.height
-                val coverH = H * COVER_RATIO
+                val w = size.width
+                val h = size.height
+                val coverH = h * COVER_RATIO
 
-                if (canvasWidth == 0f) canvasWidth = W
+                if (canvasWidth == 0f) canvasWidth = w
 
                 // ── 1. Ticket body ─────────────────────────────────────────
                 drawTicketBody(
@@ -657,12 +698,13 @@ public fun TearAnimation(
 
                 if (effectiveProgress < 1f) {
                     // ── 2. Cover strip (un-torn portion) ──────────────────
-                    val tearX = tearXFromProgress(effectiveProgress, tearDirection, W)
+                    val tearX = tearXFromProgress(effectiveProgress, tearDirection, w)
 
-                    val (coverStartX, coverEndX) = when (tearDirection) {
-                        TearDirection.LEFT  -> tearX to W
-                        TearDirection.RIGHT -> 0f to tearX
-                    }
+                    val (coverStartX, coverEndX) =
+                        when (tearDirection) {
+                            TearDirection.LEFT -> tearX to w
+                            TearDirection.RIGHT -> 0f to tearX
+                        }
 
                     withTransform(
                         transformBlock = {
@@ -693,21 +735,24 @@ public fun TearAnimation(
 
                 // ── Hint text ─────────────────────────────────────────────
                 if (!hasInteracted && effectiveProgress < 0.03f) {
-                    val hintResult = textMeasurer.measure(
-                        text = "← 從邊緣撕開封條 →",
-                        style = TextStyle(
-                            color = Color(0xFF5A3A10),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            background = Color(0xCCFFEBB4),
-                        ),
-                    )
+                    val hintResult =
+                        textMeasurer.measure(
+                            text = "← 從邊緣撕開封條 →",
+                            style =
+                                TextStyle(
+                                    color = Color(0xFF5A3A10),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    background = Color(0xCCFFEBB4),
+                                ),
+                        )
                     drawText(
                         textLayoutResult = hintResult,
-                        topLeft = Offset(
-                            x = (W - hintResult.size.width) / 2f,
-                            y = coverH + 8f,
-                        ),
+                        topLeft =
+                            Offset(
+                                x = (w - hintResult.size.width) / 2f,
+                                y = coverH + 8f,
+                            ),
                         alpha = 0.9f,
                     )
                 }

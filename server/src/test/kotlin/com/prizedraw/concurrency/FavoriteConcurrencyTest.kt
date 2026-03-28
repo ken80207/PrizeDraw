@@ -57,12 +57,18 @@ class FavoriteConcurrencyTest :
                         pricePerDraw = 100,
                         drawSessionSeconds = 30,
                         status = com.prizedraw.contracts.enums.CampaignStatus.ACTIVE,
-                        activatedAt = kotlinx.datetime.Clock.System.now(),
+                        activatedAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
                         soldOutAt = null,
                         createdByStaffId = java.util.UUID.randomUUID(),
                         deletedAt = null,
-                        createdAt = kotlinx.datetime.Clock.System.now(),
-                        updatedAt = kotlinx.datetime.Clock.System.now(),
+                        createdAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
+                        updatedAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
                         approvalStatus = com.prizedraw.contracts.enums.ApprovalStatus.NOT_REQUIRED,
                     )
                 coJustRun { favoriteRepo.save(any()) }
@@ -74,17 +80,18 @@ class FavoriteConcurrencyTest :
                 val successCount = AtomicInteger(0)
 
                 coroutineScope {
-                    (1..10).map { i ->
-                        async {
-                            runCatching {
-                                if (i % 2 == 0) {
-                                    addUseCase.execute(playerId, CampaignType.KUJI, campaignId)
-                                } else {
-                                    removeUseCase.execute(playerId, CampaignType.KUJI, campaignId)
-                                }
-                            }.onSuccess { successCount.incrementAndGet() }
-                        }
-                    }.awaitAll()
+                    (1..10)
+                        .map { i ->
+                            async {
+                                runCatching {
+                                    if (i % 2 == 0) {
+                                        addUseCase.execute(playerId, CampaignType.KUJI, campaignId)
+                                    } else {
+                                        removeUseCase.execute(playerId, CampaignType.KUJI, campaignId)
+                                    }
+                                }.onSuccess { successCount.incrementAndGet() }
+                            }
+                        }.awaitAll()
                 }
 
                 successCount.get() shouldBe 10
@@ -105,12 +112,18 @@ class FavoriteConcurrencyTest :
                         pricePerDraw = 200,
                         drawSessionSeconds = 60,
                         status = com.prizedraw.contracts.enums.CampaignStatus.ACTIVE,
-                        activatedAt = kotlinx.datetime.Clock.System.now(),
+                        activatedAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
                         soldOutAt = null,
                         createdByStaffId = java.util.UUID.randomUUID(),
                         deletedAt = null,
-                        createdAt = kotlinx.datetime.Clock.System.now(),
-                        updatedAt = kotlinx.datetime.Clock.System.now(),
+                        createdAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
+                        updatedAt =
+                            kotlinx.datetime.Clock.System
+                                .now(),
                         approvalStatus = com.prizedraw.contracts.enums.ApprovalStatus.NOT_REQUIRED,
                     )
                 coJustRun { favoriteRepo.save(any()) }
@@ -120,14 +133,15 @@ class FavoriteConcurrencyTest :
                 val successCount = AtomicInteger(0)
 
                 coroutineScope {
-                    (1..100).map {
-                        val playerId = PlayerId.generate()
-                        async {
-                            runCatching {
-                                addUseCase.execute(playerId, CampaignType.KUJI, campaignId)
-                            }.onSuccess { successCount.incrementAndGet() }
-                        }
-                    }.awaitAll()
+                    (1..100)
+                        .map {
+                            val playerId = PlayerId.generate()
+                            async {
+                                runCatching {
+                                    addUseCase.execute(playerId, CampaignType.KUJI, campaignId)
+                                }.onSuccess { successCount.incrementAndGet() }
+                            }
+                        }.awaitAll()
                 }
 
                 successCount.get() shouldBe 100

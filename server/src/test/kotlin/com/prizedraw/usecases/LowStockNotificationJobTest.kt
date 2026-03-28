@@ -90,7 +90,12 @@ class LowStockNotificationJobTest :
 
                 val notifications = notificationsSlot.captured
                 notifications.all { it.eventType == "favorite.campaign_low_stock" } shouldBe true
-                notifications.all { it.dedupKey?.startsWith("favorite.campaign_low_stock:${campaignId.value}:") == true } shouldBe true
+                notifications.all {
+                    it.dedupKey?.startsWith(
+                        "favorite.campaign_low_stock:${campaignId.value}:"
+                    ) == true
+                } shouldBe
+                    true
             }
 
             it("does nothing when findActiveKujiCampaignsNotLowStockNotified returns empty list") {
