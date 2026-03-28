@@ -17,6 +17,7 @@ public object RateLimitTier {
     public val DEFAULT: RateLimitName = RateLimitName("default")
     public val AUTH: RateLimitName = RateLimitName("auth")
     public val DRAW: RateLimitName = RateLimitName("draw")
+    public val FOLLOW: RateLimitName = RateLimitName("follow")
 }
 
 /**
@@ -25,6 +26,7 @@ public object RateLimitTier {
  * - `default`: 100 requests per 10 seconds per IP.
  * - `auth`: 10 requests per 60 seconds per IP (brute-force protection for login/OTP).
  * - `draw`: 5 requests per second per IP (draw action rate limiting).
+ * - `follow`: 30 requests per 60 seconds per user (follow/unfollow action rate limiting).
  */
 public fun Application.configureRateLimit() {
     install(RateLimit) {
@@ -36,6 +38,9 @@ public fun Application.configureRateLimit() {
         }
         register(RateLimitTier.DRAW) {
             rateLimiter(limit = 5, refillPeriod = 1.seconds)
+        }
+        register(RateLimitTier.FOLLOW) {
+            rateLimiter(limit = 30, refillPeriod = 60.seconds)
         }
     }
 }

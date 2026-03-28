@@ -21,6 +21,7 @@ import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.favoriteRoutes
 import com.prizedraw.api.routes.feedRoutes
+import com.prizedraw.api.routes.followRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
 import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
@@ -118,6 +119,9 @@ public fun Application.configureRouting() {
 
         // Campaign Favorites
         favoriteRoutes()
+
+        // Follow system — follow/unfollow players, lists, status, search by code
+        followRoutes()
 
         // Phase 9: FCM device token registration
         deviceRoutes()
