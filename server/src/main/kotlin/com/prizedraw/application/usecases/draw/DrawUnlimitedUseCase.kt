@@ -6,7 +6,9 @@ import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.ICouponRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
@@ -63,6 +65,8 @@ public data class DrawUnlimitedDeps(
     val redisClient: RedisClient,
     val drawCore: DrawCore,
     val couponRepository: ICouponRepository? = null,
+    val feedService: FeedService,
+    val playerRepository: IPlayerRepository,
 )
 
 /**
@@ -116,34 +120,37 @@ public class DrawUnlimitedUseCase(
                 )
             }
 
-        val outcomes =
+        val result =
             newSuspendedTransaction {
                 markCouponExhausted(playerId, playerCouponId)
-                deps.drawCore.draw(
-                    playerId = playerId,
-                    pool = pool,
-                    quantity = 1,
-                    pricePerDraw = effectivePrice,
-                    discountAmount = discountAmount,
-                    gameType = "UNLIMITED",
+                val drawResult =
+                    deps.drawCore.draw(
+                        playerId = playerId,
+                        pool = pool,
+                        quantity = 1,
+                        pricePerDraw = effectivePrice,
+                        discountAmount = discountAmount,
+                        gameType = "UNLIMITED",
+                    )
+
+                val outcome = drawResult.first()
+                val prizeDef =
+                    deps.prizeRepository.findDefinitionById(PrizeDefinitionId(outcome.prizeDefinitionId))
+                checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
+
+                recordAuditAndOutbox(playerId, campaignId, outcome.prizeInstanceId.value, effectivePrice)
+
+                UnlimitedDrawResultDto(
+                    prizeInstanceId = outcome.prizeInstanceId.value.toString(),
+                    grade = prizeDef.grade,
+                    prizeName = prizeDef.name,
+                    prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
+                    pointsCharged = outcome.pointsCharged,
                 )
             }
 
-        val outcome = outcomes.first()
-        return newSuspendedTransaction {
-            val prizeDef = deps.prizeRepository.findDefinitionById(PrizeDefinitionId(outcome.prizeDefinitionId))
-            checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
-
-            recordAuditAndOutbox(playerId, campaignId, outcome.prizeInstanceId.value, effectivePrice)
-
-            UnlimitedDrawResultDto(
-                prizeInstanceId = outcome.prizeInstanceId.value.toString(),
-                grade = prizeDef.grade,
-                prizeName = prizeDef.name,
-                prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
-                pointsCharged = outcome.pointsCharged,
-            )
-        }
+        publishFeedEvent(campaign, result, playerId)
+        return result
     }
 
     @Suppress("ReturnCount")
@@ -269,6 +276,27 @@ public class DrawUnlimitedUseCase(
                 prizeInstanceId = instanceId,
                 playerId = playerId.value,
             ),
+        )
+    }
+
+    private suspend fun publishFeedEvent(
+        campaign: com.prizedraw.domain.entities.UnlimitedCampaign,
+        result: UnlimitedDrawResultDto,
+        playerId: PlayerId,
+    ) {
+        val player = deps.playerRepository.findById(playerId)
+        deps.feedService.publishDrawEvent(
+            drawId = result.prizeInstanceId,
+            playerId = playerId.value.toString(),
+            playerNickname = player?.nickname ?: "Player",
+            playerAvatarUrl = player?.avatarUrl,
+            campaignId = campaign.id.value.toString(),
+            campaignTitle = campaign.title,
+            campaignType = CampaignType.UNLIMITED,
+            prizeGrade = result.grade,
+            prizeName = result.prizeName,
+            prizePhotoUrl = result.prizePhotoUrl,
+            drawnAt = Clock.System.now(),
         )
     }
 }

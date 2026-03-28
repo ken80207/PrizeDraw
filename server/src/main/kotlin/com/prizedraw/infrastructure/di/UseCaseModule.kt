@@ -60,6 +60,7 @@ import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.application.ports.output.ISmsService
 import com.prizedraw.application.ports.output.IWithdrawalGateway
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.application.services.KujiQueueService
 import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.PointsLedgerService
@@ -237,6 +238,7 @@ public val useCaseModule =
                         redisPubSub = get<RedisPubSub>(),
                         drawCore = get<DrawCore>(),
                         couponRepository = get(),
+                        feedService = get<FeedService>(),
                     ),
             )
         }
@@ -253,6 +255,8 @@ public val useCaseModule =
                         redisClient = get<RedisClient>(),
                         drawCore = get<DrawCore>(),
                         couponRepository = get(),
+                        feedService = get<FeedService>(),
+                        playerRepository = get(),
                     ),
             )
         }
