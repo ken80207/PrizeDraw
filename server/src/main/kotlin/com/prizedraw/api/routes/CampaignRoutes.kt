@@ -1,5 +1,8 @@
 package com.prizedraw.api.routes
 
+import com.prizedraw.api.plugins.PlayerPrincipal
+import com.prizedraw.api.plugins.requireStaffWithRole
+import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
@@ -14,6 +17,7 @@ import com.prizedraw.contracts.dto.draw.DrawTicketDto
 import com.prizedraw.contracts.endpoints.AdminEndpoints
 import com.prizedraw.contracts.endpoints.CampaignEndpoints
 import com.prizedraw.contracts.enums.CampaignType
+import com.prizedraw.contracts.enums.StaffRole
 import com.prizedraw.domain.entities.DrawTicketStatus
 import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.PrizeDefinition
@@ -23,6 +27,8 @@ import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.infrastructure.websocket.ConnectionManager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
@@ -37,7 +43,7 @@ import java.util.UUID
  * - GET [CampaignEndpoints.KUJI_TICKET_BOARD] -- Full ticket board for a specific box.
  * - GET [CampaignEndpoints.UNLIMITED_LIST]    -- List active unlimited campaigns.
  * - GET [CampaignEndpoints.UNLIMITED_BY_ID]   -- Unlimited campaign detail with prize table.
- * - GET [AdminEndpoints.SPECTATOR_COUNT]      -- Spectator (viewer) count for a kuji campaign.
+ * - GET [AdminEndpoints.SPECTATOR_COUNT]      -- Spectator (viewer) count for a kuji campaign (requires staff auth, OPERATOR role).
  */
 public fun Route.campaignRoutes() {
     val campaignRepository: ICampaignRepository by inject()
@@ -45,14 +51,26 @@ public fun Route.campaignRoutes() {
     val prizeRepository: IPrizeRepository by inject()
     val drawRepository: IDrawRepository by inject()
     val connectionManager: ConnectionManager by inject()
+    val favoriteRepository: ICampaignFavoriteRepository by inject()
 
     get(CampaignEndpoints.KUJI_LIST) {
         val campaigns = campaignRepository.findActiveKujiCampaigns()
-        call.respond(HttpStatusCode.OK, campaigns.map { it.toDto() })
+        val playerId = call.principal<PlayerPrincipal>()?.playerId?.value
+        val favoritedIds =
+            if (playerId != null && campaigns.isNotEmpty()) {
+                favoriteRepository.findFavoritedCampaignIds(
+                    playerId = playerId,
+                    campaignType = CampaignType.KUJI,
+                    campaignIds = campaigns.map { it.id.value },
+                )
+            } else {
+                emptySet()
+            }
+        call.respond(HttpStatusCode.OK, campaigns.map { it.toDto().copy(isFavorited = it.id.value in favoritedIds) })
     }
 
     get(CampaignEndpoints.KUJI_BY_ID) {
-        handleKujiCampaignDetail(campaignRepository, ticketBoxRepository, prizeRepository)
+        handleKujiCampaignDetail(campaignRepository, ticketBoxRepository, prizeRepository, favoriteRepository)
     }
 
     get(CampaignEndpoints.KUJI_TICKET_BOARD) {
@@ -62,18 +80,32 @@ public fun Route.campaignRoutes() {
 
     get(CampaignEndpoints.UNLIMITED_LIST) {
         val campaigns = campaignRepository.findActiveUnlimitedCampaigns()
-        call.respond(HttpStatusCode.OK, campaigns.map { it.toDto() })
+        val playerId = call.principal<PlayerPrincipal>()?.playerId?.value
+        val favoritedIds =
+            if (playerId != null && campaigns.isNotEmpty()) {
+                favoriteRepository.findFavoritedCampaignIds(
+                    playerId = playerId,
+                    campaignType = CampaignType.UNLIMITED,
+                    campaignIds = campaigns.map { it.id.value },
+                )
+            } else {
+                emptySet()
+            }
+        call.respond(HttpStatusCode.OK, campaigns.map { it.toDto().copy(isFavorited = it.id.value in favoritedIds) })
     }
 
-    get(AdminEndpoints.SPECTATOR_COUNT) {
-        val campaignId = call.parseUuidParam("campaignId") ?: return@get
-        val roomKey = "kuji:$campaignId"
-        val count = connectionManager.spectatorCount(roomKey)
-        call.respond(HttpStatusCode.OK, mapOf("campaignId" to campaignId.toString(), "spectatorCount" to count))
+    authenticate("staff") {
+        get(AdminEndpoints.SPECTATOR_COUNT) {
+            call.requireStaffWithRole(StaffRole.OPERATOR) ?: return@get
+            val campaignId = call.parseUuidParam("campaignId") ?: return@get
+            val roomKey = "kuji:$campaignId"
+            val count = connectionManager.spectatorCount(roomKey)
+            call.respond(HttpStatusCode.OK, mapOf("campaignId" to campaignId.toString(), "spectatorCount" to count))
+        }
     }
 
     get(CampaignEndpoints.UNLIMITED_BY_ID) {
-        handleUnlimitedCampaignDetail(campaignRepository, prizeRepository)
+        handleUnlimitedCampaignDetail(campaignRepository, prizeRepository, favoriteRepository)
     }
 
     get(CampaignEndpoints.CAMPAIGN_DRAW_RECORDS) {
@@ -92,6 +124,7 @@ private suspend fun RoutingContext.handleKujiCampaignDetail(
     campaignRepository: ICampaignRepository,
     ticketBoxRepository: ITicketBoxRepository,
     prizeRepository: IPrizeRepository,
+    favoriteRepository: ICampaignFavoriteRepository,
 ) {
     val campaignId = call.parseUuidParam("campaignId") ?: return
     val campaign =
@@ -101,10 +134,17 @@ private suspend fun RoutingContext.handleKujiCampaignDetail(
         }
     val boxes = ticketBoxRepository.findByCampaignId(CampaignId(campaignId))
     val prizes = prizeRepository.findDefinitionsByCampaign(CampaignId(campaignId), CampaignType.KUJI)
+    val playerId = call.principal<PlayerPrincipal>()?.playerId?.value
+    val isFavorited =
+        if (playerId != null) {
+            favoriteRepository.isFavorited(playerId, CampaignType.KUJI, campaignId)
+        } else {
+            false
+        }
     call.respond(
         HttpStatusCode.OK,
         KujiCampaignDetailDto(
-            campaign = campaign.toDto(),
+            campaign = campaign.toDto().copy(isFavorited = isFavorited),
             boxes = boxes.map { it.toDto() },
             prizes = prizes.map { it.toDto() },
         ),
@@ -114,6 +154,7 @@ private suspend fun RoutingContext.handleKujiCampaignDetail(
 private suspend fun RoutingContext.handleUnlimitedCampaignDetail(
     campaignRepository: ICampaignRepository,
     prizeRepository: IPrizeRepository,
+    favoriteRepository: ICampaignFavoriteRepository,
 ) {
     val campaignId = call.parseUuidParam("campaignId") ?: return
     val campaign =
@@ -126,10 +167,17 @@ private suspend fun RoutingContext.handleUnlimitedCampaignDetail(
             CampaignId(campaignId),
             CampaignType.UNLIMITED,
         )
+    val playerId = call.principal<PlayerPrincipal>()?.playerId?.value
+    val isFavorited =
+        if (playerId != null) {
+            favoriteRepository.isFavorited(playerId, CampaignType.UNLIMITED, campaignId)
+        } else {
+            false
+        }
     call.respond(
         HttpStatusCode.OK,
         UnlimitedCampaignDetailDto(
-            campaign = campaign.toDto(),
+            campaign = campaign.toDto().copy(isFavorited = isFavorited),
             prizes = prizes.map { it.toDto() },
         ),
     )

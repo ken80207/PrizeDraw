@@ -19,6 +19,7 @@ import com.prizedraw.api.routes.couponRoutes
 import com.prizedraw.api.routes.deviceRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
+import com.prizedraw.api.routes.favoriteRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
 import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
@@ -111,6 +112,9 @@ public fun Application.configureRouting() {
         playerRoutes()
         paymentRoutes()
 
+        // Campaign Favorites
+        favoriteRoutes()
+
         // Phase 9: FCM device token registration
         deviceRoutes()
 
@@ -120,16 +124,23 @@ public fun Application.configureRouting() {
         // Phase 4: Campaign, Draw, WebSocket
         campaignRoutes()
         drawRoutes()
-        kujiWebSocketHandler(connectionManager, drawRepository, prizeRepository, drawSyncService, roomScalingService)
+        kujiWebSocketHandler(
+            connectionManager,
+            drawRepository,
+            prizeRepository,
+            drawSyncService,
+            roomScalingService,
+            tokenService
+        )
 
         // Phase 21: Room scaling REST endpoints
         roomRoutes()
-        queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository)
+        queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository, tokenService)
 
         // Phase 19+: Gameification — Chat, Broadcast, Draw Sync
         chatRoutes()
         broadcastRoutes()
-        chatWebSocketHandler(connectionManager, chatService)
+        chatWebSocketHandler(connectionManager, chatService, tokenService)
 
         // Player notification WebSocket
         playerNotificationHandler(playerNotificationManager, tokenService, notificationRepository)
