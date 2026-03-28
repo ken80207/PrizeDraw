@@ -58,6 +58,7 @@ public data class UnlimitedDrawResultDto(
     val prizeName: String,
     val prizePhotoUrl: String,
     val pointsCharged: Int,
+    val pityProgress: com.prizedraw.contracts.dto.pity.PityProgressDto? = null,
 )
 
 @Serializable
