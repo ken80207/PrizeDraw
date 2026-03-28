@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { authStore, subscribeToAuthStore } from "@/stores/authStore";
@@ -19,6 +19,7 @@ const LANGUAGES = [
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
+  const tFollow = useTranslations("follow");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [player, setPlayer] = useState<PlayerDto | null>(null);
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("zh-TW");
   const [saving, setSaving] = useState(false);
   const [savingNickname, setSavingNickname] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const ANIMATION_MODES: { value: AnimationMode; label: string; icon: string; description: string }[] = [
     { value: "TEAR", label: t("tearModeLabel"), icon: "description", description: t("tearModeDesc") },
@@ -98,6 +100,14 @@ export default function SettingsPage() {
       toast.error(t("languageSaveFailed"));
     }
   }
+
+  const handleCopy = useCallback(async () => {
+    if (player?.playerCode) {
+      await navigator.clipboard.writeText(player.playerCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [player?.playerCode]);
 
   function handleLogout() {
     authStore.clearSession();
@@ -210,6 +220,31 @@ export default function SettingsPage() {
                 {t("bindNow")}
               </button>
             )}
+          </div>
+
+          {/* Player code row */}
+          <div className="bg-[#0c0c1f] rounded-xl px-4 py-3 mt-3 flex items-center justify-between">
+            <p className="text-xs text-[#d8c3ad] uppercase tracking-wider">{tFollow("playerCode")}</p>
+            <div className="flex items-center gap-2">
+              <code className="font-mono text-[#e2e0fc] bg-[#1e1e32] px-2 py-1 rounded text-sm tracking-wider">
+                {player?.playerCode}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="text-[#ffc174] hover:text-[#f59e0b] transition-colors"
+                aria-label="Copy code"
+              >
+                <span className="material-symbols-outlined text-xl">
+                  {copied ? "check" : "content_copy"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Follow stats */}
+          <div className="flex gap-4 mt-3 px-1 text-sm text-[#d8c3ad]">
+            <span>{tFollow("followerCount", { count: player?.followerCount ?? 0 })}</span>
+            <span>{tFollow("followingCount", { count: player?.followingCount ?? 0 })}</span>
           </div>
         </section>
 
