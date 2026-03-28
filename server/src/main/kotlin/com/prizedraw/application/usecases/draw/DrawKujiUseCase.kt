@@ -1,5 +1,7 @@
 package com.prizedraw.application.usecases.draw
 
+import com.prizedraw.application.events.FollowingDrawStarted
+import com.prizedraw.application.events.FollowingRarePrizeDrawn
 import com.prizedraw.application.ports.input.draw.IDrawKujiUseCase
 import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
@@ -161,6 +163,7 @@ public class DrawKujiUseCase(
                     }
                 handleBoxSoldOut(box, resolvedTickets.size)
                 recordAuditLog(playerId, box, resolvedTickets.size, basePrice - discountAmount, now)
+                emitFollowEvents(playerId, box.kujiCampaignId, drawnResults)
                 drawnResults
             }
 
@@ -343,6 +346,48 @@ public class DrawKujiUseCase(
         deps.outboxRepository.enqueue(
             DrawCompletedEvent(box.kujiCampaignId.value, box.id, playerId.value),
         )
+    }
+
+    /**
+     * Emits follow-related domain events into the outbox within the current transaction.
+     *
+     * Always emits [FollowingDrawStarted]. Additionally emits [FollowingRarePrizeDrawn]
+     * for each result whose prize definition is marked as rare.
+     */
+    private suspend fun emitFollowEvents(
+        playerId: PlayerId,
+        campaignId: CampaignId,
+        results: List<DrawnTicketResultDto>,
+    ) {
+        val campaign = deps.campaignRepository.findKujiById(campaignId) ?: return
+        val player = deps.playerRepository.findById(playerId) ?: return
+        val nickname = player.nickname ?: "Player"
+
+        deps.outboxRepository.enqueue(
+            FollowingDrawStarted(
+                playerId = playerId.value,
+                playerNickname = nickname,
+                campaignId = campaignId.value,
+                campaignName = campaign.title,
+            ),
+        )
+
+        val definitions = deps.prizeRepository.findDefinitionsByCampaign(campaignId, CampaignType.KUJI)
+        for (result in results) {
+            val matchingDef = definitions.firstOrNull { it.name == result.prizeName && it.grade == result.grade }
+            if (matchingDef?.isRare == true) {
+                deps.outboxRepository.enqueue(
+                    FollowingRarePrizeDrawn(
+                        playerId = playerId.value,
+                        playerNickname = nickname,
+                        campaignId = campaignId.value,
+                        campaignName = campaign.title,
+                        prizeName = result.prizeName,
+                        prizeGrade = result.grade,
+                    ),
+                )
+            }
+        }
     }
 
     private suspend fun publishDrawEvents(

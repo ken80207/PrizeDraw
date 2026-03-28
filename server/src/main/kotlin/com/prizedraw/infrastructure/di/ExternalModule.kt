@@ -6,6 +6,7 @@ import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IConnectionManagerPort
 import com.prizedraw.application.ports.output.IDistributedLockService
+import com.prizedraw.application.ports.output.IFollowRepository
 import com.prizedraw.application.ports.output.ILineMessagingService
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
@@ -156,6 +157,7 @@ public fun externalModule(config: ApplicationConfig) =
                 notificationService = get<INotificationService>(),
                 pubSub = get<IPubSubService>(),
                 notificationRepository = get<INotificationRepository>(),
+                followRepository = get<IFollowRepository>(),
             )
         }
 

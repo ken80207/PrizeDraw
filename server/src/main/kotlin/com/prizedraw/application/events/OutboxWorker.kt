@@ -1,5 +1,6 @@
 package com.prizedraw.application.events
 
+import com.prizedraw.application.ports.output.IFollowRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
 import com.prizedraw.application.ports.output.IOutboxRepository
@@ -7,6 +8,7 @@ import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.PushNotificationPayload
 import com.prizedraw.domain.entities.Notification
 import com.prizedraw.domain.entities.OutboxEvent
+import com.prizedraw.domain.valueobjects.PlayerId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +35,7 @@ import kotlin.time.Duration.Companion.seconds
  * @param notificationService For sending push notifications on domain events.
  * @param pubSub For WebSocket fanout over pub/sub.
  * @param notificationRepository For persisting notification records per player.
+ * @param followRepository For querying follower lists during follow event fan-out.
  */
 @Suppress("TooManyFunctions")
 public class OutboxWorker(
@@ -40,6 +43,7 @@ public class OutboxWorker(
     private val notificationService: INotificationService,
     private val pubSub: IPubSubService,
     private val notificationRepository: INotificationRepository,
+    private val followRepository: IFollowRepository,
 ) {
     private val log = LoggerFactory.getLogger(OutboxWorker::class.java)
     private val job = SupervisorJob()
@@ -141,6 +145,8 @@ public class OutboxWorker(
             "withdrawal.status_changed" -> handleWithdrawalStatusChanged(event)
             "support_ticket.replied" -> handleSupportTicketReplied(event)
             "player.level_up" -> handlePlayerLevelUp(event)
+            "following.draw_started" -> handleFollowingNotification(event)
+            "following.rare_prize_drawn" -> handleFollowingNotification(event)
             else -> log.debug("OutboxEvent type '{}' has no handler; skipping", event.eventType)
         }
     }
@@ -172,6 +178,7 @@ public class OutboxWorker(
                 listOfNotNull(
                     payload["otherPlayerId"]?.jsonPrimitive?.content,
                 )
+            "following.draw_started", "following.rare_prize_drawn" -> emptyList()
             else ->
                 listOfNotNull(
                     payload["playerId"]?.jsonPrimitive?.content,
@@ -183,7 +190,7 @@ public class OutboxWorker(
      * Returns the (title, body) pair for a notification based on event type,
      * or `null` if the event type does not produce a notification.
      */
-    @Suppress("CyclomaticComplexMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     private fun notificationContent(event: OutboxEvent): Pair<String, String>? {
         val payload = event.payload
         return when (event.eventType) {
@@ -235,6 +242,17 @@ public class OutboxWorker(
                 val level = payload["newLevel"]?.jsonPrimitive?.content ?: ""
                 val tier = payload["newTierName"]?.jsonPrimitive?.content ?: ""
                 "Level Up!" to "Congratulations! You reached level $level ($tier)."
+            }
+            "following.draw_started" -> {
+                val nickname = payload["playerNickname"]?.jsonPrimitive?.content ?: ""
+                val campaignName = payload["campaignName"]?.jsonPrimitive?.content ?: ""
+                "Friend is drawing" to "$nickname is drawing in $campaignName! Come watch!"
+            }
+            "following.rare_prize_drawn" -> {
+                val nickname = payload["playerNickname"]?.jsonPrimitive?.content ?: ""
+                val campaignName = payload["campaignName"]?.jsonPrimitive?.content ?: ""
+                val prizeName = payload["prizeName"]?.jsonPrimitive?.content ?: ""
+                "Friend hit a rare prize!" to "$nickname drew $prizeName in $campaignName!"
             }
             else -> null
         }
@@ -459,9 +477,81 @@ public class OutboxWorker(
         )
     }
 
+    /**
+     * Handles fan-out of follow notifications (draw_started and rare_prize_drawn).
+     *
+     * Queries follower IDs in cursor-based batches of [FANOUT_BATCH_SIZE],
+     * bulk-inserts [Notification] records, publishes WebSocket payloads,
+     * and sends FCM push batches. Runs in a dedicated coroutine so the
+     * outbox worker is not blocked during large fan-outs.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private fun handleFollowingNotification(event: OutboxEvent) {
+        val payload = event.payload
+        val playerId = payload["playerId"]?.jsonPrimitive?.content ?: return
+        val playerUUID = java.util.UUID.fromString(playerId)
+        val (title, body) = notificationContent(event) ?: return
+
+        scope.launch {
+            try {
+                var cursor: java.util.UUID? = null
+                do {
+                    val batch = followRepository.findFollowerIdsBatch(playerUUID, cursor, FANOUT_BATCH_SIZE)
+                    if (batch.isEmpty()) {
+                        break
+                    }
+
+                    // batch is List<Pair<followId, followerId>>
+                    val followerIds = batch.map { it.second }
+
+                    // Bulk insert notifications
+                    val notifications =
+                        followerIds.map { followerId ->
+                            Notification(
+                                playerId = followerId,
+                                eventType = event.eventType,
+                                title = title,
+                                body = body,
+                                data = event.payload.mapValues { it.value.jsonPrimitive.content },
+                                dedupKey = "${event.id}:$followerId",
+                            )
+                        }
+                    notificationRepository.batchInsertIgnore(notifications)
+
+                    // Publish WS payload per follower
+                    for (i in followerIds.indices) {
+                        val wsPayload = buildWsPayload(event, notifications[i])
+                        pubSub.publish("ws:player:${followerIds[i]}", wsPayload)
+                    }
+
+                    // FCM push batch
+                    val pushPayload =
+                        PushNotificationPayload(
+                            title = title,
+                            body = body,
+                            data = mapOf("eventType" to event.eventType, "playerId" to playerId),
+                        )
+                    val playerIdValues = followerIds.map { PlayerId(it) }
+                    notificationService.sendPushBatch(
+                        playerIdValues,
+                        pushPayload,
+                    )
+
+                    // Advance cursor to the last followId in this batch
+                    cursor = batch.last().first
+                } while (batch.size == FANOUT_BATCH_SIZE)
+
+                log.debug("Follow fan-out completed for event {} (player {})", event.id, playerId)
+            } catch (e: Exception) {
+                log.error("Follow fan-out failed for event {} (player {}): {}", event.id, playerId, e.message, e)
+            }
+        }
+    }
+
     private companion object {
         const val POLL_INTERVAL_SECONDS = 5L
         const val BATCH_SIZE = 100
+        const val FANOUT_BATCH_SIZE = 500
         const val MAX_ATTEMPTS = 5
         val BASE_BACKOFF = 2.seconds
     }

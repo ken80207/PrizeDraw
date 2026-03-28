@@ -1,5 +1,7 @@
 package com.prizedraw.application.usecases.draw
 
+import com.prizedraw.application.events.FollowingDrawStarted
+import com.prizedraw.application.events.FollowingRarePrizeDrawn
 import com.prizedraw.application.ports.input.draw.IDrawUnlimitedUseCase
 import com.prizedraw.application.ports.output.DomainEvent
 import com.prizedraw.application.ports.output.IAuditRepository
@@ -143,6 +145,7 @@ public class DrawUnlimitedUseCase(
                 checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
 
                 recordAuditAndOutbox(playerId, campaignId, outcome.prizeInstanceId.value, effectivePrice)
+                emitFollowEvents(playerId, campaign, prizeDef)
 
                 UnlimitedDrawResultDto(
                     prizeInstanceId = outcome.prizeInstanceId.value.toString(),
@@ -243,6 +246,43 @@ public class DrawUnlimitedUseCase(
             }
         if (count >= rateLimitPerSecond) {
             throw UnlimitedRateLimitExceededException(playerId, campaignId, rateLimitPerSecond)
+        }
+    }
+
+    /**
+     * Emits follow-related domain events into the outbox within the current transaction.
+     *
+     * Always emits [FollowingDrawStarted]. Additionally emits [FollowingRarePrizeDrawn]
+     * if the drawn prize definition is marked as rare.
+     */
+    private suspend fun emitFollowEvents(
+        playerId: PlayerId,
+        campaign: com.prizedraw.domain.entities.UnlimitedCampaign,
+        prizeDef: com.prizedraw.domain.entities.PrizeDefinition,
+    ) {
+        val player = deps.playerRepository.findById(playerId) ?: return
+        val nickname = player.nickname ?: "Player"
+
+        deps.outboxRepository.enqueue(
+            FollowingDrawStarted(
+                playerId = playerId.value,
+                playerNickname = nickname,
+                campaignId = campaign.id.value,
+                campaignName = campaign.title,
+            ),
+        )
+
+        if (prizeDef.isRare) {
+            deps.outboxRepository.enqueue(
+                FollowingRarePrizeDrawn(
+                    playerId = playerId.value,
+                    playerNickname = nickname,
+                    campaignId = campaign.id.value,
+                    campaignName = campaign.title,
+                    prizeName = prizeDef.name,
+                    prizeGrade = prizeDef.grade,
+                ),
+            )
         }
     }
 

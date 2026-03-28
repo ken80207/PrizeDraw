@@ -209,3 +209,29 @@ public data class FavoriteCampaignLowStock(
     override val aggregateType: String = "Campaign"
     override val aggregateId: UUID = campaignId
 }
+
+/** Emitted when a player starts drawing; triggers fan-out to followers. */
+public data class FollowingDrawStarted(
+    val playerId: UUID,
+    val playerNickname: String,
+    val campaignId: UUID,
+    val campaignName: String,
+) : DomainEvent {
+    override val eventType: String = "following.draw_started"
+    override val aggregateType: String = "Player"
+    override val aggregateId: UUID = playerId
+}
+
+/** Emitted when a player draws a rare prize; triggers fan-out to followers. */
+public data class FollowingRarePrizeDrawn(
+    val playerId: UUID,
+    val playerNickname: String,
+    val campaignId: UUID,
+    val campaignName: String,
+    val prizeName: String,
+    val prizeGrade: String,
+) : DomainEvent {
+    override val eventType: String = "following.rare_prize_drawn"
+    override val aggregateType: String = "Player"
+    override val aggregateId: UUID = playerId
+}
