@@ -3,13 +3,13 @@ package com.prizedraw.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,6 +33,7 @@ import com.prizedraw.screens.draw.DrawRevealScreen
 import com.prizedraw.screens.exchange.ExchangeCounterProposeScreen
 import com.prizedraw.screens.exchange.ExchangeOfferScreen
 import com.prizedraw.screens.home.HomeScreen
+import com.prizedraw.screens.onboarding.OnboardingScreen
 import com.prizedraw.screens.leaderboard.LeaderboardScreen
 import com.prizedraw.screens.prize.MyPrizesScreen
 import com.prizedraw.screens.settings.SettingsScreen
@@ -116,6 +117,9 @@ public object Routes {
 
     // Settings
     const val SETTINGS = "settings"
+
+    // Onboarding (first-time user experience)
+    const val ONBOARDING = "onboarding"
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +154,10 @@ public fun PrizeDrawNavGraph(
     onOpenAppStore: (url: String) -> Unit = {},
     fetchServerStatus: suspend () -> ServerStatusResponse? = { null },
 ) {
+    // TODO: Source from settings / DataStore once onboarding UI is ready.
+    //  Flip to `true` to enable the onboarding flow for first-time users.
+    val showOnboarding = false
+
     val authViewModel = remember { AuthViewModel() }
     val campaignViewModel = remember { KujiCampaignViewModel() }
     val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel() }
@@ -195,11 +203,12 @@ public fun PrizeDrawNavGraph(
 
     // ---- Update required overlay ----
     val platformMinVersion = serverStatus?.minAppVersion?.android // TODO: switch to ios on iOS target
-    val updateInfo = AppUpdateInfo.create(
-        currentVersion = appVersion,
-        minRequiredVersion = platformMinVersion,
-        updateUrl = null, // TODO: inject platform store URL
-    )
+    val updateInfo =
+        AppUpdateInfo.create(
+            currentVersion = appVersion,
+            minRequiredVersion = platformMinVersion,
+            updateUrl = null, // TODO: inject platform store URL
+        )
     val updateAnnouncement: AnnouncementDto? =
         serverStatus?.announcements?.firstOrNull { it.type == AnnouncementType.UPDATE_REQUIRED }
 
@@ -209,11 +218,12 @@ public fun PrizeDrawNavGraph(
             minRequiredVersion = platformMinVersion ?: "",
             isBlocking = updateAnnouncement?.isBlocking ?: true,
             onUpdate = { updateInfo.updateUrl?.let { onOpenAppStore(it) } },
-            onDismiss = if (updateAnnouncement?.isBlocking == false) {
-                { updateDismissed = true }
-            } else {
-                null
-            },
+            onDismiss =
+                if (updateAnnouncement?.isBlocking == false) {
+                    { updateDismissed = true }
+                } else {
+                    null
+                },
         )
         return
     }
@@ -238,257 +248,270 @@ public fun PrizeDrawNavGraph(
                 navController = navController,
                 startDestination = Routes.LOGIN,
             ) {
-        // Auth flow
-        composable(Routes.LOGIN) {
-            LoginScreen(
-                viewModel = authViewModel,
-                onAuthenticated = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                },
-                onNeedsPhoneBinding = {
-                    navController.navigate(Routes.PHONE_BINDING)
-                },
-            )
-        }
-
-        composable(Routes.PHONE_BINDING) {
-            PhoneBindingScreen(
-                viewModel = authViewModel,
-                onAuthenticated = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                },
-            )
-        }
-
-        // Main shell
-        composable(Routes.HOME) {
-            HomeScreen(
-                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
-                onNavigateToNotifications = { /* TODO: notifications route */ },
-                tabContent = { route ->
-                    when (route) {
-                        "campaigns" ->
-                            CampaignListScreen(
-                                viewModel = campaignViewModel,
-                                onCampaignSelected = { campaignId ->
-                                    navController.navigate(
-                                        Routes.KUJI_BOARD.replace("{campaignId}", campaignId),
-                                    )
-                                },
-                            )
-
-                        "prizes" ->
-                            MyPrizesScreen(
-                                viewModel = prizeViewModel,
-                                onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
-                            )
-
-                        "trade" ->
-                            MarketplaceScreen(
-                                viewModel = marketplaceViewModel,
-                                onListingClick = { /* TODO(T172): navigate to listing detail */ },
-                                onCreateListing = { /* TODO(T172): navigate to create listing */ },
-                            )
-
-                        "wallet" ->
-                            WalletScreen(
-                                // TODO(T172): source from WalletViewModel
-                                wallet =
-                                    WalletDto(
-                                        drawPointsBalance = 0,
-                                        revenuePointsBalance = 0,
-                                        drawTransactions = emptyList(),
-                                        revenueTransactions = emptyList(),
-                                    ),
-                                onTopUp = { /* TODO: payment top-up route */ },
-                            )
-
-                        else -> Unit
-                    }
-                },
-            )
-        }
-
-        // Campaigns
-        composable(
-            route = Routes.KUJI_BOARD,
-            arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val campaignId =
-                backStackEntry.savedStateHandle.get<String>("campaignId") ?: return@composable
-            KujiBoardScreen(
-                viewModel = campaignViewModel,
-                campaignId = campaignId,
-            )
-        }
-
-        composable(
-            route = Routes.QUEUE,
-            arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
-        ) {
-            QueueScreen(viewModel = campaignViewModel)
-        }
-
-        composable(
-            route = Routes.UNLIMITED_DRAW,
-            arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val campaignId =
-                backStackEntry.savedStateHandle.get<String>("campaignId") ?: return@composable
-            UnlimitedDrawScreen(
-                viewModel = unlimitedDrawViewModel,
-                campaignId = campaignId,
-            )
-        }
-
-        composable(
-            route = Routes.DRAW_REVEAL,
-            arguments =
-                listOf(
-                    navArgument("prizeInstanceId") { type = NavType.StringType },
-                    navArgument("prizeName") { type = NavType.StringType },
-                    navArgument("prizeGrade") { type = NavType.StringType },
-                    navArgument("prizePhotoUrl") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("mode") {
-                        type = NavType.StringType
-                        defaultValue = "INSTANT"
-                    },
-                ),
-        ) { backStackEntry ->
-            val ssh = backStackEntry.savedStateHandle
-            DrawRevealScreen(
-                prizePhotoUrl = ssh.get<String>("prizePhotoUrl") ?: "",
-                prizeName = ssh.get<String>("prizeName") ?: "",
-                prizeGrade = ssh.get<String>("prizeGrade") ?: "",
-                animationMode =
-                    runCatching {
-                        DrawAnimationMode.valueOf(ssh.get<String>("mode") ?: "INSTANT")
-                    }.getOrDefault(DrawAnimationMode.INSTANT),
-                onContinue = {
-                    navController.navigate(Routes.PRIZES) {
-                        popUpTo(Routes.HOME) { inclusive = false }
-                    }
-                },
-            )
-        }
-
-        // Prizes
-        composable(Routes.PRIZES) {
-            MyPrizesScreen(
-                viewModel = prizeViewModel,
-                onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
-            )
-        }
-
-        // Trade
-        composable(Routes.TRADE) {
-            MarketplaceScreen(
-                viewModel = marketplaceViewModel,
-                onListingClick = { /* TODO(T172): navigate to listing detail */ },
-                onCreateListing = { /* TODO(T172): navigate to create listing */ },
-            )
-        }
-
-        // Exchange offer flow
-        composable(Routes.EXCHANGE) {
-            ExchangeOfferScreen(
-                recipientNickname = "",
-                recipientPrizes = emptyList(),
-                ownPrizes = emptyList(),
-                onSubmit = { _, _, _ -> navController.popBackStack() },
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        // Exchange counter-propose flow (own prizes sourced from prizeViewModel)
-        composable(Routes.EXCHANGE) {
-            ExchangeCounterProposeScreen(
-                ownPrizes = emptyList(),
-                onSubmit = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        // Wallet
-        composable(Routes.WALLET) {
-            WalletScreen(
-                wallet =
-                    WalletDto(
-                        drawPointsBalance = 0,
-                        revenuePointsBalance = 0,
-                        drawTransactions = emptyList(),
-                        revenueTransactions = emptyList(),
-                    ),
-                onTopUp = { /* TODO: payment top-up route */ },
-            )
-        }
-
-        composable(Routes.WITHDRAWAL) {
-            WithdrawalScreen(
-                revenuePointsBalance = 0,
-                onSubmit = { _, _, _, _, _ -> navController.popBackStack() },
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        // Leaderboard
-        composable(Routes.LEADERBOARD) {
-            LeaderboardScreen(viewModel = leaderboardViewModel)
-        }
-
-        // Support
-        composable(Routes.SUPPORT) {
-            SupportTicketListScreen(
-                viewModel = supportViewModel,
-                onTicketClick = { ticketId ->
-                    navController.navigate(
-                        Routes.TICKET_DETAIL.replace("{ticketId}", ticketId),
+                // Auth flow
+                composable(Routes.LOGIN) {
+                    LoginScreen(
+                        viewModel = authViewModel,
+                        onAuthenticated = {
+                            val dest = if (showOnboarding) Routes.ONBOARDING else Routes.HOME
+                            navController.navigate(dest) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        },
+                        onNeedsPhoneBinding = {
+                            navController.navigate(Routes.PHONE_BINDING)
+                        },
                     )
-                },
-                onCreateTicket = { navController.navigate(Routes.CREATE_TICKET) },
-            )
-        }
+                }
 
-        composable(Routes.CREATE_TICKET) {
-            CreateTicketScreen(
-                viewModel = supportViewModel,
-                onBack = { navController.popBackStack() },
-            )
-        }
+                composable(Routes.PHONE_BINDING) {
+                    PhoneBindingScreen(
+                        viewModel = authViewModel,
+                        onAuthenticated = {
+                            val dest = if (showOnboarding) Routes.ONBOARDING else Routes.HOME
+                            navController.navigate(dest) {
+                                popUpTo(Routes.LOGIN) { inclusive = true }
+                            }
+                        },
+                    )
+                }
 
-        composable(
-            route = Routes.TICKET_DETAIL,
-            arguments = listOf(navArgument("ticketId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val ticketId =
-                backStackEntry.savedStateHandle.get<String>("ticketId") ?: return@composable
-            TicketDetailScreen(
-                viewModel = supportViewModel,
-                ticketId = ticketId,
-                onBack = { navController.popBackStack() },
-            )
-        }
+                // Onboarding (first-time user experience)
+                composable(Routes.ONBOARDING) {
+                    OnboardingScreen(
+                        onComplete = {
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.ONBOARDING) { inclusive = true }
+                            }
+                        },
+                    )
+                }
 
-        // Settings
-        composable(Routes.SETTINGS) {
-            SettingsScreen(
-                appVersion = appVersion,
-                onBack = { navController.popBackStack() },
-                onLogout = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-            )
-        }
-        } // end NavHost
+                // Main shell
+                composable(Routes.HOME) {
+                    HomeScreen(
+                        onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                        onNavigateToNotifications = { /* TODO: notifications route */ },
+                        tabContent = { route ->
+                            when (route) {
+                                "campaigns" ->
+                                    CampaignListScreen(
+                                        viewModel = campaignViewModel,
+                                        onCampaignSelected = { campaignId ->
+                                            navController.navigate(
+                                                Routes.KUJI_BOARD.replace("{campaignId}", campaignId),
+                                            )
+                                        },
+                                    )
+
+                                "prizes" ->
+                                    MyPrizesScreen(
+                                        viewModel = prizeViewModel,
+                                        onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
+                                    )
+
+                                "trade" ->
+                                    MarketplaceScreen(
+                                        viewModel = marketplaceViewModel,
+                                        onListingClick = { /* TODO(T172): navigate to listing detail */ },
+                                        onCreateListing = { /* TODO(T172): navigate to create listing */ },
+                                    )
+
+                                "wallet" ->
+                                    WalletScreen(
+                                        // TODO(T172): source from WalletViewModel
+                                        wallet =
+                                            WalletDto(
+                                                drawPointsBalance = 0,
+                                                revenuePointsBalance = 0,
+                                                drawTransactions = emptyList(),
+                                                revenueTransactions = emptyList(),
+                                            ),
+                                        onTopUp = { /* TODO: payment top-up route */ },
+                                    )
+
+                                else -> Unit
+                            }
+                        },
+                    )
+                }
+
+                // Campaigns
+                composable(
+                    route = Routes.KUJI_BOARD,
+                    arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val campaignId =
+                        backStackEntry.savedStateHandle.get<String>("campaignId") ?: return@composable
+                    KujiBoardScreen(
+                        viewModel = campaignViewModel,
+                        campaignId = campaignId,
+                    )
+                }
+
+                composable(
+                    route = Routes.QUEUE,
+                    arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
+                ) {
+                    QueueScreen(viewModel = campaignViewModel)
+                }
+
+                composable(
+                    route = Routes.UNLIMITED_DRAW,
+                    arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val campaignId =
+                        backStackEntry.savedStateHandle.get<String>("campaignId") ?: return@composable
+                    UnlimitedDrawScreen(
+                        viewModel = unlimitedDrawViewModel,
+                        campaignId = campaignId,
+                    )
+                }
+
+                composable(
+                    route = Routes.DRAW_REVEAL,
+                    arguments =
+                        listOf(
+                            navArgument("prizeInstanceId") { type = NavType.StringType },
+                            navArgument("prizeName") { type = NavType.StringType },
+                            navArgument("prizeGrade") { type = NavType.StringType },
+                            navArgument("prizePhotoUrl") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("mode") {
+                                type = NavType.StringType
+                                defaultValue = "INSTANT"
+                            },
+                        ),
+                ) { backStackEntry ->
+                    val ssh = backStackEntry.savedStateHandle
+                    DrawRevealScreen(
+                        prizePhotoUrl = ssh.get<String>("prizePhotoUrl") ?: "",
+                        prizeName = ssh.get<String>("prizeName") ?: "",
+                        prizeGrade = ssh.get<String>("prizeGrade") ?: "",
+                        animationMode =
+                            runCatching {
+                                DrawAnimationMode.valueOf(ssh.get<String>("mode") ?: "INSTANT")
+                            }.getOrDefault(DrawAnimationMode.INSTANT),
+                        onContinue = {
+                            navController.navigate(Routes.PRIZES) {
+                                popUpTo(Routes.HOME) { inclusive = false }
+                            }
+                        },
+                    )
+                }
+
+                // Prizes
+                composable(Routes.PRIZES) {
+                    MyPrizesScreen(
+                        viewModel = prizeViewModel,
+                        onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
+                    )
+                }
+
+                // Trade
+                composable(Routes.TRADE) {
+                    MarketplaceScreen(
+                        viewModel = marketplaceViewModel,
+                        onListingClick = { /* TODO(T172): navigate to listing detail */ },
+                        onCreateListing = { /* TODO(T172): navigate to create listing */ },
+                    )
+                }
+
+                // Exchange offer flow
+                composable(Routes.EXCHANGE) {
+                    ExchangeOfferScreen(
+                        recipientNickname = "",
+                        recipientPrizes = emptyList(),
+                        ownPrizes = emptyList(),
+                        onSubmit = { _, _, _ -> navController.popBackStack() },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Exchange counter-propose flow (own prizes sourced from prizeViewModel)
+                composable(Routes.EXCHANGE) {
+                    ExchangeCounterProposeScreen(
+                        ownPrizes = emptyList(),
+                        onSubmit = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Wallet
+                composable(Routes.WALLET) {
+                    WalletScreen(
+                        wallet =
+                            WalletDto(
+                                drawPointsBalance = 0,
+                                revenuePointsBalance = 0,
+                                drawTransactions = emptyList(),
+                                revenueTransactions = emptyList(),
+                            ),
+                        onTopUp = { /* TODO: payment top-up route */ },
+                    )
+                }
+
+                composable(Routes.WITHDRAWAL) {
+                    WithdrawalScreen(
+                        revenuePointsBalance = 0,
+                        onSubmit = { _, _, _, _, _ -> navController.popBackStack() },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Leaderboard
+                composable(Routes.LEADERBOARD) {
+                    LeaderboardScreen(viewModel = leaderboardViewModel)
+                }
+
+                // Support
+                composable(Routes.SUPPORT) {
+                    SupportTicketListScreen(
+                        viewModel = supportViewModel,
+                        onTicketClick = { ticketId ->
+                            navController.navigate(
+                                Routes.TICKET_DETAIL.replace("{ticketId}", ticketId),
+                            )
+                        },
+                        onCreateTicket = { navController.navigate(Routes.CREATE_TICKET) },
+                    )
+                }
+
+                composable(Routes.CREATE_TICKET) {
+                    CreateTicketScreen(
+                        viewModel = supportViewModel,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Routes.TICKET_DETAIL,
+                    arguments = listOf(navArgument("ticketId") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val ticketId =
+                        backStackEntry.savedStateHandle.get<String>("ticketId") ?: return@composable
+                    TicketDetailScreen(
+                        viewModel = supportViewModel,
+                        ticketId = ticketId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Settings
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        appVersion = appVersion,
+                        onBack = { navController.popBackStack() },
+                        onLogout = {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+            } // end NavHost
         } // end Box
     } // end Column
 }

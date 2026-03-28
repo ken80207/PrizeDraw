@@ -68,6 +68,8 @@ const NOTIFICATION_LOW_STOCK = {
 };
 
 test.describe.serial('收藏活動通知旅程', () => {
+  test.skip(!process.env.TEST_ADMIN_URL, 'Admin app not running — skipping notification tests');
+
   test('收藏活動上架後玩家收到通知', async ({ browser }) => {
     // Two browser contexts: admin activates campaign, player sees notification
     const playerContext = await browser.newContext();
@@ -88,7 +90,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [MOCK_FAVORITE], total: 1 }),
         });
       });
-      await playerPage.route(`**/api/players/me/favorites**`, async (route) => {
+      await playerPage.route(`**/api/v1/players/me/favorites**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -113,7 +115,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           });
         }
       });
-      await playerPage.route(`**/api/players/me/notifications**`, async (route) => {
+      await playerPage.route(`**/api/v1/players/me/notifications**`, async (route) => {
         if (campaignActivated) {
           await route.fulfill({
             status: 200,
@@ -146,7 +148,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           });
         }
       });
-      await adminPage.route(`**/api/admin/campaigns/${DRAFT_CAMPAIGN.id}**`, async (route) => {
+      await adminPage.route(`**/api/v1/admin/campaigns/${DRAFT_CAMPAIGN.id}**`, async (route) => {
         if (route.request().method() === 'GET') {
           await route.fulfill({
             status: 200,
@@ -170,7 +172,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify(ACTIVE_CAMPAIGN),
         });
       });
-      await adminPage.route(`**/api/admin/campaigns/${DRAFT_CAMPAIGN.id}/publish**`, async (route) => {
+      await adminPage.route(`**/api/v1/admin/campaigns/${DRAFT_CAMPAIGN.id}/publish**`, async (route) => {
         campaignActivated = true;
         await route.fulfill({
           status: 200,
@@ -260,7 +262,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [MOCK_FAVORITE], total: 1 }),
         });
       });
-      await playerPage.route(`**/api/players/me/favorites**`, async (route) => {
+      await playerPage.route(`**/api/v1/players/me/favorites**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -292,7 +294,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [NOTIFICATION_LOW_STOCK], total: 1, unread: 1 }),
         });
       });
-      await playerPage.route(`**/api/players/me/notifications**`, async (route) => {
+      await playerPage.route(`**/api/v1/players/me/notifications**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -359,7 +361,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [MOCK_FAVORITE], total: 1 }),
         });
       });
-      await playerAPage.route(`**/api/players/me/favorites**`, async (route) => {
+      await playerAPage.route(`**/api/v1/players/me/favorites**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -373,7 +375,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [NOTIFICATION_CAMPAIGN_LIVE], total: 1, unread: 1 }),
         });
       });
-      await playerAPage.route(`**/api/players/me/notifications**`, async (route) => {
+      await playerAPage.route(`**/api/v1/players/me/notifications**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -389,7 +391,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [], total: 0 }),
         });
       });
-      await playerBPage.route(`**/api/players/me/favorites**`, async (route) => {
+      await playerBPage.route(`**/api/v1/players/me/favorites**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -403,7 +405,7 @@ test.describe.serial('收藏活動通知旅程', () => {
           body: JSON.stringify({ items: [], total: 0, unread: 0 }),
         });
       });
-      await playerBPage.route(`**/api/players/me/notifications**`, async (route) => {
+      await playerBPage.route(`**/api/v1/players/me/notifications**`, async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

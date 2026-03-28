@@ -41,7 +41,10 @@ public fun S(key: String): String = Strings.get(key)
  */
 @Composable
 @ReadOnlyComposable
-public fun S(key: String, vararg params: Pair<String, String>): String {
+public fun S(
+    key: String,
+    vararg params: Pair<String, String>,
+): String {
     var result = Strings.get(key)
     params.forEach { (name, value) -> result = result.replace("{$name}", value) }
     return result

@@ -31,11 +31,20 @@ function BoardContent() {
   const campaignId =
     typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
   const boxId = searchParams.get("boxId") ?? "";
+  const isSpectating = searchParams.get("spectate") === "true";
 
   const { tickets, isLoading, isConnected, error, refresh } = useKujiBoard(campaignId, boxId);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-dim">
+      {/* Spectate mode banner */}
+      {isSpectating && (
+        <div className="flex items-center justify-center gap-2 bg-tertiary-container px-4 py-2 text-sm font-medium text-on-tertiary-container">
+          <span className="material-symbols-outlined text-base leading-none">visibility</span>
+          {t("spectatingMode")}
+        </div>
+      )}
+
       {/* Header bar */}
       <div className="flex items-center justify-between bg-surface-container-low px-4 py-3">
         <h1 className="font-headline text-lg font-semibold text-on-surface">{t("ticketBoard")}</h1>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useNotificationStore, type NotificationItem } from "@/stores/notificationStore";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -16,6 +17,7 @@ export function NotificationPanel() {
     () => ({ Authorization: `Bearer ${accessToken}` }),
     [accessToken],
   );
+  const router = useRouter();
 
   const fetchNotifications = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -49,6 +51,29 @@ export function NotificationPanel() {
     await fetch("/api/v1/notifications/read-all", { method: "POST", headers: authHeaders });
   }, [markAllRead, authHeaders]);
 
+  const handleNotificationClick = useCallback(
+    async (notification: NotificationItem) => {
+      if (!notification.isRead) {
+        await handleMarkRead(notification.id);
+      }
+
+      const { eventType, data } = notification;
+      switch (eventType) {
+        case "following.draw_started":
+        case "following.rare_prize_drawn": {
+          const campaignId = data.campaignId;
+          if (campaignId) {
+            router.push(`/campaigns/${campaignId}/board?spectate=true`);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [handleMarkRead, router],
+  );
+
   return (
     <div className="absolute right-0 top-12 z-50 w-80 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -69,7 +94,7 @@ export function NotificationPanel() {
       ) : (
         <ul>
           {notifications.map((n) => (
-            <NotificationRow key={n.id} notification={n} onMarkRead={handleMarkRead} />
+            <NotificationRow key={n.id} notification={n} onMarkRead={handleMarkRead} onTap={handleNotificationClick} />
           ))}
         </ul>
       )}
@@ -80,16 +105,18 @@ export function NotificationPanel() {
 function NotificationRow({
   notification,
   onMarkRead,
+  onTap,
 }: {
   notification: NotificationItem;
   onMarkRead: (id: string) => void;
+  onTap: (notification: NotificationItem) => void;
 }) {
   return (
     <li
       className={`border-b px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
         notification.isRead ? "opacity-60" : ""
       }`}
-      onClick={() => { if (!notification.isRead) onMarkRead(notification.id); }}
+      onClick={() => { onTap(notification); }}
     >
       <div className="flex items-start gap-2">
         {!notification.isRead && (

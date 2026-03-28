@@ -14,22 +14,27 @@ const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const BUYBACK_PRIZE = {
   id: 'prize-buyback-001',
+  prizeDefinitionId: 'def-buyback-001',
   grade: 'D賞',
   name: '貼紙包',
-  campaignTitle: TEST_CAMPAIGNS.kuji.title,
-  status: 'IN_INVENTORY',
+  photoUrl: null,
+  state: 'HOLDING',
+  acquisitionMethod: 'DRAW',
+  acquiredAt: new Date().toISOString(),
+  sourceCampaignTitle: TEST_CAMPAIGNS.kuji.title,
+  sourceCampaignId: 'campaign-kuji-001',
   buybackPrice: 10,
-  imageUrl: null,
 };
 
 test.describe.serial('官方回收旅程', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlayer(page, TEST_ACCOUNTS.playerA);
 
-    await page.route(`${API_BASE}/api/v1/prizes/${BUYBACK_PRIZE.id}**`, async (route) => {
+    // Prize detail page calls /api/v1/players/me/prizes/{id}
+    await page.route(`${API_BASE}/api/v1/players/me/prizes/${BUYBACK_PRIZE.id}**`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BUYBACK_PRIZE) });
     });
-    await page.route(`**/api/prizes/${BUYBACK_PRIZE.id}**`, async (route) => {
+    await page.route(`**/api/v1/players/me/prizes/${BUYBACK_PRIZE.id}**`, async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BUYBACK_PRIZE) });
     });
   });
@@ -38,11 +43,12 @@ test.describe.serial('官方回收旅程', () => {
     await page.goto(`${BASE}/prizes/${BUYBACK_PRIZE.id}`);
     await page.waitForTimeout(2_000);
 
-    // The buyback price should be shown on the detail page
+    // The buyback price is shown in a dl/dd block with label t("buybackPrice") = "官方回收價格"
+    // and value "{buybackPrice} pts" — only shown when prize.buybackPrice is not null
     const buybackPriceEl = page
-      .getByTestId('buyback-price')
-      .or(page.getByText(/回收價|官方回收|Buyback/i))
-      .or(page.getByText('10')); // the actual buyback value
+      .getByText(/官方回收價格|回收價|Buyback/i)
+      .or(page.getByText(/10 pts/i))
+      .or(page.getByText('10'));
 
     await expect(buybackPriceEl.first()).toBeVisible({ timeout: 10_000 });
 
@@ -86,7 +92,7 @@ test.describe.serial('官方回收旅程', () => {
         }),
       });
     });
-    await page.route(`**/api/prizes/${BUYBACK_PRIZE.id}/buyback**`, async (route) => {
+    await page.route(`**/api/v1/prizes/${BUYBACK_PRIZE.id}/buyback**`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

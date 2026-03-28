@@ -127,3 +127,8 @@ export const authStore = {
 export function subscribeToAuthStore(listener: () => void): () => void {
   return useAuthStore.subscribe(listener);
 }
+
+// Expose store on window in non-production for E2E testing (Playwright).
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as Record<string, unknown>).__AUTH_STORE__ = useAuthStore;
+}

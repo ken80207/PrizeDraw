@@ -42,7 +42,9 @@ public fun BuybackConfirmDialog(
         text = {
             Text(
                 text =
-                    "\"${prize.name}\" (${prize.grade}) — $buybackPrice ${S("prizes.revenuePoints")}? ${S("prizes.buybackWarning")}",
+                    "\"${prize.name}\" (${prize.grade}) — $buybackPrice ${S(
+                        "prizes.revenuePoints"
+                    )}? ${S("prizes.buybackWarning")}",
                 style = MaterialTheme.typography.bodyMedium,
             )
         },

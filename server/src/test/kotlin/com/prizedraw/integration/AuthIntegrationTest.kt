@@ -111,6 +111,7 @@ class AuthIntegrationTest :
             PlayerDto(
                 id = testPlayerId.value.toString(),
                 nickname = "TestUser",
+                playerCode = "TESTCODE",
                 avatarUrl = null,
                 phoneNumber = "+886912345678",
                 drawPointsBalance = 0,
@@ -119,6 +120,8 @@ class AuthIntegrationTest :
                 locale = "zh-TW",
                 isActive = true,
                 createdAt = Clock.System.now(),
+                followerCount = 0,
+                followingCount = 0,
             )
 
         afterEach {

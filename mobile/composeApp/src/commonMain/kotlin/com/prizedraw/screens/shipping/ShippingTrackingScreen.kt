@@ -76,11 +76,12 @@ public fun ShippingTrackingScreen(
         TrackingStep(
             label = S("shipping.stepDelivered"),
             isCompleted = order.status == ShippingOrderStatus.DELIVERED,
-            description = if (order.deliveredAt != null) {
-                "${S("shipping.deliveredOn")} ${order.deliveredAt}"
-            } else {
-                S("shipping.pendingDelivery")
-            },
+            description =
+                if (order.deliveredAt != null) {
+                    "${S("shipping.deliveredOn")} ${order.deliveredAt}"
+                } else {
+                    S("shipping.pendingDelivery")
+                },
         )
 
         if (order.status == ShippingOrderStatus.SHIPPED) {

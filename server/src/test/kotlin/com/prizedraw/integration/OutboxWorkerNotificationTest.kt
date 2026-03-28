@@ -27,8 +27,10 @@ class OutboxWorkerNotificationTest :
 
         describe("constructor") {
             it("accepts INotificationRepository as 4th parameter") {
+                val followRepo = mockk<com.prizedraw.application.ports.output.IFollowRepository>(relaxed = true)
+
                 @Suppress("UnusedPrivateProperty")
-                val worker = OutboxWorker(outboxRepo, notificationService, redisPubSub, notificationRepo)
+                val worker = OutboxWorker(outboxRepo, notificationService, redisPubSub, notificationRepo, followRepo)
                 // Constructor succeeds — the 4-param signature compiles and runs
             }
         }

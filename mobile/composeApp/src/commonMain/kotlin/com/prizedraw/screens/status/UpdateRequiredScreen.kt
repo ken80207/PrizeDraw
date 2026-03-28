@@ -85,7 +85,9 @@ public fun UpdateRequiredScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "${S("status.currentVersion")}: $currentVersion\n${S("status.minRequired")}: $minRequiredVersion",
+                text = "${S(
+                    "status.currentVersion"
+                )}: $currentVersion\n${S("status.minRequired")}: $minRequiredVersion",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.outline,

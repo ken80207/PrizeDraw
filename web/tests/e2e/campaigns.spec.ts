@@ -6,11 +6,11 @@ test.describe('Campaigns page', () => {
   });
 
   test('renders campaigns page heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: '活動列表' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Campaign Gallery' })).toBeVisible();
   });
 
   test('shows page description text', async ({ page }) => {
-    await expect(page.getByText('瀏覽所有開放中的一番賞及無限賞活動')).toBeVisible();
+    await expect(page.getByText('瀏覽所有進行中的一番賞與無限賞活動')).toBeVisible();
   });
 
   test('tab bar is visible with correct tabs', async ({ page }) => {
@@ -20,9 +20,9 @@ test.describe('Campaigns page', () => {
   });
 
   test('ichiban tab is active by default', async ({ page }) => {
-    // The default tab from page code is "ichiban"
     const ichibanBtn = page.getByRole('button', { name: '一番賞' });
-    await expect(ichibanBtn).toHaveClass(/shadow|bg-white/);
+    await expect(ichibanBtn).toHaveClass(/from-primary/);
+    await expect(ichibanBtn).toHaveClass(/to-primary-container/);
   });
 
   test('switching to unlimited tab updates URL', async ({ page }) => {
@@ -35,12 +35,21 @@ test.describe('Campaigns page', () => {
     await expect(page).toHaveURL(/type=all/);
   });
 
-  test('search input is present', async ({ page }) => {
-    await expect(page.getByPlaceholder('搜尋活動名稱...')).toBeVisible();
+  test('switching back to ichiban tab updates URL', async ({ page }) => {
+    // First go to unlimited, then back to ichiban
+    await page.getByRole('button', { name: '無限賞' }).click();
+    await expect(page).toHaveURL(/type=unlimited/);
+    await page.getByRole('button', { name: '一番賞' }).click();
+    await expect(page).toHaveURL(/type=ichiban/);
   });
 
-  test('sort dropdown is present', async ({ page }) => {
-    const select = page.getByRole('combobox');
+  test('search input is present with correct placeholder', async ({ page }) => {
+    await expect(page.getByPlaceholder('搜尋活動...')).toBeVisible();
+  });
+
+  test('sort select is present', async ({ page }) => {
+    // The sort control is a native <select> element, not a role="combobox"
+    const select = page.locator('select');
     await expect(select).toBeVisible();
   });
 
@@ -52,18 +61,37 @@ test.describe('Campaigns page', () => {
   });
 
   test('content area renders (cards or empty state)', async ({ page }) => {
-    // Wait for loading to finish
+    // Wait for loading skeletons to resolve
     await page.waitForTimeout(2000);
-    const emptyState = page.getByText('沒有符合條件的活動');
+    const emptyState = page.getByText('找不到符合條件的活動');
     const hasEmpty = await emptyState.isVisible().catch(() => false);
     // Content rendered in some form — either empty state or campaign cards
-    const hasContent = hasEmpty || (await page.locator('a[href^="/campaigns/"]').count()) > 0;
+    const hasContent =
+      hasEmpty || (await page.locator('a[href^="/campaigns/"]').count()) > 0;
     expect(hasContent).toBeTruthy();
   });
 
-  test('navigating to unlimited tab from URL param works', async ({ page }) => {
+  test('navigating to unlimited tab via URL param activates the unlimited button', async ({
+    page,
+  }) => {
     await page.goto('/campaigns?type=unlimited');
     const unlimitedBtn = page.getByRole('button', { name: '無限賞' });
-    await expect(unlimitedBtn).toHaveClass(/shadow|bg-white/);
+    await expect(unlimitedBtn).toHaveClass(/from-primary/);
+    await expect(unlimitedBtn).toHaveClass(/to-primary-container/);
+  });
+
+  test('navigating to all tab via URL param activates the all button', async ({ page }) => {
+    await page.goto('/campaigns?type=all');
+    const allBtn = page.getByRole('button', { name: '全部' });
+    await expect(allBtn).toHaveClass(/from-primary/);
+    await expect(allBtn).toHaveClass(/to-primary-container/);
+  });
+
+  test('inactive tabs do not carry the active gradient class', async ({ page }) => {
+    // By default ichiban is active; unlimited and all should NOT have the gradient
+    const unlimitedBtn = page.getByRole('button', { name: '無限賞' });
+    const allBtn = page.getByRole('button', { name: '全部' });
+    await expect(unlimitedBtn).not.toHaveClass(/from-primary/);
+    await expect(allBtn).not.toHaveClass(/from-primary/);
   });
 });

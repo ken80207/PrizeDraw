@@ -13,26 +13,32 @@ const BASE = process.env.TEST_WEB_URL ?? 'http://localhost:3001';
 const API_BASE = process.env.TEST_API_URL ?? 'http://localhost:9092';
 
 const MOCK_LEADERBOARD = {
-  period: 'WEEKLY',
+  type: 'DRAW_COUNT',
+  period: 'THIS_WEEK',
   entries: [
-    { rank: 1, playerId: 'player-x-001', nickname: '冠軍玩家', drawCount: 150, totalSpent: 15_000 },
-    { rank: 2, playerId: 'player-x-002', nickname: '亞軍玩家', drawCount: 120, totalSpent: 12_000 },
-    { rank: 3, playerId: 'player-a-id',  nickname: TEST_ACCOUNTS.playerA.nickname, drawCount: 80, totalSpent: 8_000 },
-    { rank: 4, playerId: 'player-x-003', nickname: '第四名玩家', drawCount: 60, totalSpent: 6_000 },
-    { rank: 5, playerId: 'player-x-004', nickname: '第五名玩家', drawCount: 40, totalSpent: 4_000 },
+    { rank: 1, playerId: 'player-x-001', nickname: '冠軍玩家', avatarUrl: null, score: 150, detail: null },
+    { rank: 2, playerId: 'player-x-002', nickname: '亞軍玩家', avatarUrl: null, score: 120, detail: null },
+    { rank: 3, playerId: 'player-a-id',  nickname: TEST_ACCOUNTS.playerA.nickname, avatarUrl: null, score: 80, detail: null },
+    { rank: 4, playerId: 'player-x-003', nickname: '第四名玩家', avatarUrl: null, score: 60, detail: null },
+    { rank: 5, playerId: 'player-x-004', nickname: '第五名玩家', avatarUrl: null, score: 40, detail: null },
   ],
-  selfRank: 3,
+  // selfRank is only shown when the player's rank is NOT in the visible entries list.
+  // Set to null so we rely on the entries list to display playerA's nickname.
+  selfRank: null,
 };
 
 test.describe('排行榜旅程', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlayer(page, TEST_ACCOUNTS.playerA);
 
-    await page.route(`${API_BASE}/api/v1/leaderboard**`, async (route) => {
+    // The leaderboard page fetches /api/v1/leaderboards (plural)
+    await page.route(`${API_BASE}/api/v1/leaderboards**`, async (route) => {
       const url = route.request().url();
-      let period = 'WEEKLY';
-      if (url.includes('period=DAILY') || url.includes('period=today')) period = 'DAILY';
-      if (url.includes('period=MONTHLY') || url.includes('period=month')) period = 'MONTHLY';
+      let period: string = MOCK_LEADERBOARD.period;
+      if (url.includes('period=TODAY')) period = 'TODAY';
+      if (url.includes('period=THIS_WEEK')) period = 'THIS_WEEK';
+      if (url.includes('period=THIS_MONTH')) period = 'THIS_MONTH';
+      if (url.includes('period=ALL_TIME')) period = 'ALL_TIME';
 
       await route.fulfill({
         status: 200,
@@ -40,7 +46,7 @@ test.describe('排行榜旅程', () => {
         body: JSON.stringify({ ...MOCK_LEADERBOARD, period }),
       });
     });
-    await page.route(`**/api/leaderboard**`, async (route) => {
+    await page.route(`**/api/leaderboards**`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

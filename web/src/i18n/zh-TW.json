@@ -264,7 +264,8 @@
     "ticketBoardLabel": "籤盤",
     "sidebarLabel": "側邊欄",
     "sortPriceLow": "價格低到高",
-    "sortPriceHigh": "價格高到低"
+    "sortPriceHigh": "價格高到低",
+    "spectatingMode": "觀戰模式 · 即時查看籤盤"
   },
   "wallet": {
     "title": "我的錢包",

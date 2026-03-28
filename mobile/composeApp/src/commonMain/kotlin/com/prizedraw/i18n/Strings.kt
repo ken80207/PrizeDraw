@@ -28,10 +28,11 @@ public object Strings {
      * 2. [ZH_TW] as the canonical fallback
      * 3. The raw [key] string so the UI never shows `null`
      */
-    public fun get(key: String): String = when (currentLocale) {
-        "en" -> EN[key] ?: ZH_TW[key] ?: key
-        else -> ZH_TW[key] ?: key
-    }
+    public fun get(key: String): String =
+        when (currentLocale) {
+            "en" -> EN[key] ?: ZH_TW[key] ?: key
+            else -> ZH_TW[key] ?: key
+        }
 }
 
 /**
