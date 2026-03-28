@@ -48,6 +48,9 @@ import com.prizedraw.application.ports.input.support.IReplySupportTicketUseCase
 import com.prizedraw.application.ports.input.trade.ICancelTradeListingUseCase
 import com.prizedraw.application.ports.input.trade.ICreateTradeListingUseCase
 import com.prizedraw.application.ports.input.trade.IPurchaseTradeListingUseCase
+import com.prizedraw.application.ports.input.favorite.IAddFavoriteUseCase
+import com.prizedraw.application.ports.input.favorite.IGetFavoritesUseCase
+import com.prizedraw.application.ports.input.favorite.IRemoveFavoriteUseCase
 import com.prizedraw.application.ports.input.withdrawal.IApproveWithdrawalUseCase
 import com.prizedraw.application.ports.input.withdrawal.ICreateWithdrawalRequestUseCase
 import com.prizedraw.application.ports.input.withdrawal.IRejectWithdrawalUseCase
@@ -106,6 +109,9 @@ import com.prizedraw.application.usecases.shipping.FulfillShippingOrderUseCase
 import com.prizedraw.application.usecases.trade.CancelTradeListingUseCase
 import com.prizedraw.application.usecases.trade.CreateTradeListingUseCase
 import com.prizedraw.application.usecases.trade.PurchaseTradeListingUseCase
+import com.prizedraw.application.usecases.favorite.AddFavoriteUseCase
+import com.prizedraw.application.usecases.favorite.GetFavoritesUseCase
+import com.prizedraw.application.usecases.favorite.RemoveFavoriteUseCase
 import com.prizedraw.application.usecases.withdrawal.ApproveWithdrawalUseCase
 import com.prizedraw.application.usecases.withdrawal.CreateWithdrawalRequestUseCase
 import com.prizedraw.application.usecases.withdrawal.RejectWithdrawalUseCase
@@ -113,9 +119,31 @@ import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
+import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
+import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.ICouponRepository
+import com.prizedraw.application.ports.output.IDistributedLockService
+import com.prizedraw.application.ports.output.IDrawRepository
+import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPlayerRepository
+import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.IPubSubService
+import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.application.ports.output.IBuybackRepository
+import com.prizedraw.application.ports.output.IExchangeRepository
+import com.prizedraw.application.ports.output.IFeatureFlagRepository
+import com.prizedraw.application.ports.output.ILeaderboardRepository
+import com.prizedraw.application.ports.output.IServerAnnouncementRepository
+import com.prizedraw.application.ports.output.IShippingRepository
+import com.prizedraw.application.ports.output.IStaffRepository
+import com.prizedraw.application.ports.output.ISupportRepository
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
+import com.prizedraw.application.ports.output.ITradeRepository
+import com.prizedraw.application.ports.output.IWithdrawalRepository
+import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.infrastructure.external.redis.DistributedLock
 import com.prizedraw.infrastructure.external.redis.RedisClient
-import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import org.koin.dsl.module
 
 /**
@@ -128,10 +156,10 @@ public val useCaseModule =
         // --- Auth ---
         single<ILoginUseCase> {
             LoginUseCase(
-                playerRepository = get(),
+                playerRepository = get<IPlayerRepository>(),
                 oAuthTokenValidator = get<IOAuthTokenValidator>(),
                 tokenService = get<TokenService>(),
-                auditRepository = get(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
@@ -144,9 +172,9 @@ public val useCaseModule =
 
         single<IBindPhoneUseCase> {
             BindPhoneUseCase(
-                playerRepository = get(),
+                playerRepository = get<IPlayerRepository>(),
                 redisClient = get<RedisClient>(),
-                auditRepository = get(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
@@ -160,19 +188,19 @@ public val useCaseModule =
 
         // --- Player ---
         single<IGetPlayerProfileUseCase> {
-            GetPlayerProfileUseCase(playerRepository = get())
+            GetPlayerProfileUseCase(playerRepository = get<IPlayerRepository>())
         }
 
         single<IUpdatePlayerProfileUseCase> {
-            UpdatePlayerProfileUseCase(playerRepository = get())
+            UpdatePlayerProfileUseCase(playerRepository = get<IPlayerRepository>())
         }
 
         single<IGetPrizeInventoryUseCase> {
-            GetPrizeInventoryUseCase(prizeRepository = get())
+            GetPrizeInventoryUseCase(prizeRepository = get<IPrizeRepository>())
         }
 
         single<IUpdateAnimationPreferenceUseCase> {
-            UpdateAnimationPreferenceUseCase(playerRepository = get())
+            UpdateAnimationPreferenceUseCase(playerRepository = get<IPlayerRepository>())
         }
 
         // --- Payment ---
@@ -186,9 +214,8 @@ public val useCaseModule =
         single<IConfirmPaymentWebhookUseCase> {
             ConfirmPaymentWebhookUseCase(
                 paymentOrderRepository = get<IPaymentOrderRepository>(),
-                playerRepository = get(),
-                drawPointTransactionRepository = get<IDrawPointTransactionRepository>(),
-                outboxRepository = get(),
+                pointsLedgerService = get<PointsLedgerService>(),
+                outboxRepository = get<IOutboxRepository>(),
                 paymentGateway = get<IPaymentGateway>(),
             )
         }
@@ -203,21 +230,18 @@ public val useCaseModule =
             DrawCore(
                 deps =
                     DrawCoreDeps(
-                        playerRepository = get(),
-                        prizeRepository = get(),
-                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
-                        outboxRepository = get(),
-                        levelService = get<LevelService>(),
+                        playerRepository = get<IPlayerRepository>(),
+                        prizeRepository = get<IPrizeRepository>(),
                     ),
             )
         }
 
         single<KujiQueueService> {
             KujiQueueService(
-                distributedLock = get<DistributedLock>(),
+                distributedLock = get<IDistributedLockService>(),
                 queueRepository = get<IQueueRepository>(),
                 queueEntryRepository = get<IQueueEntryRepository>(),
-                redisPubSub = get<RedisPubSub>(),
+                pubSub = get<IPubSubService>(),
             )
         }
 
@@ -225,18 +249,20 @@ public val useCaseModule =
             DrawKujiUseCase(
                 deps =
                     DrawKujiDeps(
-                        drawRepository = get(),
-                        ticketBoxRepository = get(),
-                        prizeRepository = get(),
-                        playerRepository = get(),
-                        campaignRepository = get(),
+                        drawRepository = get<IDrawRepository>(),
+                        ticketBoxRepository = get<ITicketBoxRepository>(),
+                        prizeRepository = get<IPrizeRepository>(),
+                        playerRepository = get<IPlayerRepository>(),
+                        campaignRepository = get<ICampaignRepository>(),
                         queueRepository = get<IQueueRepository>(),
-                        outboxRepository = get(),
-                        auditRepository = get(),
+                        outboxRepository = get<IOutboxRepository>(),
+                        auditRepository = get<IAuditRepository>(),
                         domainService = get<KujiDrawDomainService>(),
-                        redisPubSub = get<RedisPubSub>(),
+                        pubSub = get<IPubSubService>(),
                         drawCore = get<DrawCore>(),
-                        couponRepository = get(),
+                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
+                        levelService = get<LevelService>(),
+                        couponRepository = getOrNull<ICouponRepository>(),
                     ),
             )
         }
@@ -245,14 +271,16 @@ public val useCaseModule =
             DrawUnlimitedUseCase(
                 deps =
                     DrawUnlimitedDeps(
-                        campaignRepository = get(),
-                        prizeRepository = get(),
-                        outboxRepository = get(),
-                        auditRepository = get(),
+                        campaignRepository = get<ICampaignRepository>(),
+                        prizeRepository = get<IPrizeRepository>(),
+                        outboxRepository = get<IOutboxRepository>(),
+                        auditRepository = get<IAuditRepository>(),
                         domainService = get<UnlimitedDrawDomainService>(),
                         redisClient = get<RedisClient>(),
                         drawCore = get<DrawCore>(),
-                        couponRepository = get(),
+                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
+                        levelService = get<LevelService>(),
+                        couponRepository = getOrNull<ICouponRepository>(),
                     ),
             )
         }
@@ -260,117 +288,121 @@ public val useCaseModule =
         // --- Phase 6: Shipping ---
         single<ICreateShippingOrderUseCase> {
             CreateShippingOrderUseCase(
-                prizeRepository = get(),
-                shippingRepository = get(),
-                outboxRepository = get(),
+                prizeRepository = get<IPrizeRepository>(),
+                shippingRepository = get<IShippingRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<ICancelShippingOrderUseCase> {
             CancelShippingOrderUseCase(
-                shippingRepository = get(),
-                prizeRepository = get(),
+                shippingRepository = get<IShippingRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<IFulfillShippingOrderUseCase> {
             FulfillShippingOrderUseCase(
-                shippingRepository = get(),
-                prizeRepository = get(),
-                outboxRepository = get(),
+                shippingRepository = get<IShippingRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<IConfirmDeliveryUseCase> {
             ConfirmDeliveryUseCase(
-                shippingRepository = get(),
-                prizeRepository = get(),
+                shippingRepository = get<IShippingRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         // --- Phase 7: Trade Marketplace ---
         single<ICreateTradeListingUseCase> {
             CreateTradeListingUseCase(
-                prizeRepository = get(),
-                tradeRepository = get(),
-                playerRepository = get(),
-                featureFlagRepository = get(),
-                auditRepository = get(),
-                outboxRepository = get(),
+                prizeRepository = get<IPrizeRepository>(),
+                tradeRepository = get<ITradeRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+                featureFlagRepository = get<IFeatureFlagRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<IPurchaseTradeListingUseCase> {
             PurchaseTradeListingUseCase(
-                tradeRepository = get(),
-                playerRepository = get(),
-                prizeRepository = get(),
+                tradeRepository = get<ITradeRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
                 drawPointTxRepository = get<IDrawPointTransactionRepository>(),
                 revenuePointTxRepository = get<IRevenuePointTransactionRepository>(),
-                outboxRepository = get(),
+                outboxRepository = get<IOutboxRepository>(),
                 distributedLock = get<DistributedLock>(),
-                levelService = get<LevelService>(),
+                levelService = getOrNull<LevelService>(),
             )
         }
 
         single<ICancelTradeListingUseCase> {
             CancelTradeListingUseCase(
-                tradeRepository = get(),
-                prizeRepository = get(),
+                tradeRepository = get<ITradeRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
             )
         }
 
         // --- Phase 8: Exchange ---
         single<ICreateExchangeRequestUseCase> {
             CreateExchangeRequestUseCase(
-                exchangeRepository = get(),
-                prizeRepository = get(),
-                playerRepository = get(),
-                featureFlagRepository = get(),
-                auditRepository = get(),
-                outboxRepository = get(),
+                exchangeRepository = get<IExchangeRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+                featureFlagRepository = get<IFeatureFlagRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<IRespondExchangeRequestUseCase> {
             RespondExchangeRequestUseCase(
-                exchangeRepository = get(),
-                prizeRepository = get(),
-                playerRepository = get(),
-                auditRepository = get(),
-                outboxRepository = get(),
+                exchangeRepository = get<IExchangeRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
+                distributedLock = get<DistributedLock>(),
             )
         }
 
         single<ICancelExchangeRequestUseCase> {
             CancelExchangeRequestUseCase(
-                exchangeRepository = get(),
-                prizeRepository = get(),
-                auditRepository = get(),
-                outboxRepository = get(),
+                exchangeRepository = get<IExchangeRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         // --- Phase 9: Buyback ---
         single<IBuybackUseCase> {
             BuybackUseCase(
-                prizeRepository = get(),
-                playerRepository = get(),
-                buybackRepository = get(),
+                prizeRepository = get<IPrizeRepository>(),
+                playerRepository = get<IPlayerRepository>(),
+                buybackRepository = get<IBuybackRepository>(),
                 revenuePointTxRepository = get<IRevenuePointTransactionRepository>(),
-                auditRepository = get(),
-                outboxRepository = get(),
+                auditRepository = get<IAuditRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
+                distributedLock = get<DistributedLock>(),
             )
         }
 
         single<IGetBuybackPriceUseCase> {
-            GetBuybackPriceUseCase(prizeRepository = get())
+            GetBuybackPriceUseCase(prizeRepository = get<IPrizeRepository>())
         }
 
         // --- Phase 10: Dual Points & Withdrawal ---
         single<PointsLedgerService> {
             PointsLedgerService(
-                playerRepository = get(),
+                playerRepository = get<IPlayerRepository>(),
                 drawPointTxRepository = get<IDrawPointTransactionRepository>(),
                 revenuePointTxRepository = get<IRevenuePointTransactionRepository>(),
             )
@@ -378,207 +410,229 @@ public val useCaseModule =
 
         single<ICreateWithdrawalRequestUseCase> {
             CreateWithdrawalRequestUseCase(
-                playerRepository = get(),
-                withdrawalRepository = get(),
+                playerRepository = get<IPlayerRepository>(),
+                withdrawalRepository = get<IWithdrawalRepository>(),
                 pointsLedgerService = get<PointsLedgerService>(),
             )
         }
 
         single<IApproveWithdrawalUseCase> {
             ApproveWithdrawalUseCase(
-                withdrawalRepository = get(),
+                withdrawalRepository = get<IWithdrawalRepository>(),
                 withdrawalGateway = get<IWithdrawalGateway>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<IRejectWithdrawalUseCase> {
             RejectWithdrawalUseCase(
-                withdrawalRepository = get(),
+                withdrawalRepository = get<IWithdrawalRepository>(),
                 pointsLedgerService = get<PointsLedgerService>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         // --- Phase 11: Admin Campaign Management ---
         single<ICreateKujiCampaignUseCase> {
             CreateKujiCampaignUseCase(
-                campaignRepository = get(),
-                ticketBoxRepository = get(),
-                prizeRepository = get(),
-                auditRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                ticketBoxRepository = get<ITicketBoxRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<ICreateUnlimitedCampaignUseCase> {
             CreateUnlimitedCampaignUseCase(
-                campaignRepository = get(),
-                auditRepository = get(),
-                prizeRepository = get(),
-                marginRiskService = get(),
-                settingsRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                marginRiskService = get<MarginRiskService>(),
+                settingsRepository = get<ISystemSettingsRepository>(),
             )
         }
 
         single<IUpdateCampaignStatusUseCase> {
             UpdateCampaignStatusUseCase(
-                campaignRepository = get(),
-                ticketBoxRepository = get(),
-                prizeRepository = get(),
-                auditRepository = get(),
-                marginRiskService = get(),
-                settingsRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                ticketBoxRepository = get<ITicketBoxRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                auditRepository = get<IAuditRepository>(),
+                marginRiskService = get<MarginRiskService>(),
+                settingsRepository = get<ISystemSettingsRepository>(),
             )
         }
 
         single<IUpdateCampaignUseCase> {
             UpdateCampaignUseCase(
-                campaignRepository = get(),
-                auditRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         // --- Unlimited Prize Table & Risk ---
         single<UpdateUnlimitedPrizeTableUseCase> {
             UpdateUnlimitedPrizeTableUseCase(
-                campaignRepository = get(),
-                prizeRepository = get(),
-                marginRiskService = get(),
-                settingsRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                prizeRepository = get<IPrizeRepository>(),
+                marginRiskService = get<MarginRiskService>(),
+                settingsRepository = get<ISystemSettingsRepository>(),
             )
         }
 
         single<ApproveCampaignUseCase> {
             ApproveCampaignUseCase(
-                campaignRepository = get(),
-                settingsRepository = get(),
+                campaignRepository = get<ICampaignRepository>(),
+                settingsRepository = get<ISystemSettingsRepository>(),
             )
         }
 
         single<GetRiskSettingsUseCase> {
-            GetRiskSettingsUseCase(settingsRepository = get())
+            GetRiskSettingsUseCase(settingsRepository = get<ISystemSettingsRepository>())
         }
 
         // --- Phase 16: Animation Modes (Admin) ---
         single<IManageAnimationModesUseCase> {
             ManageAnimationModesUseCase(
-                featureFlagRepository = get(),
-                auditRepository = get(),
+                featureFlagRepository = get<IFeatureFlagRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         // --- Phase 17: Leaderboard ---
         single<IGetLeaderboardUseCase> {
-            GetLeaderboardUseCase(leaderboardRepository = get())
+            GetLeaderboardUseCase(leaderboardRepository = get<ILeaderboardRepository>())
         }
 
         single<LeaderboardAggregationJob> {
-            LeaderboardAggregationJob(leaderboardRepository = get())
+            LeaderboardAggregationJob(leaderboardRepository = get<ILeaderboardRepository>())
         }
 
         // --- Phase 12: Admin Pricing ---
         single<IUpdateBuybackPriceUseCase> {
             UpdateBuybackPriceUseCase(
-                prizeRepository = get(),
-                auditRepository = get(),
+                prizeRepository = get<IPrizeRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<IUpdateTradeFeeRateUseCase> {
             UpdateTradeFeeRateUseCase(
-                featureFlagRepository = get(),
-                auditRepository = get(),
+                featureFlagRepository = get<IFeatureFlagRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         // --- Phase 13: Support Tickets ---
         single<ICreateSupportTicketUseCase> {
             com.prizedraw.application.usecases.support.CreateSupportTicketUseCase(
-                supportRepository = get(),
+                supportRepository = get<ISupportRepository>(),
             )
         }
 
         single<IReplySupportTicketUseCase> {
             com.prizedraw.application.usecases.support.ReplySupportTicketUseCase(
-                supportRepository = get(),
+                supportRepository = get<ISupportRepository>(),
+                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
         single<ICloseSupportTicketUseCase> {
             com.prizedraw.application.usecases.support.CloseSupportTicketUseCase(
-                supportRepository = get(),
+                supportRepository = get<ISupportRepository>(),
             )
         }
 
         single<IGetSupportTicketDetailUseCase> {
             com.prizedraw.application.usecases.support.GetSupportTicketDetailUseCase(
-                supportRepository = get(),
+                supportRepository = get<ISupportRepository>(),
             )
         }
 
         // --- Phase 14: Staff Management & Audit Log ---
         single<ICreateStaffUseCase> {
             com.prizedraw.application.usecases.admin.CreateStaffUseCase(
-                staffRepository = get(),
-                auditRepository = get(),
+                staffRepository = get<IStaffRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<IUpdateStaffRoleUseCase> {
             com.prizedraw.application.usecases.admin.UpdateStaffRoleUseCase(
-                staffRepository = get(),
-                auditRepository = get(),
+                staffRepository = get<IStaffRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<IDeactivateStaffUseCase> {
             com.prizedraw.application.usecases.admin.DeactivateStaffUseCase(
-                staffRepository = get(),
-                auditRepository = get(),
+                staffRepository = get<IStaffRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<IGetAuditLogUseCase> {
             com.prizedraw.application.usecases.admin.GetAuditLogUseCase(
-                auditRepository = get(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         // --- Phase 20: Server Status / Announcement Management ---
         single<ICreateAnnouncementUseCase> {
-            CreateAnnouncementUseCase(announcementRepository = get())
+            CreateAnnouncementUseCase(announcementRepository = get<IServerAnnouncementRepository>())
         }
 
         single<IUpdateAnnouncementUseCase> {
-            UpdateAnnouncementUseCase(announcementRepository = get())
+            UpdateAnnouncementUseCase(announcementRepository = get<IServerAnnouncementRepository>())
         }
 
         single<IDeactivateAnnouncementUseCase> {
-            DeactivateAnnouncementUseCase(announcementRepository = get())
+            DeactivateAnnouncementUseCase(announcementRepository = get<IServerAnnouncementRepository>())
         }
 
         // --- Phase 15: Coupons ---
         single<ICreateCouponUseCase> {
             com.prizedraw.application.usecases.coupon.CreateCouponUseCase(
-                couponRepository = get(),
-                auditRepository = get(),
+                couponRepository = get<ICouponRepository>(),
+                auditRepository = get<IAuditRepository>(),
             )
         }
 
         single<IRedeemDiscountCodeUseCase> {
             com.prizedraw.application.usecases.coupon.RedeemDiscountCodeUseCase(
-                couponRepository = get(),
+                couponRepository = get<ICouponRepository>(),
             )
         }
 
         single<IApplyCouponToDrawUseCase> {
             com.prizedraw.application.usecases.coupon.ApplyCouponToDrawUseCase(
-                couponRepository = get(),
+                couponRepository = get<ICouponRepository>(),
             )
         }
 
         single<IDeactivateCouponUseCase> {
             com.prizedraw.application.usecases.coupon.DeactivateCouponUseCase(
-                couponRepository = get(),
-                auditRepository = get(),
+                couponRepository = get<ICouponRepository>(),
+                auditRepository = get<IAuditRepository>(),
+            )
+        }
+
+        // --- Campaign Favorites ---
+        single<IAddFavoriteUseCase> {
+            AddFavoriteUseCase(
+                favoriteRepository = get<ICampaignFavoriteRepository>(),
+                campaignRepository = get<ICampaignRepository>(),
+            )
+        }
+
+        single<IRemoveFavoriteUseCase> {
+            RemoveFavoriteUseCase(favoriteRepository = get<ICampaignFavoriteRepository>())
+        }
+
+        single<IGetFavoritesUseCase> {
+            GetFavoritesUseCase(
+                favoriteRepository = get<ICampaignFavoriteRepository>(),
+                campaignRepository = get<ICampaignRepository>(),
             )
         }
     }
