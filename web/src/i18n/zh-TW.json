@@ -834,5 +834,9 @@
     "customAmountPlaceholder": "輸入金額",
     "pointsPerDollar": "1 美元 = 100 點",
     "back": "返回錢包"
+  },
+  "live": {
+    "title": "正在連抽",
+    "drawing": "{nickname} 正在 {campaign} 連抽中！"
   }
 }

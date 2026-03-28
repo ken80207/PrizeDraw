@@ -1,3 +1,5 @@
+import type { LiveDrawItem } from "./liveDrawService";
+
 export interface DrawFeedEvent {
   drawId: string;
   playerId: string;
@@ -17,8 +19,19 @@ export interface FeedWsMessage {
   data: DrawFeedEvent;
 }
 
+export interface LiveDrawStartedMessage {
+  type: "live_draw_started";
+  data: LiveDrawItem;
+}
+
+export interface LiveDrawEndedMessage {
+  type: "live_draw_ended";
+  sessionId: string;
+}
+
 export type FeedEventListener = (event: DrawFeedEvent) => void;
 export type FeedConnectionListener = (connected: boolean) => void;
+export type LiveDrawListener = (msg: LiveDrawStartedMessage | LiveDrawEndedMessage) => void;
 
 const BASE_WS_URL =
   process.env.NEXT_PUBLIC_WS_URL ?? `ws://${typeof window !== "undefined" ? window.location.host : "localhost:9092"}`;
@@ -30,6 +43,7 @@ let retries = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 const eventListeners = new Set<FeedEventListener>();
 const connectionListeners = new Set<FeedConnectionListener>();
+const liveDrawListeners = new Set<LiveDrawListener>();
 
 function notifyConnection(connected: boolean) {
   connectionListeners.forEach((cb) => cb(connected));
@@ -52,6 +66,9 @@ function connect(): void {
       if (msg.type === "feed_event" && msg.data) {
         eventListeners.forEach((cb) => cb(msg.data));
       }
+      if (msg.type === "live_draw_started" || msg.type === "live_draw_ended") {
+        liveDrawListeners.forEach((cb) => cb(msg as LiveDrawStartedMessage | LiveDrawEndedMessage));
+      }
     } catch {
       // Ignore malformed messages
     }
@@ -59,7 +76,7 @@ function connect(): void {
 
   ws.onclose = () => {
     notifyConnection(false);
-    if (eventListeners.size > 0 && retries < MAX_RETRIES) {
+    if ((eventListeners.size > 0 || liveDrawListeners.size > 0) && retries < MAX_RETRIES) {
       const delay = BASE_BACKOFF_MS * Math.pow(2, retries);
       retries++;
       reconnectTimer = setTimeout(connect, delay);
@@ -93,6 +110,19 @@ export function subscribeFeed(
   return () => {
     eventListeners.delete(onEvent);
     if (onConnection) connectionListeners.delete(onConnection);
-    if (eventListeners.size === 0) disconnect();
+    if (eventListeners.size === 0 && liveDrawListeners.size === 0) disconnect();
+  };
+}
+
+export function subscribeLiveDraws(
+  onMessage: LiveDrawListener,
+): () => void {
+  liveDrawListeners.add(onMessage);
+
+  if (eventListeners.size === 0 && liveDrawListeners.size === 1) connect();
+
+  return () => {
+    liveDrawListeners.delete(onMessage);
+    if (eventListeners.size === 0 && liveDrawListeners.size === 0) disconnect();
   };
 }

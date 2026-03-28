@@ -793,5 +793,9 @@
     "customAmountPlaceholder": "Enter amount",
     "pointsPerDollar": "$1 = 100 PTS",
     "back": "Back to Wallet"
+  },
+  "live": {
+    "title": "Live Draws",
+    "drawing": "{nickname} is multi-drawing in {campaign}!"
   }
 }
