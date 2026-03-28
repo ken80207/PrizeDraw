@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 public data class PlayerDto(
     val id: String,
+    val playerCode: String,
     val nickname: String,
     val avatarUrl: String? = null,
     val phoneNumber: String?,
@@ -18,6 +19,8 @@ public data class PlayerDto(
     val locale: String,
     val isActive: Boolean,
     val createdAt: Instant,
+    val followerCount: Int,
+    val followingCount: Int,
 )
 
 @Serializable

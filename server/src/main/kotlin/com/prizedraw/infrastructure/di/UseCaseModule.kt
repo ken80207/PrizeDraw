@@ -205,7 +205,10 @@ public val useCaseModule =
 
         // --- Player ---
         single<IGetPlayerProfileUseCase> {
-            GetPlayerProfileUseCase(playerRepository = get<IPlayerRepository>())
+            GetPlayerProfileUseCase(
+                playerRepository = get<IPlayerRepository>(),
+                followRepository = get<IFollowRepository>(),
+            )
         }
 
         single<IUpdatePlayerProfileUseCase> {
