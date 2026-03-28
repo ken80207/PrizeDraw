@@ -158,7 +158,7 @@ public fun Application.configureRouting() {
 
         // Live draw feed — public REST endpoint + WebSocket fanout
         feedRoutes()
-        feedWebSocketHandler(feedPubSub)
+        feedWebSocketHandler(feedPubSub, this@configureRouting)
 
         // Phase 22: Player level/tier system and XP leaderboard
         levelRoutes()

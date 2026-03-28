@@ -120,7 +120,7 @@ public class DrawUnlimitedUseCase(
                 )
             }
 
-        val result =
+        val outcome =
             newSuspendedTransaction {
                 markCouponExhausted(playerId, playerCouponId)
                 val drawResult =
@@ -132,8 +132,11 @@ public class DrawUnlimitedUseCase(
                         discountAmount = discountAmount,
                         gameType = "UNLIMITED",
                     )
+                drawResult.first()
+            }
 
-                val outcome = drawResult.first()
+        val result =
+            newSuspendedTransaction {
                 val prizeDef =
                     deps.prizeRepository.findDefinitionById(PrizeDefinitionId(outcome.prizeDefinitionId))
                 checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }

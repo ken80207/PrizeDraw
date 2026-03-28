@@ -6,8 +6,6 @@ import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
@@ -27,28 +25,26 @@ private val log = LoggerFactory.getLogger("FeedWebSocketHandler")
  * fan-out are pruned from the set.
  *
  * @param pubSub The pub/sub service used to subscribe to the `feed:draws` channel.
+ * @param appScope A [CoroutineScope] tied to the application lifecycle (e.g. the Ktor
+ *   [io.ktor.server.application.Application] itself). The subscription coroutine is launched
+ *   as a child of this scope so it is cancelled cleanly on application shutdown.
  */
 public fun Route.feedWebSocketHandler(
     pubSub: IPubSubService,
+    appScope: CoroutineScope,
 ) {
     val sessions: MutableSet<WebSocketSession> =
         Collections.synchronizedSet(mutableSetOf())
 
-    // Dedicated supervisor scope for the feed subscription coroutine.
-    // SupervisorJob ensures a failure in the collector does not cancel other coroutines,
-    // and Dispatchers.Default keeps the fan-out off the Netty I/O thread.
-    val feedScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
     // Subscribe to feed:draws once at route registration time and fan out to all sessions.
-    feedScope.launch {
+    // Launched in appScope so the coroutine is cancelled when the application shuts down.
+    appScope.launch {
         pubSub.subscribe("feed:draws").collect { message ->
             val deadSessions = mutableListOf<WebSocketSession>()
             synchronized(sessions) {
                 for (session in sessions) {
-                    @Suppress("TooGenericExceptionCaught")
-                    try {
-                        session.outgoing.trySend(Frame.Text(message))
-                    } catch (_: Exception) {
+                    val result = session.outgoing.trySend(Frame.Text(message))
+                    if (result.isClosed) {
                         deadSessions.add(session)
                     }
                 }
