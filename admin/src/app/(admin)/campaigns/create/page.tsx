@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/services/apiClient";
 import { ImageUpload } from "@/components/ImageUpload";
 import { calcUnlimitedMargin, pctToBps } from "@/lib/margin-utils";
 import { MarginDisplay } from "@/components/MarginDisplay";
+import { GradeEditor, type GradeItem } from "@/components/GradeEditor";
+import { GradeBadge } from "@/components/GradeBadge";
 
 type CampaignType = "kuji" | "unlimited";
 
@@ -51,6 +53,10 @@ function CampaignCreateInner() {
   const [notifyOnExpire, setNotifyOnExpire] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [campaignGrades, setCampaignGrades] = useState<GradeItem[]>([]);
+  const [gradeTemplates, setGradeTemplates] = useState<{ id: string; name: string; items: GradeItem[] }[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   // Kuji state — prizes defined once, boxCount controls how many identical boxes
   const [boxCount, setBoxCount] = useState(1);
@@ -214,13 +220,21 @@ function CampaignCreateInner() {
     }
   };
 
-  const GRADE_OPTIONS = [
-    "SP賞", "SSR賞", "SR賞",
-    "A賞", "B賞", "C賞", "D賞", "E賞", "F賞", "G賞", "H賞",
-    "Last賞", "W賞",
-  ];
+  useEffect(() => {
+    apiClient.get("/api/v1/admin/grade-templates").then(setGradeTemplates).catch(() => {});
+  }, []);
 
-  const usedGrades = new Set(kujiPrizes.map((p) => p.grade));
+  const applyTemplate = () => {
+    const tpl = gradeTemplates.find((t) => t.id === selectedTemplateId);
+    if (!tpl) return;
+    setCampaignGrades(tpl.items.map((it, i) => ({
+      id: Math.random().toString(36).slice(2, 9),
+      name: it.name,
+      displayOrder: it.displayOrder ?? i + 1,
+      colorCode: it.colorCode,
+      bgColorCode: it.bgColorCode,
+    })));
+  };
 
   const inputCls =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20";
@@ -421,6 +435,37 @@ function CampaignCreateInner() {
         </div>
       )}
 
+      {/* Grade Setup */}
+      <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-800">賞品等級設定</h2>
+        <p className="text-xs text-slate-500">設定此活動的賞品等級分類，套用模板後可自行調整</p>
+
+        {gradeTemplates.length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className={`${inputCls} w-48`}
+            >
+              <option value="">選擇模板...</option>
+              {gradeTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={applyTemplate}
+              disabled={!selectedTemplateId}
+              className="rounded-lg border border-indigo-300 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              套用
+            </button>
+          </div>
+        )}
+
+        <GradeEditor grades={campaignGrades} onChange={setCampaignGrades} />
+      </div>
+
       {/* Kuji: Box setup (parent) with prizes (children) */}
       {type === "kuji" && (
         <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
@@ -472,16 +517,16 @@ function CampaignCreateInner() {
                 <div key={prize.id} className="rounded-lg border border-white bg-white p-3 space-y-2 shadow-sm">
                   <div className="flex items-center gap-2 text-sm">
                     <select
-                      className="w-24 rounded border border-slate-300 px-2 py-1 text-xs bg-white"
                       value={prize.grade}
                       onChange={(e) => updateKujiPrize(prize.id, "grade", e.target.value)}
+                      className={`${inputCls} w-28`}
                     >
-                      <option value="">選擇等級</option>
-                      {GRADE_OPTIONS.map((g) => (
-                        <option key={g} value={g} disabled={usedGrades.has(g) && prize.grade !== g}>
-                          {g}
-                        </option>
-                      ))}
+                      <option value="">等級</option>
+                      {campaignGrades
+                        .sort((a, b) => a.displayOrder - b.displayOrder)
+                        .map((g) => (
+                          <option key={g.id} value={g.name}>{g.name}</option>
+                        ))}
                     </select>
                     <input
                       className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs"
@@ -643,11 +688,18 @@ function CampaignCreateInner() {
                 {probRows.map((row) => (
                   <tr key={row.id}>
                     <td className="py-2 pr-3">
-                      <input
-                        className="w-16 rounded border border-slate-300 px-2 py-1 text-xs"
+                      <select
                         value={row.grade}
                         onChange={(e) => updateProbRow(row.id, "grade", e.target.value)}
-                      />
+                        className={`${inputCls} w-28`}
+                      >
+                        <option value="">等級</option>
+                        {campaignGrades
+                          .sort((a, b) => a.displayOrder - b.displayOrder)
+                          .map((g) => (
+                            <option key={g.id} value={g.name}>{g.name}</option>
+                          ))}
+                      </select>
                     </td>
                     <td className="py-2 pr-3">
                       <input
