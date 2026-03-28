@@ -16,6 +16,7 @@ public data class KujiCampaignDto(
     val status: CampaignStatus,
     val activatedAt: Instant?,
     val soldOutAt: Instant?,
+    val isFavorited: Boolean = false,
 )
 
 @Serializable
@@ -28,6 +29,7 @@ public data class UnlimitedCampaignDto(
     val rateLimitPerSecond: Int,
     val status: CampaignStatus,
     val activatedAt: Instant?,
+    val isFavorited: Boolean = false,
 )
 
 @Serializable
