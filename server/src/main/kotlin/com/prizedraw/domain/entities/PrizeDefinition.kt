@@ -1,5 +1,6 @@
 package com.prizedraw.domain.entities
 
+import com.prizedraw.domain.valueobjects.CampaignGradeId
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import kotlinx.datetime.Instant
@@ -33,6 +34,7 @@ public data class PrizeDefinition(
     val kujiCampaignId: CampaignId?,
     val unlimitedCampaignId: CampaignId?,
     val grade: String,
+    val campaignGradeId: CampaignGradeId? = null,
     val name: String,
     val photos: List<String>,
     val prizeValue: Int,
