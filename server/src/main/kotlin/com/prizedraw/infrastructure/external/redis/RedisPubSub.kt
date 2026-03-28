@@ -1,5 +1,6 @@
 package com.prizedraw.infrastructure.external.redis
 
+import com.prizedraw.application.ports.output.IPubSubService
 import io.lettuce.core.pubsub.RedisPubSubAdapter
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 public class RedisPubSub(
     private val redisClient: RedisClient,
-) {
+) : IPubSubService {
     private val log = LoggerFactory.getLogger(RedisPubSub::class.java)
 
     private val listeners = ConcurrentHashMap<String, MutableList<Channel<String>>>()
@@ -31,7 +32,7 @@ public class RedisPubSub(
      * @param channel The Redis channel name, e.g. `ws:player:uuid`.
      * @param message The message payload (typically a JSON string).
      */
-    public suspend fun publish(
+    public override suspend fun publish(
         channel: String,
         message: String,
     ) {
@@ -49,7 +50,7 @@ public class RedisPubSub(
      *
      * @param channel The Redis channel to subscribe to.
      */
-    public fun subscribe(channel: String): Flow<String> {
+    public override fun subscribe(channel: String): Flow<String> {
         val messageChannel = Channel<String>(capacity = 64)
         listeners.getOrPut(channel) { mutableListOf() }.add(messageChannel)
 
@@ -86,5 +87,11 @@ public class RedisPubSub(
         listener: Channel<String>,
     ) {
         listeners[channel]?.remove(listener)
+    }
+
+    /** Closes all listener channels and clears the subscription map. */
+    public fun close() {
+        listeners.values.forEach { channels -> channels.forEach { it.close() } }
+        listeners.clear()
     }
 }

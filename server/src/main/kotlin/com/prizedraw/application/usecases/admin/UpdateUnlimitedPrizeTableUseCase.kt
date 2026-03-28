@@ -39,8 +39,9 @@ public class UpdateUnlimitedPrizeTableUseCase(
         request: UpdatePrizeTableRequest,
         staffId: StaffId,
     ): MarginResult {
-        val campaign = campaignRepository.findUnlimitedById(campaignId)
-            ?: error("Unlimited campaign not found: $campaignId")
+        val campaign =
+            campaignRepository.findUnlimitedById(campaignId)
+                ?: error("Unlimited campaign not found: $campaignId")
 
         check(campaign.status == CampaignStatus.DRAFT) {
             "Prize table can only be updated in DRAFT status, current: ${campaign.status}"
@@ -62,35 +63,37 @@ public class UpdateUnlimitedPrizeTableUseCase(
 
         prizeRepository.deleteByUnlimitedCampaignId(campaignId)
 
-        val definitions = request.prizeTable.map { entry ->
-            PrizeDefinition(
-                id = PrizeDefinitionId.generate(),
-                kujiCampaignId = null,
-                unlimitedCampaignId = campaignId,
-                grade = entry.grade,
-                name = entry.name,
-                photos = listOfNotNull(entry.photoUrl),
-                prizeValue = entry.prizeValue,
-                buybackPrice = 0,
-                buybackEnabled = true,
-                probabilityBps = entry.probabilityBps,
-                ticketCount = null,
-                displayOrder = entry.displayOrder,
-                createdAt = now,
-                updatedAt = now,
-            )
-        }
+        val definitions =
+            request.prizeTable.map { entry ->
+                PrizeDefinition(
+                    id = PrizeDefinitionId.generate(),
+                    kujiCampaignId = null,
+                    unlimitedCampaignId = campaignId,
+                    grade = entry.grade,
+                    name = entry.name,
+                    photos = listOfNotNull(entry.photoUrl),
+                    prizeValue = entry.prizeValue,
+                    buybackPrice = 0,
+                    buybackEnabled = true,
+                    probabilityBps = entry.probabilityBps,
+                    ticketCount = null,
+                    displayOrder = entry.displayOrder,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            }
         prizeRepository.saveAll(definitions)
 
         val threshold = settingsRepository.getMarginThresholdPct()
         return marginRiskService.calculateUnlimitedMargin(
             pricePerDraw = campaign.pricePerDraw,
-            prizes = definitions.map {
-                UnlimitedPrizeInput(
-                    probabilityBps = it.probabilityBps!!,
-                    prizeValue = it.prizeValue,
-                )
-            },
+            prizes =
+                definitions.map {
+                    UnlimitedPrizeInput(
+                        probabilityBps = it.probabilityBps!!,
+                        prizeValue = it.prizeValue,
+                    )
+                },
             thresholdPct = threshold,
         )
     }

@@ -20,6 +20,7 @@ import com.prizedraw.api.routes.deviceRoutes
 import com.prizedraw.api.routes.drawRoutes
 import com.prizedraw.api.routes.exchangeRoutes
 import com.prizedraw.api.routes.favoriteRoutes
+import com.prizedraw.api.routes.feedRoutes
 import com.prizedraw.api.routes.leaderboardRoutes
 import com.prizedraw.api.routes.levelRoutes
 import com.prizedraw.api.routes.lineWebhookRoute
@@ -35,6 +36,7 @@ import com.prizedraw.api.routes.withdrawalRoutes
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IQueueEntryRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.services.ChatService
@@ -45,6 +47,7 @@ import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
 import com.prizedraw.infrastructure.websocket.ConnectionManager
 import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
 import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
+import com.prizedraw.infrastructure.websocket.feedWebSocketHandler
 import com.prizedraw.infrastructure.websocket.kujiWebSocketHandler
 import com.prizedraw.infrastructure.websocket.playerNotificationHandler
 import com.prizedraw.infrastructure.websocket.queueWebSocketHandler
@@ -79,6 +82,7 @@ import org.koin.ktor.ext.inject
 @Suppress("LongMethod")
 public fun Application.configureRouting() {
     val prometheusRegistry: PrometheusMeterRegistry by inject()
+    val feedPubSub: IPubSubService by inject()
     val connectionManager: ConnectionManager by inject()
     val drawRepository: IDrawRepository by inject()
     val prizeRepository: IPrizeRepository by inject()
@@ -130,17 +134,16 @@ public fun Application.configureRouting() {
             prizeRepository,
             drawSyncService,
             roomScalingService,
-            tokenService
         )
 
         // Phase 21: Room scaling REST endpoints
         roomRoutes()
-        queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository, tokenService)
+        queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository)
 
         // Phase 19+: Gameification — Chat, Broadcast, Draw Sync
         chatRoutes()
         broadcastRoutes()
-        chatWebSocketHandler(connectionManager, chatService, tokenService)
+        chatWebSocketHandler(connectionManager, chatService)
 
         // Player notification WebSocket
         playerNotificationHandler(playerNotificationManager, tokenService, notificationRepository)
@@ -162,6 +165,10 @@ public fun Application.configureRouting() {
 
         // Phase 17: Leaderboard (public, but optional auth for self-rank)
         leaderboardRoutes()
+
+        // Live draw feed — public REST endpoint + WebSocket fanout
+        feedRoutes()
+        feedWebSocketHandler(feedPubSub, this@configureRouting)
 
         // Phase 22: Player level/tier system and XP leaderboard
         levelRoutes()

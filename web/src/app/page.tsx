@@ -6,59 +6,8 @@ import { useTranslations } from "next-intl";
 import { CampaignCard, type CampaignCardData } from "@/components/CampaignCard";
 import { CampaignCardSkeleton } from "@/components/LoadingSkeleton";
 import { apiClient } from "@/services/apiClient";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface RecentWinner {
-  nickname: string;
-  grade: string;
-  prizeName: string;
-}
-
-// ---------------------------------------------------------------------------
-// Winner Marquee
-// ---------------------------------------------------------------------------
-
-function WinnerMarquee({ winners }: { winners: RecentWinner[] }) {
-  const t = useTranslations("home");
-
-  if (winners.length === 0) return null;
-  // Double for seamless loop
-  const doubled = [...winners, ...winners];
-
-  return (
-    <section className="py-4 bg-surface-container-low/50 overflow-hidden whitespace-nowrap border-y border-white/5">
-      <div className="animate-marquee">
-        <div className="flex items-center gap-12 px-6">
-          {doubled.map((w, i) => (
-            <div key={i} className="flex items-center gap-3 shrink-0">
-              {/* Avatar placeholder */}
-              <div className="w-8 h-8 rounded-full bg-surface-container-high border border-primary/30 overflow-hidden flex items-center justify-center">
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                  person
-                </span>
-              </div>
-              <span className="text-sm font-bold text-on-surface">{w.nickname}</span>
-              <span className="text-xs text-on-surface-variant">{t("justWon")}</span>
-              <span
-                className={`px-2 py-0.5 rounded text-[10px] font-black border ${
-                  w.grade.includes("LAST") || w.grade.includes("Last")
-                    ? "bg-inverse-primary/20 text-primary border-primary/20"
-                    : "bg-primary/10 text-primary border-primary/20"
-                }`}
-              >
-                {w.grade}
-              </span>
-              <span className="text-sm font-medium text-secondary">{w.prizeName}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+import { useAuthStore } from "@/stores/authStore";
+import LiveMarquee from "@/components/feed/LiveMarquee";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -68,8 +17,10 @@ export default function HomePage() {
   const t = useTranslations("home");
   const tb = useTranslations("brand");
 
+  const player = useAuthStore((state) => state.player);
+  const currentPlayerId: string | null = player?.id ?? null;
+
   const [campaigns, setCampaigns] = useState<CampaignCardData[]>([]);
-  const [winners, setWinners] = useState<RecentWinner[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,15 +38,6 @@ export default function HomePage() {
         // Silently fall back to empty
       } finally {
         if (!cancelled) setLoading(false);
-      }
-
-      try {
-        const data = await apiClient.get<{ items: RecentWinner[] }>(
-          "/api/v1/leaderboard/recent-winners?limit=10",
-        );
-        if (!cancelled) setWinners(data.items ?? []);
-      } catch {
-        // ignore
       }
     }
     load();
@@ -160,8 +102,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Winners Marquee ──────────────────────────────────────────── */}
-      <WinnerMarquee winners={winners} />
+      {/* ── Live Feed Marquee ────────────────────────────────────────── */}
+      <LiveMarquee currentPlayerId={currentPlayerId} />
 
       {/* ── Ichiban Kuji Section ─────────────────────────────────────── */}
       <section className="p-6 lg:p-10">

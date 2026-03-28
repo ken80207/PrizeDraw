@@ -117,7 +117,9 @@ public class CampaignFavoriteRepositoryImpl : ICampaignFavoriteRepository {
         campaignType: CampaignType,
         campaignIds: List<UUID>,
     ): Set<UUID> {
-        if (campaignIds.isEmpty()) { return emptySet() }
+        if (campaignIds.isEmpty()) {
+            return emptySet()
+        }
         return inTransaction {
             CampaignFavoritesTable
                 .select(CampaignFavoritesTable.campaignId)

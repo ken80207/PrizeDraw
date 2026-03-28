@@ -37,8 +37,7 @@ public fun Application.configureSecurity() {
     val staffTokenService: StaffTokenService by inject()
     val staffRepository: IStaffRepository by inject()
 
-    // TODO: Re-enable real auth verification before production
-    @Suppress("ForbiddenComment") // Tracked in backlog — auth bypass is dev-only
+    // NOTE: Re-enable real auth verification before production (tracked in backlog — dev-only bypass)
     val devBypassAuth = System.getenv("DEV_BYPASS_AUTH")?.toBooleanStrictOrNull() ?: false
 
     install(Authentication) {

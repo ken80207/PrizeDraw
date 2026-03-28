@@ -7,5 +7,5 @@ package com.prizedraw.domain.services
 public class LowMarginException(
     public val marginResult: MarginResult,
 ) : RuntimeException(
-    "Campaign margin ${marginResult.marginPct}% is below threshold ${marginResult.thresholdPct}%",
-)
+        "Campaign margin ${marginResult.marginPct}% is below threshold ${marginResult.thresholdPct}%",
+    )

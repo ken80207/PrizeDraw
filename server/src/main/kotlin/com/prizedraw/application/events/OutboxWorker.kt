@@ -3,10 +3,10 @@ package com.prizedraw.application.events
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
 import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.PushNotificationPayload
 import com.prizedraw.domain.entities.Notification
 import com.prizedraw.domain.entities.OutboxEvent
-import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,14 +31,14 @@ import kotlin.time.Duration.Companion.seconds
  *
  * @param outboxRepository Source of PENDING outbox events.
  * @param notificationService For sending push notifications on domain events.
- * @param redisPubSub For WebSocket fanout over pub/sub.
+ * @param pubSub For WebSocket fanout over pub/sub.
  * @param notificationRepository For persisting notification records per player.
  */
 @Suppress("TooManyFunctions")
 public class OutboxWorker(
     private val outboxRepository: IOutboxRepository,
     private val notificationService: INotificationService,
-    private val redisPubSub: RedisPubSub,
+    private val pubSub: IPubSubService,
     private val notificationRepository: INotificationRepository,
 ) {
     private val log = LoggerFactory.getLogger(OutboxWorker::class.java)
@@ -123,7 +123,7 @@ public class OutboxWorker(
                     null
                 }
             val wsPayload = buildWsPayload(event, notification)
-            redisPubSub.publish("ws:player:$pid", wsPayload)
+            pubSub.publish("ws:player:$pid", wsPayload)
         }
 
         // FCM push notification

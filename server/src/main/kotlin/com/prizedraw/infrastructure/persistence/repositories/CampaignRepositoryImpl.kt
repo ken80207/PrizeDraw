@@ -16,8 +16,8 @@ import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.update
@@ -225,7 +225,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
     // --- Batch lookups ---
 
     override suspend fun findKujiByIds(ids: List<CampaignId>): List<KujiCampaign> {
-        if (ids.isEmpty()) { return emptyList() }
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
         return inTransaction {
             KujiCampaignsTable
                 .selectAll()
@@ -237,7 +239,9 @@ public class CampaignRepositoryImpl : ICampaignRepository {
     }
 
     override suspend fun findUnlimitedByIds(ids: List<CampaignId>): List<UnlimitedCampaign> {
-        if (ids.isEmpty()) { return emptyList() }
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
         return inTransaction {
             UnlimitedCampaignsTable
                 .selectAll()

@@ -10,9 +10,11 @@ import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.contracts.dto.draw.DrawResultDto
 import com.prizedraw.contracts.dto.draw.DrawnTicketResultDto
 import com.prizedraw.contracts.enums.CampaignStatus
+import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
 import com.prizedraw.domain.entities.DrawTicket
@@ -70,6 +72,7 @@ public data class DrawKujiDeps(
     val redisPubSub: RedisPubSub,
     val drawCore: DrawCore,
     val couponRepository: ICouponRepository? = null,
+    val feedService: FeedService,
 )
 
 /**
@@ -162,6 +165,7 @@ public class DrawKujiUseCase(
             }
 
         publishDrawEvents(box, results, playerId)
+        publishFeedEvents(box.kujiCampaignId, results, playerId)
         return DrawResultDto(tickets = results)
     }
 
@@ -356,6 +360,31 @@ public class DrawKujiUseCase(
                 put("ticketCount", results.size)
             }
         deps.redisPubSub.publish("kuji:${box.kujiCampaignId.value}", payload.toString())
+    }
+
+    private suspend fun publishFeedEvents(
+        campaignId: CampaignId,
+        results: List<DrawnTicketResultDto>,
+        playerId: PlayerId,
+    ) {
+        val campaign = deps.campaignRepository.findKujiById(campaignId) ?: return
+        val player = deps.playerRepository.findById(playerId) ?: return
+        val now = Clock.System.now()
+        for (result in results) {
+            deps.feedService.publishDrawEvent(
+                drawId = result.prizeInstanceId,
+                playerId = playerId.value.toString(),
+                playerNickname = player.nickname ?: "Player",
+                playerAvatarUrl = player.avatarUrl,
+                campaignId = campaignId.value.toString(),
+                campaignTitle = campaign.title,
+                campaignType = CampaignType.KUJI,
+                prizeGrade = result.grade,
+                prizeName = result.prizeName,
+                prizePhotoUrl = result.prizePhotoUrl,
+                drawnAt = now,
+            )
+        }
     }
 }
 

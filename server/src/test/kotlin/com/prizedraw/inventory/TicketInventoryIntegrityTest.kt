@@ -497,6 +497,7 @@ class TicketInventoryIntegrityTest :
                     auditRepository = fakes.auditRepo,
                     domainService = KujiDrawDomainService(),
                     redisPubSub = fakes.redisPubSub,
+                    feedService = mockk(relaxed = true),
                 ),
             )
 

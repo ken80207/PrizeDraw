@@ -12,8 +12,14 @@ public interface ISystemSettingsRepository {
     public suspend fun getRequireApprovalBelowThreshold(): Boolean
 
     /** Update the margin threshold percentage. */
-    public suspend fun updateMarginThresholdPct(value: BigDecimal, staffId: UUID)
+    public suspend fun updateMarginThresholdPct(
+        value: BigDecimal,
+        staffId: UUID,
+    )
 
     /** Update the require-approval-below-threshold flag. */
-    public suspend fun updateRequireApprovalBelowThreshold(value: Boolean, staffId: UUID)
+    public suspend fun updateRequireApprovalBelowThreshold(
+        value: Boolean,
+        staffId: UUID,
+    )
 }

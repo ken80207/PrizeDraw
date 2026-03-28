@@ -1,5 +1,6 @@
 package com.prizedraw.infrastructure.external.redis
 
+import com.prizedraw.application.ports.output.IDistributedLockService
 import io.lettuce.core.ScriptOutputType
 import io.lettuce.core.SetArgs
 import kotlinx.coroutines.future.await
@@ -24,7 +25,7 @@ import java.util.UUID
  */
 public class DistributedLock(
     private val redisClient: RedisClient,
-) {
+) : IDistributedLockService {
     /**
      * Attempts to acquire the lock identified by [key].
      *
@@ -74,9 +75,9 @@ public class DistributedLock(
      * @param block The code to execute while holding the lock.
      * @return The result of [block], or null if the lock could not be acquired.
      */
-    public suspend fun <T> withLock(
+    public override suspend fun <T> withLock(
         key: String,
-        ttlSeconds: Long = 30,
+        ttlSeconds: Long,
         block: suspend () -> T,
     ): T? {
         val handle = tryAcquire(key, ttlSeconds) ?: return null

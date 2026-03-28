@@ -85,6 +85,7 @@ import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalGateway
 import com.prizedraw.application.ports.output.IWithdrawalRepository
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.application.services.KujiQueueService
 import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.PointsLedgerService
@@ -144,6 +145,7 @@ import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.infrastructure.external.redis.DistributedLock
 import com.prizedraw.infrastructure.external.redis.RedisClient
+import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import org.koin.dsl.module
 
 /**
@@ -214,7 +216,8 @@ public val useCaseModule =
         single<IConfirmPaymentWebhookUseCase> {
             ConfirmPaymentWebhookUseCase(
                 paymentOrderRepository = get<IPaymentOrderRepository>(),
-                pointsLedgerService = get<PointsLedgerService>(),
+                playerRepository = get<IPlayerRepository>(),
+                drawPointTransactionRepository = get<IDrawPointTransactionRepository>(),
                 outboxRepository = get<IOutboxRepository>(),
                 paymentGateway = get<IPaymentGateway>(),
             )
@@ -232,6 +235,9 @@ public val useCaseModule =
                     DrawCoreDeps(
                         playerRepository = get<IPlayerRepository>(),
                         prizeRepository = get<IPrizeRepository>(),
+                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
+                        outboxRepository = get<IOutboxRepository>(),
+                        levelService = get<LevelService>(),
                     ),
             )
         }
@@ -258,11 +264,10 @@ public val useCaseModule =
                         outboxRepository = get<IOutboxRepository>(),
                         auditRepository = get<IAuditRepository>(),
                         domainService = get<KujiDrawDomainService>(),
-                        pubSub = get<IPubSubService>(),
+                        redisPubSub = get<RedisPubSub>(),
                         drawCore = get<DrawCore>(),
-                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
-                        levelService = get<LevelService>(),
                         couponRepository = getOrNull<ICouponRepository>(),
+                        feedService = get<FeedService>(),
                     ),
             )
         }
@@ -278,9 +283,9 @@ public val useCaseModule =
                         domainService = get<UnlimitedDrawDomainService>(),
                         redisClient = get<RedisClient>(),
                         drawCore = get<DrawCore>(),
-                        drawPointTxRepository = get<IDrawPointTransactionRepository>(),
-                        levelService = get<LevelService>(),
                         couponRepository = getOrNull<ICouponRepository>(),
+                        feedService = get<FeedService>(),
+                        playerRepository = get<IPlayerRepository>(),
                     ),
             )
         }
@@ -298,7 +303,6 @@ public val useCaseModule =
             CancelShippingOrderUseCase(
                 shippingRepository = get<IShippingRepository>(),
                 prizeRepository = get<IPrizeRepository>(),
-                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
@@ -314,7 +318,6 @@ public val useCaseModule =
             ConfirmDeliveryUseCase(
                 shippingRepository = get<IShippingRepository>(),
                 prizeRepository = get<IPrizeRepository>(),
-                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
@@ -369,7 +372,6 @@ public val useCaseModule =
                 playerRepository = get<IPlayerRepository>(),
                 auditRepository = get<IAuditRepository>(),
                 outboxRepository = get<IOutboxRepository>(),
-                distributedLock = get<DistributedLock>(),
             )
         }
 
@@ -391,7 +393,6 @@ public val useCaseModule =
                 revenuePointTxRepository = get<IRevenuePointTransactionRepository>(),
                 auditRepository = get<IAuditRepository>(),
                 outboxRepository = get<IOutboxRepository>(),
-                distributedLock = get<DistributedLock>(),
             )
         }
 
@@ -420,7 +421,6 @@ public val useCaseModule =
             ApproveWithdrawalUseCase(
                 withdrawalRepository = get<IWithdrawalRepository>(),
                 withdrawalGateway = get<IWithdrawalGateway>(),
-                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
@@ -428,7 +428,6 @@ public val useCaseModule =
             RejectWithdrawalUseCase(
                 withdrawalRepository = get<IWithdrawalRepository>(),
                 pointsLedgerService = get<PointsLedgerService>(),
-                outboxRepository = get<IOutboxRepository>(),
             )
         }
 
@@ -536,7 +535,6 @@ public val useCaseModule =
         single<IReplySupportTicketUseCase> {
             com.prizedraw.application.usecases.support.ReplySupportTicketUseCase(
                 supportRepository = get<ISupportRepository>(),
-                outboxRepository = get<IOutboxRepository>(),
             )
         }
 

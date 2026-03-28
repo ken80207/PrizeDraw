@@ -1,28 +1,27 @@
 package com.prizedraw.api.routes
 
+import com.prizedraw.api.mappers.toDto
 import com.prizedraw.api.plugins.StaffPrincipal
 import com.prizedraw.api.plugins.satisfies
-import com.prizedraw.api.mappers.toDto
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignStatusUseCase
 import com.prizedraw.application.ports.input.admin.IUpdateCampaignUseCase
-import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
-import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
-import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
-import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.IDrawRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.usecases.admin.AdminCampaignNotFoundException
+import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
+import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
+import com.prizedraw.application.usecases.admin.GetRiskSettingsUseCase
 import com.prizedraw.application.usecases.admin.InvalidCampaignTransitionException
+import com.prizedraw.application.usecases.admin.UpdateUnlimitedPrizeTableUseCase
 import com.prizedraw.contracts.dto.admin.ChangeCampaignStatusRequest
 import com.prizedraw.contracts.dto.admin.CreateKujiCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.CreateUnlimitedCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.RiskSettingsUpdateRequest
 import com.prizedraw.contracts.dto.admin.UpdateCampaignAdminRequest
 import com.prizedraw.contracts.dto.admin.UpdatePrizeTableRequest
-import com.prizedraw.domain.services.LowMarginException
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDetailDto
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
 import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
@@ -38,6 +37,7 @@ import com.prizedraw.domain.entities.KujiCampaign
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.TicketBox
 import com.prizedraw.domain.entities.UnlimitedCampaign
+import com.prizedraw.domain.services.LowMarginException
 import com.prizedraw.domain.valueobjects.CampaignId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -65,7 +65,7 @@ import java.util.UUID
  * - PATCH  [AdminEndpoints.UNLIMITED_PRIZE_TABLE] -- replace unlimited prize table
  * - POST   [AdminEndpoints.CAMPAIGN_APPROVE]      -- approve campaign (MANAGER)
  * - POST   [AdminEndpoints.CAMPAIGN_REJECT]       -- reject campaign (MANAGER)
- * - GET    [AdminEndpoints.RISK_SETTINGS]         -- read risk settings (ADMIN)
+ * - GET [AdminEndpoints.RISK_SETTINGS]         -- read risk settings (ADMIN)
  * - PATCH  [AdminEndpoints.RISK_SETTINGS]         -- update risk settings (ADMIN)
  */
 public fun Route.adminCampaignRoutes() {
@@ -100,19 +100,21 @@ private fun Route.adminCampaignCreateRoutes() {
     post(AdminEndpoints.CAMPAIGNS_UNLIMITED) {
         val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
         val req = call.receive<CreateUnlimitedCampaignAdminRequest>()
-        val (campaign, marginResult) = createUnlimitedImpl.executeWithPrizeTable(
-            staffId = staff.staffId,
-            title = req.title,
-            description = req.description,
-            coverImageUrl = req.coverImageUrl,
-            pricePerDraw = req.pricePerDraw,
-            rateLimitPerSecond = req.rateLimitPerSecond,
-            prizeTable = req.prizeTable,
-        )
-        val response = mapOf(
-            "campaign" to campaign.toDto(),
-            "marginResult" to marginResult?.toDto(),
-        )
+        val (campaign, marginResult) =
+            createUnlimitedImpl.executeWithPrizeTable(
+                staffId = staff.staffId,
+                title = req.title,
+                description = req.description,
+                coverImageUrl = req.coverImageUrl,
+                pricePerDraw = req.pricePerDraw,
+                rateLimitPerSecond = req.rateLimitPerSecond,
+                prizeTable = req.prizeTable,
+            )
+        val response =
+            mapOf(
+                "campaign" to campaign.toDto(),
+                "marginResult" to marginResult?.toDto(),
+            )
         call.respond(HttpStatusCode.Created, response)
     }
 }

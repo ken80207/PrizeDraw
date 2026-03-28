@@ -123,37 +123,40 @@ public class CreateUnlimitedCampaignUseCase(
         }
 
         val now = Clock.System.now()
-        val definitions = prizeTable.map { entry ->
-            PrizeDefinition(
-                id = PrizeDefinitionId.generate(),
-                kujiCampaignId = null,
-                unlimitedCampaignId = campaign.id,
-                grade = entry.grade,
-                name = entry.name,
-                photos = listOfNotNull(entry.photoUrl),
-                prizeValue = entry.prizeValue,
-                buybackPrice = 0,
-                buybackEnabled = true,
-                probabilityBps = entry.probabilityBps,
-                ticketCount = null,
-                displayOrder = entry.displayOrder,
-                createdAt = now,
-                updatedAt = now,
-            )
-        }
+        val definitions =
+            prizeTable.map { entry ->
+                PrizeDefinition(
+                    id = PrizeDefinitionId.generate(),
+                    kujiCampaignId = null,
+                    unlimitedCampaignId = campaign.id,
+                    grade = entry.grade,
+                    name = entry.name,
+                    photos = listOfNotNull(entry.photoUrl),
+                    prizeValue = entry.prizeValue,
+                    buybackPrice = 0,
+                    buybackEnabled = true,
+                    probabilityBps = entry.probabilityBps,
+                    ticketCount = null,
+                    displayOrder = entry.displayOrder,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            }
         prizeRepository.saveAll(definitions)
 
         val threshold = settingsRepository.getMarginThresholdPct()
-        val marginResult = marginRiskService.calculateUnlimitedMargin(
-            pricePerDraw = campaign.pricePerDraw,
-            prizes = definitions.map {
-                UnlimitedPrizeInput(
-                    probabilityBps = it.probabilityBps!!,
-                    prizeValue = it.prizeValue,
-                )
-            },
-            thresholdPct = threshold,
-        )
+        val marginResult =
+            marginRiskService.calculateUnlimitedMargin(
+                pricePerDraw = campaign.pricePerDraw,
+                prizes =
+                    definitions.map {
+                        UnlimitedPrizeInput(
+                            probabilityBps = it.probabilityBps!!,
+                            prizeValue = it.prizeValue,
+                        )
+                    },
+                thresholdPct = threshold,
+            )
 
         return campaign to marginResult
     }

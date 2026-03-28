@@ -88,6 +88,7 @@ public class DrawCore(
      * @param gameType 遊戲類型標記（記帳用）
      * @param preSelected 預選結果（kuji 等已確定結果的遊戲類型使用），若非 null 則跳過隨機選取
      */
+    @Suppress("LongMethod")
     public suspend fun draw(
         playerId: PlayerId,
         pool: List<PrizePoolEntry>,
@@ -114,7 +115,12 @@ public class DrawCore(
         return selected
             .map { entry ->
                 val instanceId = PrizeInstanceId(UUID.randomUUID())
-                val perCost = if (quantity == 1) totalCost else pricePerDraw
+                val perCost =
+                    if (quantity == 1) {
+                        totalCost
+                    } else {
+                        pricePerDraw
+                    }
 
                 // 建 PrizeInstance
                 deps.prizeRepository.saveInstance(
@@ -188,7 +194,7 @@ public class DrawCore(
     private suspend fun debitBalance(
         playerId: PlayerId,
         totalCost: Int,
-        now: Instant,
+        @Suppress("UnusedParameter") now: Instant,
     ) {
         if (totalCost <= 0) return
         repeat(MAX_BALANCE_RETRIES) {
@@ -219,7 +225,9 @@ public class DrawCore(
         val svc = deps.levelService ?: return
         try {
             svc.awardXp(playerId, totalSpent * XP_PER_DRAW_POINT, XpSourceType.KUJI_DRAW)
-        } catch (ex: Exception) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") ex: Exception,
+        ) {
             log.warn("Failed to award XP for ${playerId.value}: ${ex.message}")
         }
     }

@@ -2,21 +2,24 @@ package com.prizedraw.infrastructure.di
 
 import com.prizedraw.api.plugins.createMeterRegistry
 import com.prizedraw.application.ports.output.IBroadcastRepository
-import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.application.ports.output.IDrawSyncRepository
+import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.application.ports.output.ITierConfigRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.application.services.BroadcastService
 import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
+import com.prizedraw.application.services.FeedService
 import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.StaffTokenService
 import com.prizedraw.application.services.TokenService
+import com.prizedraw.domain.services.MarginRiskService
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import com.prizedraw.infrastructure.persistence.repositories.RefreshTokenFamilyRepositoryImpl
@@ -102,6 +105,14 @@ public fun serviceModule(config: ApplicationConfig) =
                 roomInstanceRepository = get<IRoomInstanceRepository>(),
                 redisClient = get<RedisClient>(),
                 redisPubSub = get<RedisPubSub>(),
+            )
+        }
+
+        // Live draw feed (broadcasts draw events to /ws/feed clients; persists to feed_events)
+        single<FeedService> {
+            FeedService(
+                pubSub = get<IPubSubService>(),
+                feedEventRepository = get<IFeedEventRepository>(),
             )
         }
     }

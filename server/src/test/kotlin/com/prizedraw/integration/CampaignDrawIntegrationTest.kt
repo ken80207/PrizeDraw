@@ -524,8 +524,7 @@ class CampaignDrawIntegrationTest :
                                 prizeRepository = fakes.prizeRepo,
                             )
                         ),
-                    drawPointTxRepository = fakes.drawPointTxRepo,
-                    levelService = mockk(relaxed = true),
+                    feedService = mockk(relaxed = true),
                 ),
             )
 
@@ -919,8 +918,8 @@ class CampaignDrawIntegrationTest :
                                         prizeRepository = prizeRepo,
                                     )
                                 ),
-                            drawPointTxRepository = drawPointTxRepo,
-                            levelService = mockk(relaxed = true),
+                            feedService = mockk(relaxed = true),
+                            playerRepository = playerRepo,
                         ),
                     )
 

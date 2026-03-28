@@ -14,7 +14,6 @@ import com.prizedraw.domain.valueobjects.PlayerId
 public class RemoveFavoriteUseCase(
     private val favoriteRepository: ICampaignFavoriteRepository,
 ) : IRemoveFavoriteUseCase {
-
     override suspend fun execute(
         playerId: PlayerId,
         campaignType: CampaignType,

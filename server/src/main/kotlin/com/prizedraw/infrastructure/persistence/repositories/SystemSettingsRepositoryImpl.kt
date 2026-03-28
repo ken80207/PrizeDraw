@@ -22,30 +22,34 @@ private const val DEFAULT_REQUIRE_APPROVAL_BELOW_THRESHOLD = "false"
  * the table can be seeded lazily — a missing row falls back to a sensible default.
  */
 public class SystemSettingsRepositoryImpl : ISystemSettingsRepository {
-
     override suspend fun getMarginThresholdPct(): BigDecimal =
         newSuspendedTransaction {
-            val raw = SystemSettingsTable
-                .selectAll()
-                .where { SystemSettingsTable.key eq KEY_MARGIN_THRESHOLD_PCT }
-                .singleOrNull()
-                ?.get(SystemSettingsTable.value)
-                ?: DEFAULT_MARGIN_THRESHOLD_PCT
+            val raw =
+                SystemSettingsTable
+                    .selectAll()
+                    .where { SystemSettingsTable.key eq KEY_MARGIN_THRESHOLD_PCT }
+                    .singleOrNull()
+                    ?.get(SystemSettingsTable.value)
+                    ?: DEFAULT_MARGIN_THRESHOLD_PCT
             BigDecimal(raw)
         }
 
     override suspend fun getRequireApprovalBelowThreshold(): Boolean =
         newSuspendedTransaction {
-            val raw = SystemSettingsTable
-                .selectAll()
-                .where { SystemSettingsTable.key eq KEY_REQUIRE_APPROVAL_BELOW_THRESHOLD }
-                .singleOrNull()
-                ?.get(SystemSettingsTable.value)
-                ?: DEFAULT_REQUIRE_APPROVAL_BELOW_THRESHOLD
+            val raw =
+                SystemSettingsTable
+                    .selectAll()
+                    .where { SystemSettingsTable.key eq KEY_REQUIRE_APPROVAL_BELOW_THRESHOLD }
+                    .singleOrNull()
+                    ?.get(SystemSettingsTable.value)
+                    ?: DEFAULT_REQUIRE_APPROVAL_BELOW_THRESHOLD
             raw.toBooleanStrict()
         }
 
-    override suspend fun updateMarginThresholdPct(value: BigDecimal, staffId: UUID): Unit =
+    override suspend fun updateMarginThresholdPct(
+        value: BigDecimal,
+        staffId: UUID,
+    ): Unit =
         newSuspendedTransaction {
             SystemSettingsTable.upsert {
                 it[key] = KEY_MARGIN_THRESHOLD_PCT
@@ -55,7 +59,10 @@ public class SystemSettingsRepositoryImpl : ISystemSettingsRepository {
             }
         }
 
-    override suspend fun updateRequireApprovalBelowThreshold(value: Boolean, staffId: UUID): Unit =
+    override suspend fun updateRequireApprovalBelowThreshold(
+        value: Boolean,
+        staffId: UUID,
+    ): Unit =
         newSuspendedTransaction {
             SystemSettingsTable.upsert {
                 it[key] = KEY_REQUIRE_APPROVAL_BELOW_THRESHOLD

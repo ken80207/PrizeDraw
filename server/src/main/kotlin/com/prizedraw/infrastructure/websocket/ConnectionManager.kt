@@ -1,5 +1,6 @@
 package com.prizedraw.infrastructure.websocket
 
+import com.prizedraw.application.ports.output.IConnectionManagerPort
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
@@ -31,7 +32,7 @@ import java.util.concurrent.CopyOnWriteArraySet
  */
 public class ConnectionManager(
     private val redisPubSub: RedisPubSub,
-) {
+) : IConnectionManagerPort {
     private val log = LoggerFactory.getLogger(ConnectionManager::class.java)
     private val rooms = ConcurrentHashMap<String, CopyOnWriteArraySet<DefaultWebSocketServerSession>>()
     private val subscribed = ConcurrentHashMap.newKeySet<String>()

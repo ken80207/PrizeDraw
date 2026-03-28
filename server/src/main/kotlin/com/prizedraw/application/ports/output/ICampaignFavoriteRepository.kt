@@ -32,7 +32,11 @@ public interface ICampaignFavoriteRepository {
      * @param campaignType The campaign variant discriminator.
      * @param campaignId The campaign's UUID.
      */
-    public suspend fun delete(playerId: UUID, campaignType: CampaignType, campaignId: UUID)
+    public suspend fun delete(
+        playerId: UUID,
+        campaignType: CampaignType,
+        campaignId: UUID,
+    )
 
     /**
      * Returns a paginated list of favorites for a player, ordered by [CampaignFavorite.createdAt] descending.
@@ -57,7 +61,10 @@ public interface ICampaignFavoriteRepository {
      * @param campaignType When non-null, restricts count to this campaign type.
      * @return Total number of matching favorite entries.
      */
-    public suspend fun countByPlayerId(playerId: UUID, campaignType: CampaignType? = null): Int
+    public suspend fun countByPlayerId(
+        playerId: UUID,
+        campaignType: CampaignType? = null,
+    ): Int
 
     /**
      * Returns the player UUIDs who have favorited a specific campaign.
@@ -68,7 +75,10 @@ public interface ICampaignFavoriteRepository {
      * @param campaignId The campaign's strongly-typed identifier.
      * @return List of player UUIDs.
      */
-    public suspend fun findPlayerIdsByCampaign(campaignType: CampaignType, campaignId: CampaignId): List<UUID>
+    public suspend fun findPlayerIdsByCampaign(
+        campaignType: CampaignType,
+        campaignId: CampaignId,
+    ): List<UUID>
 
     /**
      * Returns whether a specific campaign is in a player's favorites.
@@ -78,7 +88,11 @@ public interface ICampaignFavoriteRepository {
      * @param campaignId The campaign's UUID.
      * @return `true` if the favorite entry exists, `false` otherwise.
      */
-    public suspend fun isFavorited(playerId: UUID, campaignType: CampaignType, campaignId: UUID): Boolean
+    public suspend fun isFavorited(
+        playerId: UUID,
+        campaignType: CampaignType,
+        campaignId: UUID,
+    ): Boolean
 
     /**
      * Batch-checks which campaign UUIDs from [campaignIds] are in the player's favorites.

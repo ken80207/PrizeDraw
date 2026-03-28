@@ -21,7 +21,6 @@ public class GetFavoritesUseCase(
     private val favoriteRepository: ICampaignFavoriteRepository,
     private val campaignRepository: ICampaignRepository,
 ) : IGetFavoritesUseCase {
-
     override suspend fun execute(
         playerId: PlayerId,
         campaignType: CampaignType?,

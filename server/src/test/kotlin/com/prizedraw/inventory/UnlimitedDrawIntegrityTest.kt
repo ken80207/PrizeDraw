@@ -175,6 +175,8 @@ class UnlimitedDrawIntegrityTest :
                     auditRepository = auditRepo,
                     domainService = UnlimitedDrawDomainService(),
                     redisClient = redisClient,
+                    feedService = mockk(relaxed = true),
+                    playerRepository = playerRepo,
                 ),
             )
         }

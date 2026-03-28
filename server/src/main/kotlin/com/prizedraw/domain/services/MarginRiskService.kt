@@ -8,7 +8,6 @@ import java.math.RoundingMode
  * No I/O — threshold is passed in by the calling use case.
  */
 public class MarginRiskService {
-
     /**
      * Calculate margin for a Kuji campaign (fixed ticket pool).
      *
@@ -42,18 +41,20 @@ public class MarginRiskService {
         prizes: List<UnlimitedPrizeInput>,
         thresholdPct: BigDecimal,
     ): MarginResult {
-        val expectedPayout = prizes.sumOf { prize ->
-            BigDecimal(prize.probabilityBps)
-                .multiply(BigDecimal(prize.prizeValue))
-                .divide(BigDecimal(PROBABILITY_TOTAL), 4, RoundingMode.HALF_UP)
-        }
+        val expectedPayout =
+            prizes.sumOf { prize ->
+                BigDecimal(prize.probabilityBps)
+                    .multiply(BigDecimal(prize.prizeValue))
+                    .divide(BigDecimal(PROBABILITY_TOTAL), 4, RoundingMode.HALF_UP)
+            }
         val revenue = BigDecimal(pricePerDraw)
         val profit = revenue.subtract(expectedPayout)
-        val marginPct = if (revenue > BigDecimal.ZERO) {
-            profit.multiply(BigDecimal(100)).divide(revenue, 4, RoundingMode.HALF_UP)
-        } else {
-            BigDecimal.ZERO
-        }
+        val marginPct =
+            if (revenue > BigDecimal.ZERO) {
+                profit.multiply(BigDecimal(100)).divide(revenue, 4, RoundingMode.HALF_UP)
+            } else {
+                BigDecimal.ZERO
+            }
         return MarginResult(
             totalRevenuePerUnit = pricePerDraw,
             totalCostPerUnit = expectedPayout.setScale(0, RoundingMode.HALF_UP).toInt(),
@@ -70,13 +71,14 @@ public class MarginRiskService {
         thresholdPct: BigDecimal,
     ): MarginResult {
         val profit = totalRevenue - totalCost
-        val marginPct = if (totalRevenue > 0) {
-            BigDecimal(profit)
-                .multiply(BigDecimal(100))
-                .divide(BigDecimal(totalRevenue), 4, RoundingMode.HALF_UP)
-        } else {
-            BigDecimal.ZERO
-        }
+        val marginPct =
+            if (totalRevenue > 0) {
+                BigDecimal(profit)
+                    .multiply(BigDecimal(100))
+                    .divide(BigDecimal(totalRevenue), 4, RoundingMode.HALF_UP)
+            } else {
+                BigDecimal.ZERO
+            }
         return MarginResult(
             totalRevenuePerUnit = totalRevenue.toInt(),
             totalCostPerUnit = totalCost.toInt(),

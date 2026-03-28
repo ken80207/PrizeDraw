@@ -265,6 +265,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -338,6 +339,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -427,6 +429,7 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
                         ),
                     )
 
@@ -527,6 +530,8 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
+                            playerRepository = playerRepo,
                         ),
                     )
 
@@ -612,6 +617,8 @@ class DrawConcurrencyTest :
                                         outboxRepository = outboxRepo
                                     )
                                 ),
+                            feedService = mockk(relaxed = true),
+                            playerRepository = playerRepo,
                         ),
                     )
 

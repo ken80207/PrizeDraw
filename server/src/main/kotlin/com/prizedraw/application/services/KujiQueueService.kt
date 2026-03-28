@@ -1,13 +1,13 @@
 package com.prizedraw.application.services
 
+import com.prizedraw.application.ports.output.IDistributedLockService
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.IQueueEntryRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.contracts.enums.QueueEntryStatus
 import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.QueueEntry
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.external.redis.DistributedLock
-import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,13 +40,13 @@ public class QueueOperationException(
  * @param distributedLock Lock provider.
  * @param queueRepository Queue aggregate root persistence.
  * @param queueEntryRepository Queue entry persistence.
- * @param redisPubSub Pub/sub bus for cross-instance broadcast.
+ * @param pubSub Pub/sub bus for cross-instance broadcast.
  */
 public class KujiQueueService(
-    private val distributedLock: DistributedLock,
+    private val distributedLock: IDistributedLockService,
     private val queueRepository: IQueueRepository,
     private val queueEntryRepository: IQueueEntryRepository,
-    private val redisPubSub: RedisPubSub,
+    private val pubSub: IPubSubService,
 ) {
     private val log = LoggerFactory.getLogger(KujiQueueService::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -304,6 +304,6 @@ public class KujiQueueService(
                 put("queueLength", activeEntries.size)
                 put("sessionExpiresAt", queue.sessionExpiresAt?.toString())
             }
-        redisPubSub.publish("queue:$ticketBoxId", payload.toString())
+        pubSub.publish("queue:$ticketBoxId", payload.toString())
     }
 }

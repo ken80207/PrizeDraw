@@ -14,13 +14,20 @@ public class ApproveCampaignUseCase(
     private val settingsRepository: ISystemSettingsRepository,
 ) {
     /** Approve a campaign pending review. */
-    public suspend fun approve(campaignId: CampaignId, staffId: StaffId) {
+    public suspend fun approve(
+        campaignId: CampaignId,
+        staffId: StaffId,
+    ) {
         requireFeatureEnabled()
         TODO("Approval flow not yet active")
     }
 
     /** Reject a campaign pending review. */
-    public suspend fun reject(campaignId: CampaignId, staffId: StaffId, reason: String? = null) {
+    public suspend fun reject(
+        campaignId: CampaignId,
+        staffId: StaffId,
+        reason: String? = null,
+    ) {
         requireFeatureEnabled()
         TODO("Approval flow not yet active")
     }
