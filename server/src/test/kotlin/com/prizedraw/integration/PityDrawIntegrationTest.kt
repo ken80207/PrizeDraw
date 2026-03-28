@@ -54,8 +54,10 @@ class PityDrawIntegrationTest :
             private val pools = ConcurrentHashMap<UUID, List<PityPrizePoolEntry>>()
             private val trackers = ConcurrentHashMap<String, PityTracker>()
 
-            private fun trackerKey(ruleId: UUID, playerId: PlayerId) =
-                "${ruleId}:${playerId.value}"
+            private fun trackerKey(
+                ruleId: UUID,
+                playerId: PlayerId,
+            ) = "$ruleId:${playerId.value}"
 
             override suspend fun findRuleByCampaignId(campaignId: CampaignId): PityRule? =
                 rules.values.find { it.campaignId == campaignId }
@@ -73,8 +75,7 @@ class PityDrawIntegrationTest :
                 trackers.keys.removeIf { it.startsWith("$ruleId:") }
             }
 
-            override suspend fun findPoolByRuleId(ruleId: UUID): List<PityPrizePoolEntry> =
-                pools[ruleId] ?: emptyList()
+            override suspend fun findPoolByRuleId(ruleId: UUID): List<PityPrizePoolEntry> = pools[ruleId] ?: emptyList()
 
             override suspend fun replacePool(
                 ruleId: UUID,
@@ -126,7 +127,9 @@ class PityDrawIntegrationTest :
             now: Instant = Clock.System.now(),
         ): PityResult? {
             val rule = repo.findRuleByCampaignId(campaignId) ?: return null
-            if (!rule.enabled) return null
+            if (!rule.enabled) {
+                return null
+            }
 
             val pool = repo.findPoolByRuleId(rule.id)
             val tracker = repo.findTracker(rule.id, playerId)
