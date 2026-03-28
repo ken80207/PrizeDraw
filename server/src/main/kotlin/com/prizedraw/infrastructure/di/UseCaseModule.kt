@@ -1,6 +1,9 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.input.admin.ICreateAnnouncementUseCase
+import com.prizedraw.application.ports.input.admin.ICreateBannerUseCase
+import com.prizedraw.application.ports.input.admin.IDeactivateBannerUseCase
+import com.prizedraw.application.ports.input.admin.IUpdateBannerUseCase
 import com.prizedraw.application.ports.input.admin.ICreateKujiCampaignUseCase
 import com.prizedraw.application.ports.input.admin.ICreateStaffUseCase
 import com.prizedraw.application.ports.input.admin.ICreateUnlimitedCampaignUseCase
@@ -62,6 +65,7 @@ import com.prizedraw.application.ports.input.withdrawal.IApproveWithdrawalUseCas
 import com.prizedraw.application.ports.input.withdrawal.ICreateWithdrawalRequestUseCase
 import com.prizedraw.application.ports.input.withdrawal.IRejectWithdrawalUseCase
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.IBannerRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
 import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
@@ -99,6 +103,9 @@ import com.prizedraw.application.services.LevelService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
+import com.prizedraw.application.usecases.admin.CreateBannerUseCase
+import com.prizedraw.application.usecases.admin.DeactivateBannerUseCase
+import com.prizedraw.application.usecases.admin.UpdateBannerUseCase
 import com.prizedraw.application.usecases.admin.CreateAnnouncementUseCase
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
@@ -607,6 +614,19 @@ public val useCaseModule =
 
         single<IDeactivateAnnouncementUseCase> {
             DeactivateAnnouncementUseCase(announcementRepository = get<IServerAnnouncementRepository>())
+        }
+
+        // --- Banner Carousel ---
+        single<ICreateBannerUseCase> {
+            CreateBannerUseCase(bannerRepository = get<IBannerRepository>())
+        }
+
+        single<IUpdateBannerUseCase> {
+            UpdateBannerUseCase(bannerRepository = get<IBannerRepository>())
+        }
+
+        single<IDeactivateBannerUseCase> {
+            DeactivateBannerUseCase(bannerRepository = get<IBannerRepository>())
         }
 
         // --- Phase 15: Coupons ---

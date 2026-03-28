@@ -1,6 +1,7 @@
 package com.prizedraw.infrastructure.di
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.application.ports.output.IBannerRepository
 import com.prizedraw.application.ports.output.IBroadcastRepository
 import com.prizedraw.application.ports.output.IBuybackRepository
 import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
@@ -36,6 +37,7 @@ import com.prizedraw.application.ports.output.ITradeRepository
 import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.infrastructure.persistence.repositories.AuditRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.BannerRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BroadcastRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.BuybackRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.CampaignFavoriteRepositoryImpl
@@ -132,4 +134,7 @@ public val repositoryModule =
 
         // Follow system
         single<IFollowRepository> { FollowRepositoryImpl() }
+
+        // Banner carousel
+        single<IBannerRepository> { BannerRepositoryImpl() }
     }
