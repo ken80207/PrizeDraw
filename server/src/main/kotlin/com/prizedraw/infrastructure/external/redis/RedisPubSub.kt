@@ -4,8 +4,8 @@ import com.prizedraw.application.ports.output.IPubSubService
 import io.lettuce.core.pubsub.RedisPubSubAdapter
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.future.await
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
@@ -51,8 +51,8 @@ public class RedisPubSub(
      *
      * @param channel The Redis channel to subscribe to.
      */
-    public override fun subscribe(channelName: String): Flow<String> {
-        return callbackFlow {
+    public override fun subscribe(channelName: String): Flow<String> =
+        callbackFlow {
             listeners.getOrPut(channelName) { mutableListOf() }.add(channel)
 
             redisClient.run {
@@ -64,7 +64,6 @@ public class RedisPubSub(
                 unsubscribe(channelName, this@callbackFlow.channel)
             }
         }
-    }
 
     /**
      * Processes an inbound pub/sub message by routing it to all registered local listeners.

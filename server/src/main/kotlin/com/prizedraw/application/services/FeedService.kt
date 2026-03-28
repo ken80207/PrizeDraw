@@ -52,6 +52,7 @@ public class FeedService(
      * @param prizeName Display name of the prize won.
      * @param prizePhotoUrl URL of the prize photo, or null if not available.
      * @param drawnAt Server-side timestamp of when the draw occurred.
+     * @param pityTriggered Whether this draw was guaranteed by the pity system.
      */
     public data class DrawFeedEvent(
         val drawId: String,
@@ -65,6 +66,7 @@ public class FeedService(
         val prizeName: String,
         val prizePhotoUrl: String?,
         val drawnAt: Instant,
+        val pityTriggered: Boolean = false,
     )
 
     /**
@@ -84,6 +86,7 @@ public class FeedService(
      * @param prizeName Display name of the prize won.
      * @param prizePhotoUrl URL of the prize photo, or null if not available.
      * @param drawnAt Server-side timestamp of when the draw occurred.
+     * @param pityTriggered Whether this draw was guaranteed by the pity system.
      */
     @Suppress("LongParameterList") // mirrors DrawFeedEvent fields; delegates immediately to the typed overload
     public suspend fun publishDrawEvent(
@@ -98,6 +101,7 @@ public class FeedService(
         prizeName: String,
         prizePhotoUrl: String?,
         drawnAt: Instant,
+        pityTriggered: Boolean = false,
     ): Unit =
         publishDrawEvent(
             DrawFeedEvent(
@@ -112,6 +116,7 @@ public class FeedService(
                 prizeName = prizeName,
                 prizePhotoUrl = prizePhotoUrl,
                 drawnAt = drawnAt,
+                pityTriggered = pityTriggered,
             ),
         )
 
@@ -157,6 +162,7 @@ public class FeedService(
                     prizeName = event.prizeName,
                     prizePhotoUrl = event.prizePhotoUrl,
                     drawnAt = event.drawnAt,
+                    pityTriggered = event.pityTriggered,
                 )
             val json = Json.encodeToString(DrawFeedEventDto.serializer(), dto)
             val envelope = """{"type":"feed_event","data":$json}"""

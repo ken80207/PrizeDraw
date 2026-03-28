@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
  * @param prizeName Display name of the prize won.
  * @param prizePhotoUrl URL of the prize photo, or null if not available.
  * @param drawnAt Server-side timestamp of when the draw occurred.
+ * @param pityTriggered Whether this draw was guaranteed by the pity system.
  */
 @Serializable
 public data class DrawFeedEventDto(
@@ -32,6 +33,7 @@ public data class DrawFeedEventDto(
     val prizeName: String,
     val prizePhotoUrl: String?,
     val drawnAt: Instant,
+    val pityTriggered: Boolean = false,
 )
 
 /**

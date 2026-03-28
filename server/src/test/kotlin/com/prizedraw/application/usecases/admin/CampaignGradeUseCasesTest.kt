@@ -185,7 +185,8 @@ class CampaignGradeUseCasesTest :
 
                 coEvery { templateRepo.findById(templateId) } returns template
                 coEvery { campaignRepo.findKujiById(campaignId) } returns makeKujiCampaign(campaignId)
-                coEvery { gradeRepo.findByCampaignId(campaignId) } returns listOf(existingGrade) andThen listOf(existingGrade, newGrade)
+                coEvery { gradeRepo.findByCampaignId(campaignId) } returns listOf(existingGrade) andThen
+                    listOf(existingGrade, newGrade)
 
                 val addedSlot = slot<List<CampaignGrade>>()
                 coEvery { gradeRepo.saveAll(capture(addedSlot)) } answers { addedSlot.captured }
@@ -300,7 +301,13 @@ class CampaignGradeUseCasesTest :
 
                 val grades =
                     listOf(
-                        CampaignGradeUseCases.GradeInput(existingId.value.toString(), "Existing Updated", 0, "#FFFFFF", "#000000"),
+                        CampaignGradeUseCases.GradeInput(
+                            existingId.value.toString(),
+                            "Existing Updated",
+                            0,
+                            "#FFFFFF",
+                            "#000000"
+                        ),
                     )
 
                 coEvery { campaignRepo.findKujiById(campaignId) } returns makeKujiCampaign(campaignId)

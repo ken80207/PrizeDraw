@@ -536,11 +536,12 @@ public class OutboxWorker(
             PushNotificationPayload(
                 title = "收藏的活動已加開",
                 body = "你收藏的『$campaignTitle』已加開新箱，快來抽！",
-                data = mapOf(
-                    "eventType" to "favorite.campaign_restocked",
-                    "campaignId" to campaignId,
-                    "campaignType" to campaignType,
-                ),
+                data =
+                    mapOf(
+                        "eventType" to "favorite.campaign_restocked",
+                        "campaignId" to campaignId,
+                        "campaignType" to campaignType,
+                    ),
             ),
         )
     }

@@ -276,7 +276,7 @@ public class DrawUnlimitedUseCase(
         }
     }
 
-    /** Executes the draw transaction, persisting coupon and pity tracker atomically. */
+    /** Executes the draw transaction, persisting the coupon atomically. */
     @Suppress("LongParameterList")
     private suspend fun executeDraw(
         playerId: PlayerId,
@@ -285,23 +285,28 @@ public class DrawUnlimitedUseCase(
         pityState: PityState,
         effectivePrice: Int,
         discountAmount: Int,
-    ): DrawOutcome =
-        newSuspendedTransaction {
-            markCouponExhausted(playerId, playerCouponId)
-            val drawResult =
-                deps.drawCore.draw(
-                    playerId = playerId,
-                    pool = pityState.pool,
-                    quantity = 1,
-                    pricePerDraw = effectivePrice,
-                    discountAmount = discountAmount,
-                    gameType = "UNLIMITED",
-                )
-            if (pityCheck != null) {
-                persistPityTracker(pityCheck.second.id, playerId, pityState.newDrawCount)
+    ): DrawOutcome {
+        val outcome =
+            newSuspendedTransaction {
+                markCouponExhausted(playerId, playerCouponId)
+                val drawResult =
+                    deps.drawCore.draw(
+                        playerId = playerId,
+                        pool = pityState.pool,
+                        quantity = 1,
+                        pricePerDraw = effectivePrice,
+                        discountAmount = discountAmount,
+                        gameType = "UNLIMITED",
+                    )
+                drawResult.first()
             }
-            drawResult.first()
+        // Pity tracker is best-effort bookkeeping — persisted outside the draw transaction
+        // so each retry attempt can open its own fresh transaction and re-read the latest row.
+        if (pityCheck != null) {
+            persistPityTracker(pityCheck.second.id, playerId, pityState.newDrawCount)
         }
+        return outcome
+    }
 
     /** Builds a [PityProgressDto] from pity check and state, or null if pity is inactive. */
     private fun buildPityProgress(
@@ -353,11 +358,12 @@ public class DrawUnlimitedUseCase(
     /**
      * Persists the updated pity tracker state after a draw with optimistic locking retry.
      *
+     * Each retry attempt opens its own transaction so it reads the latest committed row
+     * rather than a stale snapshot from a surrounding transaction.
      * Creates a new tracker if none exists, or updates the existing one.
      * Retries up to [PITY_TRACKER_MAX_RETRIES] times with exponential backoff
      * on version conflicts.
      */
-    @Suppress("MagicNumber")
     private suspend fun persistPityTracker(
         pityRuleId: UUID,
         playerId: PlayerId,
@@ -366,30 +372,30 @@ public class DrawUnlimitedUseCase(
         val repo = deps.pityRepository ?: return
         val now = Clock.System.now()
 
-        for (attempt in 1..PITY_TRACKER_MAX_RETRIES) {
-            val existingTracker = repo.findTracker(pityRuleId, playerId)
-            val tracker =
-                existingTracker?.copy(
-                    drawCount = newDrawCount,
-                    lastDrawAt = now,
-                    updatedAt = now,
-                ) ?: PityTracker(
-                    id = UUID.randomUUID(),
-                    pityRuleId = pityRuleId,
-                    playerId = playerId,
-                    drawCount = newDrawCount,
-                    lastDrawAt = now,
-                    version = 0,
-                    createdAt = now,
-                    updatedAt = now,
-                )
-            val success = repo.saveTracker(tracker)
+        repeat(PITY_TRACKER_MAX_RETRIES) { attempt ->
+            val success =
+                newSuspendedTransaction {
+                    val existing = repo.findTracker(pityRuleId, playerId)
+                    val tracker =
+                        existing?.copy(drawCount = newDrawCount, lastDrawAt = now, updatedAt = now)
+                            ?: PityTracker(
+                                id = UUID.randomUUID(),
+                                pityRuleId = pityRuleId,
+                                playerId = playerId,
+                                drawCount = newDrawCount,
+                                lastDrawAt = now,
+                                version = 0,
+                                createdAt = now,
+                                updatedAt = now,
+                            )
+                    repo.saveTracker(tracker)
+                }
             if (success) return
-            if (attempt < PITY_TRACKER_MAX_RETRIES) {
-                delay(PITY_TRACKER_BASE_DELAY_MS * (1L shl (attempt - 1)))
+            if (attempt < PITY_TRACKER_MAX_RETRIES - 1) {
+                delay(PITY_TRACKER_BASE_DELAY_MS * (1L shl attempt))
             }
         }
-        log.warn("Failed to persist pity tracker after $PITY_TRACKER_MAX_RETRIES attempts for player ${playerId.value}")
+        log.warn("Pity tracker update failed after $PITY_TRACKER_MAX_RETRIES retries")
     }
 
     /**
@@ -484,7 +490,6 @@ public class DrawUnlimitedUseCase(
         )
     }
 
-    @Suppress("UnusedParameter") // pityTriggered reserved for WebSocket feed enhancement
     private suspend fun publishFeedEvent(
         campaign: com.prizedraw.domain.entities.UnlimitedCampaign,
         result: UnlimitedDrawResultDto,
@@ -504,6 +509,7 @@ public class DrawUnlimitedUseCase(
             prizeName = result.prizeName,
             prizePhotoUrl = result.prizePhotoUrl,
             drawnAt = Clock.System.now(),
+            pityTriggered = pityTriggered,
         )
     }
 }

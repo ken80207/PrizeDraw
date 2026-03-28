@@ -18,7 +18,10 @@ public interface ICampaignGradeRepository {
     public suspend fun saveAll(grades: List<CampaignGrade>): List<CampaignGrade>
 
     /** Replaces all grades for a campaign (delete existing + insert new). */
-    public suspend fun replaceAll(campaignId: CampaignId, grades: List<CampaignGrade>): List<CampaignGrade>
+    public suspend fun replaceAll(
+        campaignId: CampaignId,
+        grades: List<CampaignGrade>,
+    ): List<CampaignGrade>
 
     /** Deletes a single grade. Returns false if the grade has prize references. */
     public suspend fun delete(id: CampaignGradeId): Boolean

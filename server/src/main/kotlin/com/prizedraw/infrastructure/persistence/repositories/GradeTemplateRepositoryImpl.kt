@@ -19,7 +19,6 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 public class GradeTemplateRepositoryImpl : IGradeTemplateRepository {
-
     override suspend fun findAll(): List<GradeTemplate> =
         newSuspendedTransaction {
             val templates = GradeTemplatesTable.selectAll().orderBy(GradeTemplatesTable.name).map { it }
