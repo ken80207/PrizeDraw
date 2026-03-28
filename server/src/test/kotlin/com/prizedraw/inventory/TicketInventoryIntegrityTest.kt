@@ -502,6 +502,7 @@ class TicketInventoryIntegrityTest :
                     domainService = KujiDrawDomainService(),
                     redisPubSub = fakes.redisPubSub,
                     feedService = mockk(relaxed = true),
+                    liveDrawService = mockk(relaxed = true),
                 ),
             )
 

@@ -530,6 +530,7 @@ class CampaignDrawIntegrationTest :
                             )
                         ),
                     feedService = mockk(relaxed = true),
+                    liveDrawService = mockk(relaxed = true),
                 ),
             )
 

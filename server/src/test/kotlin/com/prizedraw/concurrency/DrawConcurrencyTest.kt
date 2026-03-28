@@ -270,6 +270,7 @@ class DrawConcurrencyTest :
                                     )
                                 ),
                             feedService = mockk(relaxed = true),
+                            liveDrawService = mockk(relaxed = true),
                         ),
                     )
 
@@ -345,6 +346,7 @@ class DrawConcurrencyTest :
                                     )
                                 ),
                             feedService = mockk(relaxed = true),
+                            liveDrawService = mockk(relaxed = true),
                         ),
                     )
 
@@ -454,6 +456,7 @@ class DrawConcurrencyTest :
                                     )
                                 ),
                             feedService = mockk(relaxed = true),
+                            liveDrawService = mockk(relaxed = true),
                         ),
                     )
 
