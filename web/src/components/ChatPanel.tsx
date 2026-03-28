@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useChat } from "@/hooks/useChat";
 import { authStore } from "@/stores/authStore";
 import { ReactionOverlay, useReactionQueue } from "@/components/ReactionOverlay";
+import { useFollowStore } from "@/stores/followStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -31,12 +32,25 @@ interface ChatPanelProps {
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PopoverTarget type
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PopoverTarget {
+  playerId: string;
+  nickname: string;
+  x: number;
+  y: number;
+}
+
 export function ChatPanel({ roomId }: ChatPanelProps) {
   const t = useTranslations("chat");
+  const tFollow = useTranslations("follow");
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [popoverTarget, setPopoverTarget] = useState<PopoverTarget | null>(null);
 
   const { messages, isConnected, sendMessage, sendReaction, isCoolingDown } =
     useChat(roomId);
@@ -46,6 +60,7 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const currentPlayerId = authStore.player?.id ?? null;
 
@@ -77,6 +92,29 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showEmojiPicker]);
+
+  // Close follow popover on outside click
+  useEffect(() => {
+    if (!popoverTarget) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setPopoverTarget(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [popoverTarget]);
+
+  // Preload follow statuses for all players visible in chat
+  useEffect(() => {
+    const playerIds = [...new Set(messages.map((m) => m.playerId))].filter(
+      (id) => id !== currentPlayerId,
+    );
+    if (playerIds.length > 0) {
+      useFollowStore.getState().preloadFollowStatuses(playerIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
 
   // ── Send handlers ──────────────────────────────────────────────────────────
 
@@ -188,7 +226,21 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
               return (
                 <div key={msg.id} className="flex justify-center">
                   <span className="text-xs text-on-surface-variant/50 bg-white/5 rounded-full px-2 py-0.5">
-                    {msg.nickname} {t("sentReaction")} {msg.message}
+                    {isSelf ? (
+                      msg.nickname
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setPopoverTarget({ playerId: msg.playerId, nickname: msg.nickname, x: rect.left, y: rect.bottom });
+                        }}
+                        className="hover:underline cursor-pointer"
+                      >
+                        {msg.nickname}
+                      </button>
+                    )}{" "}
+                    {t("sentReaction")} {msg.message}
                   </span>
                 </div>
               );
@@ -199,9 +251,20 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
                 key={msg.id}
                 className={`flex flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}
               >
-                <span className={`text-xs px-1 ${isSelf ? "text-primary/60" : "text-on-surface-variant/50"}`}>
-                  {msg.nickname}
-                </span>
+                {isSelf ? (
+                  <span className="text-xs px-1 text-primary/60">{msg.nickname}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setPopoverTarget({ playerId: msg.playerId, nickname: msg.nickname, x: rect.left, y: rect.bottom });
+                    }}
+                    className="text-xs px-1 text-on-surface-variant/50 font-semibold hover:text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {msg.nickname}
+                  </button>
+                )}
                 <div
                   className={`
                     max-w-[85%] px-3 py-2 rounded-2xl text-sm break-words
@@ -219,6 +282,36 @@ export function ChatPanel({ roomId }: ChatPanelProps) {
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Follow / unfollow popover */}
+        {popoverTarget && (
+          <div
+            ref={popoverRef}
+            className="fixed z-50 bg-surface-container-high rounded-lg shadow-lg border border-outline-variant p-2"
+            style={{ left: popoverTarget.x, top: popoverTarget.y + 4 }}
+          >
+            <div className="text-xs text-on-surface-variant/70 px-1 mb-1 truncate max-w-[10rem]">
+              {popoverTarget.nickname}
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const store = useFollowStore.getState();
+                if (store.isFollowing(popoverTarget.playerId)) {
+                  await store.unfollow(popoverTarget.playerId);
+                } else {
+                  await store.follow(popoverTarget.playerId);
+                }
+                setPopoverTarget(null);
+              }}
+              className="w-full px-3 py-1.5 text-sm rounded-md hover:bg-surface-container-highest transition-colors whitespace-nowrap text-on-surface"
+            >
+              {useFollowStore.getState().isFollowing(popoverTarget.playerId)
+                ? tFollow("unfollow")
+                : tFollow("follow")}
+            </button>
+          </div>
+        )}
 
         {/* Input area */}
         <div className="px-3 pb-4 pt-2 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
