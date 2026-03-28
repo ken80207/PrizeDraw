@@ -1,6 +1,11 @@
 package com.prizedraw.infrastructure.di
 
+import com.prizedraw.application.events.LowStockNotificationJob
 import com.prizedraw.application.events.OutboxWorker
+import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
+import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.IConnectionManagerPort
+import com.prizedraw.application.ports.output.IDistributedLockService
 import com.prizedraw.application.ports.output.ILineMessagingService
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.INotificationService
@@ -8,6 +13,7 @@ import com.prizedraw.application.ports.output.IOAuthTokenValidator
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPaymentGateway
 import com.prizedraw.application.ports.output.IPlayerDeviceRepository
+import com.prizedraw.application.ports.output.IPubSubService
 import com.prizedraw.application.ports.output.ISmsService
 import com.prizedraw.application.ports.output.IStorageService
 import com.prizedraw.application.ports.output.IWithdrawalGateway
@@ -23,6 +29,7 @@ import com.prizedraw.infrastructure.external.redis.RedisClient
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import com.prizedraw.infrastructure.external.sms.StubSmsService
 import com.prizedraw.infrastructure.external.storage.S3StorageService
+import com.prizedraw.infrastructure.websocket.ConnectionManager
 import io.ktor.server.config.ApplicationConfig
 import org.koin.dsl.module
 
@@ -35,6 +42,8 @@ import org.koin.dsl.module
 @Suppress("CyclomaticComplexMethod", "LongMethod")
 public fun externalModule(config: ApplicationConfig) =
     module {
+        val isProduction = System.getenv("KTOR_ENV") == "production" || System.getenv("APP_ENV") == "production"
+
         single<RedisClient> {
             val redisConfig =
                 RedisClient.RedisConfig(
@@ -54,6 +63,10 @@ public fun externalModule(config: ApplicationConfig) =
         single<RedisPubSub> {
             RedisPubSub(get<RedisClient>())
         }
+
+        single<IPubSubService> { get<RedisPubSub>() }
+        single<IDistributedLockService> { get<DistributedLock>() }
+        single<IConnectionManagerPort> { get<ConnectionManager>() }
 
         single<IStorageService> {
             val s3Config =
@@ -98,22 +111,42 @@ public fun externalModule(config: ApplicationConfig) =
             )
         }
 
-        // C-6: stub gateway bindings — replace with real adapters for production
+        // Stub gateway bindings — guarded by a production fail-fast. Bind real adapters for production.
         single<IPaymentGateway> {
+            if (isProduction) {
+                error(
+                    "Stub payment gateway must not be used in production. Bind a real IPaymentGateway implementation."
+                )
+            }
             StubPaymentGateway()
         }
 
         single<IWithdrawalGateway> {
+            if (isProduction) {
+                error(
+                    "Stub withdrawal gateway must not be used in production. Bind a real IWithdrawalGateway implementation."
+                )
+            }
             StubWithdrawalGateway()
         }
 
-        // Phase 3: stub OAuth validator — replace with real JWKS validators for production
+        // Stub OAuth validator — guarded by a production fail-fast. Replace with real JWKS validators for production.
         single<IOAuthTokenValidator> {
+            if (isProduction) {
+                error(
+                    "Stub OAuth token validator must not be used in production. Bind a real IOAuthTokenValidator implementation."
+                )
+            }
             StubOAuthTokenValidator()
         }
 
-        // Phase 3: stub SMS service — replace with Twilio/AWS SNS adapter for production
+        // Stub SMS service — guarded by a production fail-fast. Replace with Twilio/AWS SNS adapter for production.
         single<ISmsService> {
+            if (isProduction) {
+                error(
+                    "Stub SMS service must not be used in production. Bind a real ISmsService implementation."
+                )
+            }
             StubSmsService()
         }
 
@@ -121,13 +154,27 @@ public fun externalModule(config: ApplicationConfig) =
             OutboxWorker(
                 outboxRepository = get<IOutboxRepository>(),
                 notificationService = get<INotificationService>(),
-                redisPubSub = get<RedisPubSub>(),
+                pubSub = get<IPubSubService>(),
                 notificationRepository = get<INotificationRepository>(),
             )
         }
 
-        // Phase 13: LINE Messaging integration — swap StubLineMessagingService for real SDK adapter in prod
+        single {
+            LowStockNotificationJob(
+                campaignRepo = get<ICampaignRepository>(),
+                favoriteRepo = get<ICampaignFavoriteRepository>(),
+                notificationRepo = get<INotificationRepository>(),
+                outboxRepo = get<IOutboxRepository>(),
+            )
+        }
+
+        // LINE Messaging — guarded by a production fail-fast. Swap for real SDK adapter in production.
         single<ILineMessagingService> {
+            if (isProduction) {
+                error(
+                    "Stub LINE messaging service must not be used in production. Bind a real ILineMessagingService implementation."
+                )
+            }
             StubLineMessagingService()
         }
 

@@ -8,6 +8,7 @@ import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueRepository
+import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.usecases.admin.CreateKujiCampaignUseCase
 import com.prizedraw.application.usecases.admin.CreateUnlimitedCampaignUseCase
@@ -34,9 +35,8 @@ import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.DrawValidationException
 import com.prizedraw.domain.services.KujiDrawDomainService
-import com.prizedraw.domain.services.UnlimitedDrawDomainService
-import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.domain.services.MarginRiskService
+import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
@@ -516,16 +516,16 @@ class CampaignDrawIntegrationTest :
                     outboxRepository = fakes.outboxRepo,
                     auditRepository = fakes.auditRepo,
                     domainService = KujiDrawDomainService(),
-                    redisPubSub = fakes.redisPubSub,
+                    pubSub = fakes.redisPubSub,
                     drawCore =
                         DrawCore(
                             DrawCoreDeps(
                                 playerRepository = fakes.playerRepo,
                                 prizeRepository = fakes.prizeRepo,
-                                drawPointTxRepository = fakes.drawPointTxRepo,
-                                outboxRepository = fakes.outboxRepo
                             )
                         ),
+                    drawPointTxRepository = fakes.drawPointTxRepo,
+                    levelService = mockk(relaxed = true),
                 ),
             )
 
@@ -649,6 +649,9 @@ class CampaignDrawIntegrationTest :
                         auditRepository = statusAuditRepo,
                         marginRiskService = MarginRiskService(),
                         settingsRepository = statusSettingsRepo,
+                        favoriteRepo = mockk(relaxed = true),
+                        notificationRepo = mockk(relaxed = true),
+                        outboxRepo = mockk(relaxed = true),
                     )
                 updateStatusUseCase.execute(
                     staffId = staffId,
@@ -914,10 +917,10 @@ class CampaignDrawIntegrationTest :
                                     DrawCoreDeps(
                                         playerRepository = playerRepo,
                                         prizeRepository = prizeRepo,
-                                        drawPointTxRepository = drawPointTxRepo,
-                                        outboxRepository = outboxRepo
                                     )
                                 ),
+                            drawPointTxRepository = drawPointTxRepo,
+                            levelService = mockk(relaxed = true),
                         ),
                     )
 
@@ -932,13 +935,14 @@ class CampaignDrawIntegrationTest :
                 val createPrizeRepo2 = mockk<IPrizeRepository>()
                 val createSettingsRepo2 = mockk<ISystemSettingsRepository>()
                 coEvery { createSettingsRepo2.getMarginThresholdPct() } returns java.math.BigDecimal("30")
-                val createUnlimitedUseCase = CreateUnlimitedCampaignUseCase(
-                    createCampaignRepo2,
-                    createAuditRepo2,
-                    createPrizeRepo2,
-                    MarginRiskService(),
-                    createSettingsRepo2,
-                )
+                val createUnlimitedUseCase =
+                    CreateUnlimitedCampaignUseCase(
+                        createCampaignRepo2,
+                        createAuditRepo2,
+                        createPrizeRepo2,
+                        MarginRiskService(),
+                        createSettingsRepo2,
+                    )
                 val created =
                     createUnlimitedUseCase.execute(
                         staffId = staffId,
@@ -972,6 +976,9 @@ class CampaignDrawIntegrationTest :
                         auditRepository = statusAuditRepo2,
                         marginRiskService = MarginRiskService(),
                         settingsRepository = statusSettingsRepo2,
+                        favoriteRepo = mockk(relaxed = true),
+                        notificationRepo = mockk(relaxed = true),
+                        outboxRepo = mockk(relaxed = true),
                     )
                 updateStatusUseCase2.execute(
                     staffId = staffId,

@@ -9,6 +9,7 @@ import com.prizedraw.api.plugins.configureSecurity
 import com.prizedraw.api.plugins.configureSerialization
 import com.prizedraw.api.plugins.configureStatusPages
 import com.prizedraw.api.plugins.configureWebSockets
+import com.prizedraw.application.events.LowStockNotificationJob
 import com.prizedraw.application.events.OutboxWorker
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
 import com.prizedraw.application.services.RoomScalingService
@@ -18,6 +19,8 @@ import com.prizedraw.infrastructure.di.repositoryModule
 import com.prizedraw.infrastructure.di.serviceModule
 import com.prizedraw.infrastructure.di.useCaseModule
 import com.prizedraw.infrastructure.di.webSocketModule
+import com.prizedraw.infrastructure.external.redis.RedisClient
+import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
@@ -79,6 +82,10 @@ fun Application.module() {
     val outboxWorker: OutboxWorker by inject()
     outboxWorker.start()
 
+    // --- Low-Stock Notification Job ---
+    val lowStockJob: LowStockNotificationJob by inject()
+    lowStockJob.start()
+
     // --- Feature Flag Cache Warm-Up (W-4) ---
     val featureFlagRepository: IFeatureFlagRepository by inject()
     launch {
@@ -103,7 +110,15 @@ fun Application.module() {
         }
     }
 
+    val redisPubSub: RedisPubSub by inject()
+    val redisClient: RedisClient by inject()
+
     environment.monitor.subscribe(ApplicationStopped) {
         outboxWorker.stop()
+        lowStockJob.stop()
+        // Close the pub/sub connection before shutting down the Lettuce client so that
+        // all in-flight UNSUBSCRIBE commands can complete before the TCP connection is torn down.
+        redisPubSub.close()
+        redisClient.close()
     }
 }

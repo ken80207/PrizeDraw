@@ -199,3 +199,13 @@ public data class FavoriteCampaignActivated(
     override val aggregateType: String = "Campaign"
     override val aggregateId: UUID = campaignId
 }
+
+/** Emitted when a kuji campaign drops below the low-stock threshold and a favoriting player should be notified. */
+public data class FavoriteCampaignLowStock(
+    val campaignId: UUID,
+    val playerId: UUID,
+) : DomainEvent {
+    override val eventType: String = "favorite.campaign_low_stock"
+    override val aggregateType: String = "Campaign"
+    override val aggregateId: UUID = campaignId
+}
