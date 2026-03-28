@@ -76,6 +76,7 @@ public class PlayerRepositoryImpl : IPlayerRepository {
                 PlayersTable.insert {
                     it[id] = player.id.value
                     it[nickname] = player.nickname
+                    it[playerCode] = player.playerCode
                     it[avatarUrl] = player.avatarUrl
                     it[phoneNumber] = player.phoneNumber?.value
                     it[phoneVerifiedAt] = player.phoneVerifiedAt?.toOffsetDateTime()
@@ -97,6 +98,7 @@ public class PlayerRepositoryImpl : IPlayerRepository {
             } else {
                 PlayersTable.update({ PlayersTable.id eq player.id.value }) {
                     it[nickname] = player.nickname
+                    it[playerCode] = player.playerCode
                     it[avatarUrl] = player.avatarUrl
                     it[phoneNumber] = player.phoneNumber?.value
                     it[phoneVerifiedAt] = player.phoneVerifiedAt?.toOffsetDateTime()
@@ -187,10 +189,33 @@ public class PlayerRepositoryImpl : IPlayerRepository {
                 .map { it.toPlayer() }
         }
 
+    override suspend fun findByPlayerCode(code: String): Player? =
+        newSuspendedTransaction {
+            PlayersTable
+                .selectAll()
+                .where {
+                    (PlayersTable.playerCode eq code) and
+                        (PlayersTable.deletedAt.isNull())
+                }.singleOrNull()
+                ?.toPlayer()
+        }
+
+    override suspend fun findByIds(ids: List<PlayerId>): List<Player> =
+        newSuspendedTransaction {
+            val uuids = ids.map { it.value }
+            PlayersTable
+                .selectAll()
+                .where {
+                    (PlayersTable.id inList uuids) and
+                        (PlayersTable.deletedAt.isNull())
+                }.map { it.toPlayer() }
+        }
+
     private fun ResultRow.toPlayer(): Player =
         Player(
             id = PlayerId(this[PlayersTable.id]),
             nickname = this[PlayersTable.nickname],
+            playerCode = this[PlayersTable.playerCode],
             avatarUrl = this[PlayersTable.avatarUrl],
             phoneNumber = this[PlayersTable.phoneNumber]?.let { PhoneNumber(it) },
             phoneVerifiedAt = this[PlayersTable.phoneVerifiedAt]?.toInstant()?.toKotlinInstant(),

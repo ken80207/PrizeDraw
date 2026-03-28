@@ -52,6 +52,7 @@ class DrawCoreFinancialIntegrityTest :
         ) = Player(
             id = id,
             nickname = "FinTester",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

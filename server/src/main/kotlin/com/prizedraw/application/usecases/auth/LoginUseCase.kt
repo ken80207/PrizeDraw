@@ -12,6 +12,7 @@ import com.prizedraw.contracts.enums.DrawAnimationMode
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
 import com.prizedraw.domain.entities.Player
+import com.prizedraw.domain.services.PlayerCodeGenerator
 import com.prizedraw.domain.valueobjects.PlayerId
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.buildJsonObject
@@ -74,6 +75,7 @@ public class LoginUseCase(
             Player(
                 id = PlayerId.generate(),
                 nickname = nickname,
+                playerCode = PlayerCodeGenerator.generate(),
                 avatarUrl = null,
                 phoneNumber = null,
                 phoneVerifiedAt = null,

@@ -56,6 +56,7 @@ class BalanceConcurrencyTest :
         ) = Player(
             id = id,
             nickname = "TestPlayer",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

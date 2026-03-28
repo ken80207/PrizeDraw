@@ -55,6 +55,7 @@ class DrawCoreTest :
         ) = Player(
             id = PlayerId.generate(),
             nickname = "Tester",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

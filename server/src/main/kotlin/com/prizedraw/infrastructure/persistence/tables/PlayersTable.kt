@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 public object PlayersTable : Table("players") {
     public val id = uuid("id").autoGenerate()
     public val nickname = varchar("nickname", 64)
+    public val playerCode = varchar("player_code", 8).uniqueIndex("idx_players_player_code")
     public val avatarUrl = text("avatar_url").nullable()
     public val phoneNumber = varchar("phone_number", 20).nullable()
     public val phoneVerifiedAt = timestampWithTimeZone("phone_verified_at").nullable()

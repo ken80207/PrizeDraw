@@ -18,6 +18,8 @@ import kotlinx.datetime.Instant
  *
  * @property id Surrogate primary key.
  * @property nickname Display name shown in UI and on ticket boards.
+ * @property playerCode Unique 8-character invite/share code generated at registration.
+ *   Uses the unambiguous charset from [com.prizedraw.domain.services.PlayerCodeGenerator].
  * @property avatarUrl CDN URL for the player's profile image. Null until set.
  * @property phoneNumber E.164-format phone number. Null until binding is completed.
  * @property phoneVerifiedAt Timestamp of successful OTP verification. Null until verified.
@@ -39,6 +41,7 @@ import kotlinx.datetime.Instant
 public data class Player(
     val id: PlayerId,
     val nickname: String,
+    val playerCode: String,
     val avatarUrl: String?,
     val phoneNumber: PhoneNumber?,
     val phoneVerifiedAt: Instant?,

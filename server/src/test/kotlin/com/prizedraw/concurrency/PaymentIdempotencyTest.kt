@@ -60,6 +60,7 @@ class PaymentIdempotencyTest :
         ) = Player(
             id = id,
             nickname = "PaymentPlayer",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

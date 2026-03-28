@@ -70,6 +70,7 @@ class FinancialIntegrityTest :
         ) = Player(
             id = id,
             nickname = "FinPlayer",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

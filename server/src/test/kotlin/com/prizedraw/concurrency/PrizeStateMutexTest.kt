@@ -64,6 +64,7 @@ class PrizeStateMutexTest :
             Player(
                 id = id,
                 nickname = "PrizeOwner",
+                playerCode = "TESTCODE",
                 avatarUrl = null,
                 phoneNumber = null,
                 phoneVerifiedAt = null,

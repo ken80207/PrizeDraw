@@ -62,6 +62,7 @@ class TradeConcurrencyTest :
         ) = Player(
             id = id,
             nickname = "Player",
+            playerCode = "TESTCODE",
             avatarUrl = null,
             phoneNumber = null,
             phoneVerifiedAt = null,

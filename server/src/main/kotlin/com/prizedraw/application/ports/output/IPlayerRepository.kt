@@ -110,4 +110,10 @@ public interface IPlayerRepository {
      * @return Players ordered by [Player.xp] descending.
      */
     public suspend fun findTopByXp(limit: Int): List<Player>
+
+    /** Finds a non-deleted player by their unique player code. */
+    public suspend fun findByPlayerCode(code: String): Player?
+
+    /** Finds multiple non-deleted players by ID in a single query. */
+    public suspend fun findByIds(ids: List<PlayerId>): List<Player>
 }

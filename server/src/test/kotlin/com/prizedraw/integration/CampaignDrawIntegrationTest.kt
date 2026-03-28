@@ -105,6 +105,7 @@ class CampaignDrawIntegrationTest :
             Player(
                 id = id,
                 nickname = nickname,
+                playerCode = "TESTCODE",
                 avatarUrl = null,
                 phoneNumber = null,
                 phoneVerifiedAt = null,

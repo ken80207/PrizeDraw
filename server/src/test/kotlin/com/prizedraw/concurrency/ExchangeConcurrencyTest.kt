@@ -62,6 +62,7 @@ class ExchangeConcurrencyTest :
             Player(
                 id = id,
                 nickname = "ExchangePlayer",
+                playerCode = "TESTCODE",
                 avatarUrl = null,
                 phoneNumber = null,
                 phoneVerifiedAt = null,
