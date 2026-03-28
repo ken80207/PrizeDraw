@@ -134,9 +134,9 @@ public class OutboxWorker(
             "exchange.requested" -> handleExchangeRequested(event)
             "exchange.counter_proposed" -> handleExchangeCounterProposed(event)
             "exchange.rejected" -> handleExchangeRejected(event)
-            "buyback.completed" -> handleBuybackCompleted(event)
+            "buyback.completed" -> {} // FCM skipped: player initiated action, result shown in-page
             "shipping.status_changed" -> handleShippingStatusChanged(event)
-            "payment.confirmed" -> handlePaymentConfirmed(event)
+            "payment.confirmed" -> {} // FCM skipped: player is actively waiting for payment result
             "payment.failed" -> handlePaymentFailed(event)
             "withdrawal.status_changed" -> handleWithdrawalStatusChanged(event)
             "support_ticket.replied" -> handleSupportTicketReplied(event)
