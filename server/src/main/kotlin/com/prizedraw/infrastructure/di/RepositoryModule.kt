@@ -13,6 +13,7 @@ import com.prizedraw.application.ports.output.IDrawSyncRepository
 import com.prizedraw.application.ports.output.IExchangeRepository
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
 import com.prizedraw.application.ports.output.IFeedEventRepository
+import com.prizedraw.application.ports.output.IFollowRepository
 import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
@@ -47,6 +48,7 @@ import com.prizedraw.infrastructure.persistence.repositories.DrawSyncRepositoryI
 import com.prizedraw.infrastructure.persistence.repositories.ExchangeRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.FeatureFlagRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.FeedEventRepositoryImpl
+import com.prizedraw.infrastructure.persistence.repositories.FollowRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.LeaderboardRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.NotificationRepositoryImpl
 import com.prizedraw.infrastructure.persistence.repositories.OutboxRepositoryImpl
@@ -127,4 +129,7 @@ public val repositoryModule =
 
         // Live draw feed: denormalised event store (eliminates N+1, covers kuji + unlimited)
         single<IFeedEventRepository> { FeedEventRepositoryImpl() }
+
+        // Follow system
+        single<IFollowRepository> { FollowRepositoryImpl() }
     }

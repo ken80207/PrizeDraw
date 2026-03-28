@@ -62,6 +62,10 @@ public enum class PlayerWsEventType {
 
     // System
     BALANCE_UPDATED,
+
+    // Follow
+    FOLLOWING_DRAW_STARTED,
+    FOLLOWING_RARE_PRIZE_DRAWN,
 }
 
 /**
