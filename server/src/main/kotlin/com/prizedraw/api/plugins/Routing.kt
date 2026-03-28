@@ -2,6 +2,7 @@ package com.prizedraw.api.plugins
 
 import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminAnnouncementRoutes
+import com.prizedraw.api.routes.adminBannerRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminDashboardRoutes
 import com.prizedraw.api.routes.adminLeaderboardConfigRoutes
@@ -11,6 +12,7 @@ import com.prizedraw.api.routes.adminPrizesRoutes
 import com.prizedraw.api.routes.adminStaffRoutes
 import com.prizedraw.api.routes.adminTradeRoutes
 import com.prizedraw.api.routes.authRoutes
+import com.prizedraw.api.routes.bannerRoutes
 import com.prizedraw.api.routes.broadcastRoutes
 import com.prizedraw.api.routes.buybackRoutes
 import com.prizedraw.api.routes.campaignRoutes
@@ -31,6 +33,7 @@ import com.prizedraw.api.routes.playerRoutes
 import com.prizedraw.api.routes.roomRoutes
 import com.prizedraw.api.routes.shippingRoutes
 import com.prizedraw.api.routes.statusRoutes
+import com.prizedraw.api.routes.storageUploadRoute
 import com.prizedraw.api.routes.supportRoutes
 import com.prizedraw.api.routes.tradeRoutes
 import com.prizedraw.api.routes.withdrawalRoutes
@@ -111,6 +114,9 @@ public fun Application.configureRouting() {
 
         // Phase 20: Server Status — public, no auth required, checked first by all clients
         statusRoutes()
+
+        // Banner carousel — public, no auth required
+        bannerRoutes()
 
         // Phase 3: Auth, Player, Payment
         authRoutes()
@@ -201,6 +207,12 @@ public fun Application.configureRouting() {
 
             // Phase 20: Announcement management
             adminAnnouncementRoutes()
+
+            // Banner carousel admin management
+            adminBannerRoutes()
+
+            // Shared storage upload (staff-authenticated)
+            storageUploadRoute()
 
             // Admin player list (with search)
             adminPlayerRoutes()
