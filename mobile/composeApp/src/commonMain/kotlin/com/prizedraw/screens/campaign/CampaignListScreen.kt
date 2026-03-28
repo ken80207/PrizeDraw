@@ -18,13 +18,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
+import com.prizedraw.data.remote.BannerRemoteDataSource
+import com.prizedraw.data.remote.HttpClientFactory
 import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.campaign.KujiCampaignState
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
@@ -69,24 +74,18 @@ private fun CampaignList(
     campaigns: List<KujiCampaignDto>,
     onCampaignSelected: (String) -> Unit,
 ) {
-    // TODO(T109): Replace preview banners with real banner data fetched from the API.
-    val previewBanners =
-        remember {
-            listOf(
-                BannerItem(
-                    id = "banner-1",
-                    imageUrl = "https://placehold.co/800x450/FF6B35/FFFFFF?text=Campaign+1",
-                ),
-                BannerItem(
-                    id = "banner-2",
-                    imageUrl = "https://placehold.co/800x450/4ECDC4/FFFFFF?text=Campaign+2",
-                ),
-                BannerItem(
-                    id = "banner-3",
-                    imageUrl = "https://placehold.co/800x450/45B7D1/FFFFFF?text=Campaign+3",
-                ),
-            )
+    var banners by remember { mutableStateOf<List<BannerItem>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val client = HttpClientFactory.create()
+            val dataSource = BannerRemoteDataSource(client)
+            val dtos = dataSource.fetchBanners()
+            banners = dtos.map { BannerItem(id = it.id, imageUrl = it.imageUrl) }
+        } catch (_: Exception) {
+            // Silently fall back to empty — carousel hides itself
         }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -95,7 +94,7 @@ private fun CampaignList(
     ) {
         item(key = "banner-carousel") {
             BannerCarousel(
-                banners = previewBanners,
+                banners = banners,
                 modifier =
                     Modifier
                         .fillMaxWidth()
