@@ -8,16 +8,24 @@ import com.prizedraw.application.ports.output.IAuditRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.ICouponRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPityRepository
 import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.services.FeedService
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
+import com.prizedraw.contracts.dto.pity.PityProgressDto
 import com.prizedraw.contracts.enums.CampaignType
+import com.prizedraw.domain.entities.AccumulationMode
 import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
+import com.prizedraw.domain.entities.PityRule
+import com.prizedraw.domain.entities.PityTracker
 import com.prizedraw.domain.entities.PlayerCouponStatus
 import com.prizedraw.domain.services.DrawCore
+import com.prizedraw.domain.services.DrawOutcome
 import com.prizedraw.domain.services.DrawValidationException
+import com.prizedraw.domain.services.PityDomainService
+import com.prizedraw.domain.services.PityResult
 import com.prizedraw.domain.services.PrizePoolEntry
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.domain.valueobjects.CampaignId
@@ -26,6 +34,7 @@ import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import io.lettuce.core.Range
 import io.lettuce.core.ScoredValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.await
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.buildJsonObject
@@ -54,6 +63,12 @@ private const val BPS_DENOMINATOR = 100.0
 /** Redis sliding window width in milliseconds (1 second). */
 private const val RATE_LIMIT_WINDOW_MS = 1_000L
 
+/** Maximum retry attempts for pity tracker persistence with optimistic locking. */
+private const val PITY_TRACKER_MAX_RETRIES = 3
+
+/** Base delay in milliseconds for exponential backoff on pity tracker version conflicts. */
+private const val PITY_TRACKER_BASE_DELAY_MS = 50L
+
 /**
  * Dependencies for [DrawUnlimitedUseCase], grouped to keep the primary constructor under
  * detekt's parameter-count threshold.
@@ -69,6 +84,8 @@ public data class DrawUnlimitedDeps(
     val couponRepository: ICouponRepository? = null,
     val feedService: FeedService,
     val playerRepository: IPlayerRepository,
+    val pityRepository: IPityRepository? = null,
+    val pityDomainService: PityDomainService? = null,
 )
 
 /**
@@ -108,55 +125,29 @@ public class DrawUnlimitedUseCase(
         val (effectivePrice, discountAmount) =
             resolveCouponDiscount(playerId, playerCouponId, campaign.pricePerDraw)
 
-        // Validate probability distribution before drawing
-        if (!deps.domainService.validateProbabilitySum(definitions)) {
-            throw DrawValidationException(
-                "Probability sum is ${definitions.sumOf { it.probabilityBps ?: 0 }} bps; must equal 1000000",
-            )
-        }
+        val pityCheck = checkPity(playerId, CampaignId(campaignId))
+        val pityState = resolvePityPool(pityCheck, definitions)
 
-        val pool =
-            definitions.map { def ->
-                PrizePoolEntry(
-                    prizeDefinitionId = def.id.value,
-                    weight = def.probabilityBps ?: 0,
-                )
-            }
-
-        val outcome =
-            newSuspendedTransaction {
-                markCouponExhausted(playerId, playerCouponId)
-                val drawResult =
-                    deps.drawCore.draw(
-                        playerId = playerId,
-                        pool = pool,
-                        quantity = 1,
-                        pricePerDraw = effectivePrice,
-                        discountAmount = discountAmount,
-                        gameType = "UNLIMITED",
-                    )
-                drawResult.first()
-            }
+        val outcome = executeDraw(playerId, playerCouponId, pityCheck, pityState, effectivePrice, discountAmount)
 
         val result =
             newSuspendedTransaction {
                 val prizeDef =
                     deps.prizeRepository.findDefinitionById(PrizeDefinitionId(outcome.prizeDefinitionId))
                 checkNotNull(prizeDef) { "PrizeDefinition ${outcome.prizeDefinitionId} not found" }
-
                 recordAuditAndOutbox(playerId, campaignId, outcome.prizeInstanceId.value, effectivePrice)
                 emitFollowEvents(playerId, campaign, prizeDef)
-
                 UnlimitedDrawResultDto(
                     prizeInstanceId = outcome.prizeInstanceId.value.toString(),
                     grade = prizeDef.grade,
                     prizeName = prizeDef.name,
                     prizePhotoUrl = prizeDef.photos.firstOrNull() ?: "",
                     pointsCharged = outcome.pointsCharged,
+                    pityProgress = buildPityProgress(pityCheck, pityState),
                 )
             }
 
-        publishFeedEvent(campaign, result, playerId)
+        publishFeedEvent(campaign, result, playerId, pityState.triggered)
         return result
     }
 
@@ -249,6 +240,176 @@ public class DrawUnlimitedUseCase(
         }
     }
 
+    /** Resolved pity state for the current draw. */
+    private data class PityState(
+        val pool: List<PrizePoolEntry>,
+        val triggered: Boolean,
+        val newDrawCount: Int,
+        val threshold: Int,
+        val mode: String,
+    )
+
+    /** Resolves the prize pool (pity-overridden or normal) and captures pity metadata. */
+    private fun resolvePityPool(
+        pityCheck: Pair<PityResult, PityRule>?,
+        definitions: List<com.prizedraw.domain.entities.PrizeDefinition>,
+    ): PityState {
+        if (pityCheck == null) return PityState(buildNormalPool(definitions), false, 0, 0, "")
+        val (pityResult, rule) = pityCheck
+        return when (pityResult) {
+            is PityResult.Triggered ->
+                PityState(
+                    pool = listOf(PrizePoolEntry(pityResult.selectedPrizeDefinitionId.value, 1)),
+                    triggered = true,
+                    newDrawCount = 0,
+                    threshold = rule.threshold,
+                    mode = rule.accumulationMode.name,
+                )
+            is PityResult.NotTriggered ->
+                PityState(
+                    pool = buildNormalPool(definitions),
+                    triggered = false,
+                    newDrawCount = pityResult.newDrawCount,
+                    threshold = rule.threshold,
+                    mode = rule.accumulationMode.name,
+                )
+        }
+    }
+
+    /** Executes the draw transaction, persisting coupon and pity tracker atomically. */
+    @Suppress("LongParameterList")
+    private suspend fun executeDraw(
+        playerId: PlayerId,
+        playerCouponId: UUID?,
+        pityCheck: Pair<PityResult, PityRule>?,
+        pityState: PityState,
+        effectivePrice: Int,
+        discountAmount: Int,
+    ): DrawOutcome =
+        newSuspendedTransaction {
+            markCouponExhausted(playerId, playerCouponId)
+            val drawResult =
+                deps.drawCore.draw(
+                    playerId = playerId,
+                    pool = pityState.pool,
+                    quantity = 1,
+                    pricePerDraw = effectivePrice,
+                    discountAmount = discountAmount,
+                    gameType = "UNLIMITED",
+                )
+            if (pityCheck != null) {
+                persistPityTracker(pityCheck.second.id, playerId, pityState.newDrawCount)
+            }
+            drawResult.first()
+        }
+
+    /** Builds a [PityProgressDto] from pity check and state, or null if pity is inactive. */
+    private fun buildPityProgress(
+        pityCheck: Pair<PityResult, PityRule>?,
+        pityState: PityState,
+    ): PityProgressDto? {
+        if (pityCheck == null) return null
+        val rule = pityCheck.second
+        val expiresAt =
+            if (rule.accumulationMode == AccumulationMode.SESSION && rule.sessionTimeoutSeconds != null) {
+                Clock.System
+                    .now()
+                    .plus(kotlin.time.Duration.parse("${rule.sessionTimeoutSeconds}s"))
+                    .toString()
+            } else {
+                null
+            }
+        return PityProgressDto(
+            drawCount = pityState.newDrawCount,
+            threshold = pityState.threshold,
+            isPityTriggered = pityState.triggered,
+            mode = pityState.mode,
+            sessionExpiresAt = expiresAt,
+        )
+    }
+
+    /**
+     * Checks the pity system and returns a [PityResult] paired with the [PityRule]
+     * if a pity rule is configured and enabled for this campaign, or null if no pity applies.
+     */
+    private suspend fun checkPity(
+        playerId: PlayerId,
+        campaignId: CampaignId,
+    ): Pair<PityResult, PityRule>? {
+        val repo = deps.pityRepository ?: return null
+        val service = deps.pityDomainService ?: return null
+
+        val rule = repo.findRuleByCampaignId(campaignId)
+        if (rule == null || !rule.enabled) return null
+
+        val pool = repo.findPoolByRuleId(rule.id)
+        val tracker = repo.findTracker(rule.id, playerId)
+        val now = Clock.System.now()
+
+        val result = service.evaluate(rule, tracker, pool, now)
+        return Pair(result, rule)
+    }
+
+    /**
+     * Persists the updated pity tracker state after a draw with optimistic locking retry.
+     *
+     * Creates a new tracker if none exists, or updates the existing one.
+     * Retries up to [PITY_TRACKER_MAX_RETRIES] times with exponential backoff
+     * on version conflicts.
+     */
+    @Suppress("MagicNumber")
+    private suspend fun persistPityTracker(
+        pityRuleId: UUID,
+        playerId: PlayerId,
+        newDrawCount: Int,
+    ) {
+        val repo = deps.pityRepository ?: return
+        val now = Clock.System.now()
+
+        for (attempt in 1..PITY_TRACKER_MAX_RETRIES) {
+            val existingTracker = repo.findTracker(pityRuleId, playerId)
+            val tracker =
+                existingTracker?.copy(
+                    drawCount = newDrawCount,
+                    lastDrawAt = now,
+                    updatedAt = now,
+                ) ?: PityTracker(
+                    id = UUID.randomUUID(),
+                    pityRuleId = pityRuleId,
+                    playerId = playerId,
+                    drawCount = newDrawCount,
+                    lastDrawAt = now,
+                    version = 0,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            val success = repo.saveTracker(tracker)
+            if (success) return
+            if (attempt < PITY_TRACKER_MAX_RETRIES) {
+                delay(PITY_TRACKER_BASE_DELAY_MS * (1L shl (attempt - 1)))
+            }
+        }
+        log.warn("Failed to persist pity tracker after $PITY_TRACKER_MAX_RETRIES attempts for player ${playerId.value}")
+    }
+
+    /**
+     * Builds the normal (non-pity) prize pool from prize definitions.
+     *
+     * Validates that the probability sum equals 1,000,000 bps before returning the pool.
+     */
+    private fun buildNormalPool(
+        definitions: List<com.prizedraw.domain.entities.PrizeDefinition>,
+    ): List<PrizePoolEntry> {
+        if (!deps.domainService.validateProbabilitySum(definitions)) {
+            throw DrawValidationException(
+                "Probability sum is ${definitions.sumOf { it.probabilityBps ?: 0 }} bps; must equal 1000000",
+            )
+        }
+        return definitions.map { def ->
+            PrizePoolEntry(prizeDefinitionId = def.id.value, weight = def.probabilityBps ?: 0)
+        }
+    }
+
     /**
      * Emits follow-related domain events into the outbox within the current transaction.
      *
@@ -323,10 +484,12 @@ public class DrawUnlimitedUseCase(
         )
     }
 
+    @Suppress("UnusedParameter") // pityTriggered reserved for WebSocket feed enhancement
     private suspend fun publishFeedEvent(
         campaign: com.prizedraw.domain.entities.UnlimitedCampaign,
         result: UnlimitedDrawResultDto,
         playerId: PlayerId,
+        pityTriggered: Boolean = false,
     ) {
         val player = deps.playerRepository.findById(playerId)
         deps.feedService.publishDrawEvent(

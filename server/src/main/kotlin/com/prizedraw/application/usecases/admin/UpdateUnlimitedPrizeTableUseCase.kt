@@ -1,6 +1,7 @@
 package com.prizedraw.application.usecases.admin
 
 import com.prizedraw.application.ports.output.ICampaignRepository
+import com.prizedraw.application.ports.output.IPityRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.contracts.dto.admin.UpdatePrizeTableRequest
@@ -23,6 +24,7 @@ public class UpdateUnlimitedPrizeTableUseCase(
     private val prizeRepository: IPrizeRepository,
     private val marginRiskService: MarginRiskService,
     private val settingsRepository: ISystemSettingsRepository,
+    private val pityRepository: IPityRepository? = null,
 ) {
     /**
      * Replaces all prize definitions for the given unlimited campaign.
@@ -58,6 +60,8 @@ public class UpdateUnlimitedPrizeTableUseCase(
             require(entry.grade.isNotBlank()) { "grade must not be blank" }
             require(entry.name.isNotBlank()) { "name must not be blank" }
         }
+
+        guardPityPoolReferences(campaignId)
 
         val now = Clock.System.now()
 
@@ -96,5 +100,21 @@ public class UpdateUnlimitedPrizeTableUseCase(
                 },
             thresholdPct = threshold,
         )
+    }
+
+    /**
+     * Rejects prize table replacement if any existing definition is referenced by a pity pool.
+     */
+    private suspend fun guardPityPoolReferences(campaignId: CampaignId) {
+        val repo = pityRepository ?: return
+        val rule = repo.findRuleByCampaignId(campaignId) ?: return
+        val pityPool = repo.findPoolByRuleId(rule.id)
+        val existingDefs = prizeRepository.findDefinitionsByCampaign(campaignId)
+        val existingDefIds = existingDefs.map { it.id }.toSet()
+        val referenced = pityPool.filter { it.prizeDefinitionId in existingDefIds }
+        require(referenced.isEmpty()) {
+            "Cannot replace prize table: prize definition(s) are referenced by the pity pool. " +
+                "Remove them from the pity pool first."
+        }
     }
 }

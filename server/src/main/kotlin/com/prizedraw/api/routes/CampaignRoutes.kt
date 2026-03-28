@@ -32,7 +32,9 @@ import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.application
 import io.ktor.server.routing.get
+import org.koin.ktor.ext.getKoin
 import java.util.UUID
 
 /**
@@ -52,6 +54,8 @@ public fun Route.campaignRoutes() {
     val drawRepository: IDrawRepository by inject()
     val connectionManager: ConnectionManager by inject()
     val favoriteRepository: ICampaignFavoriteRepository by inject()
+    val pityRepository: com.prizedraw.application.ports.output.IPityRepository? =
+        runCatching { application.getKoin().get<com.prizedraw.application.ports.output.IPityRepository>() }.getOrNull()
 
     get(CampaignEndpoints.KUJI_LIST) {
         val campaigns = campaignRepository.findActiveKujiCampaigns()
@@ -105,7 +109,7 @@ public fun Route.campaignRoutes() {
     }
 
     get(CampaignEndpoints.UNLIMITED_BY_ID) {
-        handleUnlimitedCampaignDetail(campaignRepository, prizeRepository, favoriteRepository)
+        handleUnlimitedCampaignDetail(campaignRepository, prizeRepository, favoriteRepository, pityRepository)
     }
 
     get(CampaignEndpoints.CAMPAIGN_DRAW_RECORDS) {
@@ -155,6 +159,7 @@ private suspend fun RoutingContext.handleUnlimitedCampaignDetail(
     campaignRepository: ICampaignRepository,
     prizeRepository: IPrizeRepository,
     favoriteRepository: ICampaignFavoriteRepository,
+    pityRepository: com.prizedraw.application.ports.output.IPityRepository?,
 ) {
     val campaignId = call.parseUuidParam("campaignId") ?: return
     val campaign =
@@ -174,11 +179,28 @@ private suspend fun RoutingContext.handleUnlimitedCampaignDetail(
         } else {
             false
         }
+
+    val pityInfo =
+        pityRepository?.let { repo ->
+            val rule = repo.findRuleByCampaignId(CampaignId(campaignId))
+            if (rule != null && rule.enabled) {
+                com.prizedraw.contracts.dto.pity.PityInfoDto(
+                    enabled = true,
+                    threshold = rule.threshold,
+                    mode = rule.accumulationMode.name,
+                    sessionTimeoutSeconds = rule.sessionTimeoutSeconds,
+                )
+            } else {
+                null
+            }
+        }
+
     call.respond(
         HttpStatusCode.OK,
         UnlimitedCampaignDetailDto(
             campaign = campaign.toDto().copy(isFavorited = isFavorited),
             prizes = prizes.map { it.toDto() },
+            pityInfo = pityInfo,
         ),
     )
 }

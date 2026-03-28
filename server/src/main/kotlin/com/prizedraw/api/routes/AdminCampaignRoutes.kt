@@ -50,9 +50,11 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.application
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
+import org.koin.ktor.ext.getKoin
 import java.util.UUID
 
 /**
@@ -134,6 +136,8 @@ private fun Route.adminCampaignQueryRoutes() {
     val prizeRepository: IPrizeRepository by inject()
     val drawRepository: IDrawRepository by inject()
     val campaignGradeRepository: ICampaignGradeRepository by inject()
+    val pityRepository: com.prizedraw.application.ports.output.IPityRepository? =
+        runCatching { application.getKoin().get<com.prizedraw.application.ports.output.IPityRepository>() }.getOrNull()
 
     get(AdminEndpoints.CAMPAIGNS) {
         call.requireStaff(StaffRole.OPERATOR) ?: return@get
@@ -159,6 +163,7 @@ private fun Route.adminCampaignQueryRoutes() {
                 ticketBoxRepository,
                 prizeRepository,
                 campaignGradeRepository,
+                pityRepository,
             )
         if (response == null) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "Campaign not found"))
@@ -386,6 +391,7 @@ private suspend fun buildCampaignList(
     return kujiItems + unlimitedItems
 }
 
+@Suppress("LongParameterList")
 private suspend fun buildCampaignDetail(
     typeParam: String,
     campaignId: CampaignId,
@@ -393,6 +399,7 @@ private suspend fun buildCampaignDetail(
     ticketBoxRepository: ITicketBoxRepository,
     prizeRepository: IPrizeRepository,
     campaignGradeRepository: ICampaignGradeRepository,
+    pityRepository: com.prizedraw.application.ports.output.IPityRepository? = null,
 ): Any? =
     when (typeParam.lowercase()) {
         "unlimited" -> {
@@ -404,10 +411,25 @@ private suspend fun buildCampaignDetail(
                 )
             val grades = campaignGradeRepository.findByCampaignId(campaignId)
             val gradeMap = grades.associateBy { it.id }
+            val pityInfo =
+                pityRepository?.let { repo ->
+                    val rule = repo.findRuleByCampaignId(campaignId)
+                    if (rule != null && rule.enabled) {
+                        com.prizedraw.contracts.dto.pity.PityInfoDto(
+                            enabled = true,
+                            threshold = rule.threshold,
+                            mode = rule.accumulationMode.name,
+                            sessionTimeoutSeconds = rule.sessionTimeoutSeconds,
+                        )
+                    } else {
+                        null
+                    }
+                }
             UnlimitedCampaignDetailDto(
                 campaign = campaign.toDto(),
                 prizes = prizes.map { it.toDto(gradeMap) },
                 grades = grades.map { it.toDto() },
+                pityInfo = pityInfo,
             )
         }
         else -> {

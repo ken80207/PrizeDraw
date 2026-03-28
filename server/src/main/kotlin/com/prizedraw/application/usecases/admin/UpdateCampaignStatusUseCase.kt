@@ -7,6 +7,7 @@ import com.prizedraw.application.ports.output.ICampaignFavoriteRepository
 import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.application.ports.output.IOutboxRepository
+import com.prizedraw.application.ports.output.IPityRepository
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.ISystemSettingsRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
@@ -49,6 +50,7 @@ public class UpdateCampaignStatusUseCase(
     private val favoriteRepo: ICampaignFavoriteRepository,
     private val notificationRepo: INotificationRepository,
     private val outboxRepo: IOutboxRepository,
+    private val pityRepository: IPityRepository? = null,
 ) : IUpdateCampaignStatusUseCase {
     override suspend fun execute(
         staffId: StaffId,
@@ -170,6 +172,18 @@ public class UpdateCampaignStatusUseCase(
         }
         require(prizes.all { it.photos.isNotEmpty() }) {
             "All prize definitions in campaign ${campaignId.value} must have at least one photo."
+        }
+
+        // Pity completeness validation
+        if (pityRepository != null) {
+            val pityRule = pityRepository.findRuleByCampaignId(campaignId)
+            if (pityRule != null && pityRule.enabled) {
+                val pityPool = pityRepository.findPoolByRuleId(pityRule.id)
+                require(pityPool.isNotEmpty()) {
+                    "Unlimited campaign ${campaignId.value}: pity rule is enabled but prize pool is empty. " +
+                        "Add at least one prize to the pity pool or disable the pity rule."
+                }
+            }
         }
 
         // Margin gate

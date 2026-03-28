@@ -95,4 +95,5 @@ public data class UnlimitedCampaignDetailDto(
     val campaign: UnlimitedCampaignDto,
     val prizes: List<PrizeDefinitionDto>,
     val grades: List<CampaignGradeDto> = emptyList(),
+    val pityInfo: com.prizedraw.contracts.dto.pity.PityInfoDto? = null,
 )

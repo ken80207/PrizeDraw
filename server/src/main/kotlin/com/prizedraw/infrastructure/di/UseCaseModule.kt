@@ -171,6 +171,7 @@ import com.prizedraw.domain.services.DrawCore
 import com.prizedraw.domain.services.DrawCoreDeps
 import com.prizedraw.domain.services.KujiDrawDomainService
 import com.prizedraw.domain.services.MarginRiskService
+import com.prizedraw.domain.services.PityDomainService
 import com.prizedraw.domain.services.UnlimitedDrawDomainService
 import com.prizedraw.infrastructure.external.redis.DistributedLock
 import com.prizedraw.infrastructure.external.redis.RedisClient
@@ -319,6 +320,8 @@ public val useCaseModule =
                         couponRepository = getOrNull<ICouponRepository>(),
                         feedService = get<FeedService>(),
                         playerRepository = get<IPlayerRepository>(),
+                        pityRepository = getOrNull<IPityRepository>(),
+                        pityDomainService = getOrNull<PityDomainService>(),
                     ),
             )
         }
@@ -495,6 +498,7 @@ public val useCaseModule =
                 favoriteRepo = get(),
                 notificationRepo = get(),
                 outboxRepo = get(),
+                pityRepository = getOrNull<IPityRepository>(),
             )
         }
 
@@ -524,6 +528,7 @@ public val useCaseModule =
                 prizeRepository = get<IPrizeRepository>(),
                 marginRiskService = get<MarginRiskService>(),
                 settingsRepository = get<ISystemSettingsRepository>(),
+                pityRepository = getOrNull<IPityRepository>(),
             )
         }
 
