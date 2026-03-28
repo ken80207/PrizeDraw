@@ -222,6 +222,7 @@ class DrawConcurrencyTest :
                 val redisPubSub = mockk<RedisPubSub>()
 
                 coEvery { ticketBoxRepo.findById(boxId) } returns box
+                coEvery { ticketBoxRepo.decrementRemainingTickets(any(), any()) } returns true
                 coEvery { queueRepo.findByTicketBoxId(boxId) } returns queue
                 coEvery { drawRepo.findTicketById(ticket.id) } returns ticket
                 coEvery { campaignRepo.findKujiById(campaignId) } returns makeKujiCampaign()
@@ -317,6 +318,7 @@ class DrawConcurrencyTest :
                 val redisPubSub = mockk<RedisPubSub>()
 
                 coEvery { ticketBoxRepo.findById(boxId) } returns box
+                coEvery { ticketBoxRepo.decrementRemainingTickets(any(), any()) } returns true
                 coEvery { queueRepo.findByTicketBoxId(boxId) } returns queue
                 coEvery { campaignRepo.findKujiById(campaignId) } returns makeKujiCampaign()
 
@@ -384,7 +386,20 @@ class DrawConcurrencyTest :
                 val domainService = KujiDrawDomainService()
                 val redisPubSub = mockk<RedisPubSub>()
 
-                coEvery { ticketBoxRepo.findById(boxId) } returns box
+                // First findById returns the original box; after decrement, remaining = 0
+                var decremented = false
+                val boxAfterDecrement = box.copy(remainingTickets = 0)
+                coEvery { ticketBoxRepo.findById(boxId) } answers {
+                    if (decremented) {
+                        boxAfterDecrement
+                    } else {
+                        box
+                    }
+                }
+                coEvery { ticketBoxRepo.decrementRemainingTickets(any(), any()) } answers {
+                    decremented = true
+                    true
+                }
                 coEvery { queueRepo.findByTicketBoxId(boxId) } returns queue
                 coEvery { drawRepo.findTicketById(ticket.id) } returns ticket
                 coEvery { campaignRepo.findKujiById(campaignId) } returns campaign
@@ -404,7 +419,11 @@ class DrawConcurrencyTest :
                 coEvery { ticketBoxRepo.save(capture(capturedBox)) } answers { capturedBox.captured }
                 // After the last ticket, all boxes are SOLD_OUT
                 coEvery { ticketBoxRepo.findByCampaignId(campaignId) } answers {
-                    listOf(capturedBox.captured.takeIf { it.status == TicketBoxStatus.SOLD_OUT } ?: box)
+                    if (capturedBox.isCaptured) {
+                        listOf(capturedBox.captured)
+                    } else {
+                        listOf(boxAfterDecrement)
+                    }
                 }
                 coEvery { campaignRepo.updateKujiStatus(campaignId, CampaignStatus.SOLD_OUT) } returns Unit
                 every { drawPointTxRepo.record(any()) } just runs

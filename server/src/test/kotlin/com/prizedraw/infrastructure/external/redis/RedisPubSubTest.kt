@@ -29,7 +29,9 @@ class RedisPubSubTest :
                     val listeners =
                         listenersField.get(pubSub) as ConcurrentHashMap<String, MutableList<*>>
                     repeat(20) {
-                        if (listeners["ws:player:test"]?.size == 1) return@repeat
+                        if (listeners["ws:player:test"]?.size == 1) {
+                            return@repeat
+                        }
                         delay(10)
                     }
                     listeners["ws:player:test"]?.size shouldBe 1

@@ -161,7 +161,7 @@ public class DrawKujiUseCase(
                             discountApplied = if (outcomes.size == 1) discountAmount else 0,
                         )
                     }
-                handleBoxSoldOut(box, resolvedTickets.size)
+                handleBoxRemainingUpdate(box, resolvedTickets.size)
                 recordAuditLog(playerId, box, resolvedTickets.size, basePrice - discountAmount, now)
                 emitFollowEvents(playerId, box.kujiCampaignId, drawnResults)
                 drawnResults
@@ -276,32 +276,56 @@ public class DrawKujiUseCase(
             }
     }
 
-    private suspend fun handleBoxSoldOut(
+    private suspend fun handleBoxRemainingUpdate(
         box: TicketBox,
         drawnCount: Int,
     ) {
         val now = Clock.System.now()
-        val freshBox =
+        // Atomically decrement remaining_tickets one at a time using CAS.
+        // This avoids the read-then-write race that caused remaining_tickets
+        // to drift out of sync with the actual number of DRAWN tickets.
+        repeat(drawnCount) {
+            val freshBox =
+                deps.ticketBoxRepository.findById(box.id)
+                    ?: error("TicketBox ${box.id} not found during remaining update")
+            if (freshBox.remainingTickets <= 0) {
+                // Already at zero — mark sold out if not already
+                if (freshBox.status != DomainTicketBoxStatus.SOLD_OUT) {
+                    deps.ticketBoxRepository.save(
+                        freshBox.copy(
+                            remainingTickets = 0,
+                            status = DomainTicketBoxStatus.SOLD_OUT,
+                            soldOutAt = now,
+                            updatedAt = now,
+                        ),
+                    )
+                }
+                return
+            }
+            val success =
+                deps.ticketBoxRepository.decrementRemainingTickets(
+                    id = box.id,
+                    expectedRemaining = freshBox.remainingTickets,
+                )
+            if (!success) {
+                // CAS failed (concurrent draw); retry with fresh read on next iteration
+                log.warn("CAS failed decrementing remaining for box {}; retrying", box.id)
+            }
+        }
+        // Check if box is now sold out
+        val finalBox =
             deps.ticketBoxRepository.findById(box.id)
-                ?: error("TicketBox ${box.id} not found during sold-out check")
-        val newRemaining = (freshBox.remainingTickets - drawnCount).coerceAtLeast(0)
-        val updatedBox =
-            if (newRemaining <= 0) {
-                freshBox.copy(
+                ?: error("TicketBox ${box.id} not found after decrement")
+        if (finalBox.remainingTickets <= 0 && finalBox.status != DomainTicketBoxStatus.SOLD_OUT) {
+            deps.ticketBoxRepository.save(
+                finalBox.copy(
                     remainingTickets = 0,
                     status = DomainTicketBoxStatus.SOLD_OUT,
                     soldOutAt = now,
                     updatedAt = now,
-                )
-            } else {
-                freshBox.copy(
-                    remainingTickets = newRemaining,
-                    updatedAt = now,
-                )
-            }
-        deps.ticketBoxRepository.save(updatedBox)
-        if (newRemaining <= 0) {
-            checkCampaignSoldOut(freshBox.kujiCampaignId)
+                ),
+            )
+            checkCampaignSoldOut(finalBox.kujiCampaignId)
         }
     }
 
