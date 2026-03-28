@@ -94,7 +94,7 @@ export function NotificationPanel() {
       ) : (
         <ul>
           {notifications.map((n) => (
-            <NotificationRow key={n.id} notification={n} onMarkRead={handleMarkRead} onTap={handleNotificationClick} />
+            <NotificationRow key={n.id} notification={n} onTap={handleNotificationClick} />
           ))}
         </ul>
       )}
@@ -104,11 +104,9 @@ export function NotificationPanel() {
 
 function NotificationRow({
   notification,
-  onMarkRead,
   onTap,
 }: {
   notification: NotificationItem;
-  onMarkRead: (id: string) => void;
   onTap: (notification: NotificationItem) => void;
 }) {
   return (
