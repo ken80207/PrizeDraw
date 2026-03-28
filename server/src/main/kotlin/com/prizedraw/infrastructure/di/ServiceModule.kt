@@ -16,6 +16,7 @@ import com.prizedraw.application.services.ChatService
 import com.prizedraw.application.services.DrawSyncService
 import com.prizedraw.application.services.FeedService
 import com.prizedraw.application.services.LevelService
+import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.application.services.StaffTokenService
 import com.prizedraw.application.services.TokenService
@@ -115,6 +116,9 @@ public fun serviceModule(config: ApplicationConfig) =
                 feedEventRepository = get<IFeedEventRepository>(),
             )
         }
+
+        // Live draw presence (in-memory active session map + pub/sub events)
+        single<LiveDrawService> { LiveDrawService(pubSub = get<IPubSubService>()) }
     }
 
 /**
