@@ -7,6 +7,7 @@ public object AdminEndpoints {
     public const val CAMPAIGNS: String = "$BASE/campaigns"
     public const val CAMPAIGN_BY_ID: String = "$BASE/campaigns/{campaignId}"
     public const val CAMPAIGN_STATUS: String = "$BASE/campaigns/{campaignId}/status"
+    public const val CAMPAIGN_BOXES: String = "$BASE/campaigns/{campaignId}/boxes"
 
     // Players
     public const val PLAYERS: String = "$BASE/players"
