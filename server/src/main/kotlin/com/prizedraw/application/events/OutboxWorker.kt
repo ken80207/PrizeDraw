@@ -149,6 +149,7 @@ public class OutboxWorker(
             "following.rare_prize_drawn" -> handleFollowingNotification(event)
             "favorite.campaign_activated" -> handleFavoriteCampaignActivated(event)
             "favorite.campaign_low_stock" -> handleFavoriteCampaignLowStock(event)
+            "favorite.campaign_restocked" -> handleFavoriteCampaignRestocked(event)
             else -> log.debug("OutboxEvent type '{}' has no handler; skipping", event.eventType)
         }
     }
@@ -261,6 +262,10 @@ public class OutboxWorker(
             }
             "favorite.campaign_low_stock" -> {
                 "收藏的活動即將售完" to "你收藏的活動票券即將售完，把握機會。"
+            }
+            "favorite.campaign_restocked" -> {
+                val title = payload["campaignTitle"]?.jsonPrimitive?.content ?: ""
+                "收藏的活動已加開" to "你收藏的『$title』已加開新箱，快來抽！"
             }
             else -> null
         }
@@ -517,6 +522,25 @@ public class OutboxWorker(
                         "eventType" to "favorite.campaign_low_stock",
                         "campaignId" to campaignId,
                     ),
+            ),
+        )
+    }
+
+    private suspend fun handleFavoriteCampaignRestocked(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val campaignId = event.payload["campaignId"]?.jsonPrimitive?.content ?: return
+        val campaignType = event.payload["campaignType"]?.jsonPrimitive?.content ?: return
+        val campaignTitle = event.payload["campaignTitle"]?.jsonPrimitive?.content ?: ""
+        notificationService.sendPush(
+            PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "收藏的活動已加開",
+                body = "你收藏的『$campaignTitle』已加開新箱，快來抽！",
+                data = mapOf(
+                    "eventType" to "favorite.campaign_restocked",
+                    "campaignId" to campaignId,
+                    "campaignType" to campaignType,
+                ),
             ),
         )
     }
