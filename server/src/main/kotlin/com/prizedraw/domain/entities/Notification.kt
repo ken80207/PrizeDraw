@@ -28,5 +28,6 @@ public data class Notification(
     val body: String,
     val data: Map<String, String> = emptyMap(),
     val isRead: Boolean = false,
+    val dedupKey: String? = null,
     val createdAt: Instant = Clock.System.now(),
 )
