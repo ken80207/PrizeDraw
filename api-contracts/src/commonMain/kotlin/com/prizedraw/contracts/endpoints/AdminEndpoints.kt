@@ -81,4 +81,12 @@ public object AdminEndpoints {
 
     // Risk Settings
     public const val RISK_SETTINGS: String = "$BASE/settings/risk"
+
+    // Grade Templates
+    public const val GRADE_TEMPLATES: String = "$BASE/grade-templates"
+    public const val GRADE_TEMPLATE_BY_ID: String = "$BASE/grade-templates/{templateId}"
+
+    // Campaign Grades
+    public const val CAMPAIGN_GRADES: String = "$BASE/campaigns/{campaignId}/grades"
+    public const val CAMPAIGN_GRADES_APPLY: String = "$BASE/campaigns/{campaignId}/grades/apply-template"
 }

@@ -1,5 +1,6 @@
 package com.prizedraw.contracts.dto.campaign
 
+import com.prizedraw.contracts.dto.grade.CampaignGradeDto
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.TicketBoxStatus
 import kotlinx.datetime.Instant
@@ -54,6 +55,8 @@ public data class PrizeDefinitionDto(
     val probabilityBps: Int?,
     val ticketCount: Int?,
     val displayOrder: Int,
+    val campaignGradeId: String? = null,
+    val campaignGrade: CampaignGradeDto? = null,
 )
 
 @Serializable
@@ -84,10 +87,12 @@ public data class KujiCampaignDetailDto(
     val campaign: KujiCampaignDto,
     val boxes: List<TicketBoxDto>,
     val prizes: List<PrizeDefinitionDto>,
+    val grades: List<CampaignGradeDto> = emptyList(),
 )
 
 @Serializable
 public data class UnlimitedCampaignDetailDto(
     val campaign: UnlimitedCampaignDto,
     val prizes: List<PrizeDefinitionDto>,
+    val grades: List<CampaignGradeDto> = emptyList(),
 )
