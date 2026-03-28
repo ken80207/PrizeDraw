@@ -2,9 +2,10 @@ package com.prizedraw.infrastructure.external.redis
 
 import com.prizedraw.application.ports.output.IPubSubService
 import io.lettuce.core.pubsub.RedisPubSubAdapter
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.future.await
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
@@ -24,7 +25,7 @@ public class RedisPubSub(
 ) : IPubSubService {
     private val log = LoggerFactory.getLogger(RedisPubSub::class.java)
 
-    private val listeners = ConcurrentHashMap<String, MutableList<Channel<String>>>()
+    private val listeners = ConcurrentHashMap<String, MutableList<SendChannel<String>>>()
 
     /**
      * Publishes [message] to the given Redis [channel].
@@ -50,16 +51,19 @@ public class RedisPubSub(
      *
      * @param channel The Redis channel to subscribe to.
      */
-    public override fun subscribe(channel: String): Flow<String> {
-        val messageChannel = Channel<String>(capacity = 64)
-        listeners.getOrPut(channel) { mutableListOf() }.add(messageChannel)
+    public override fun subscribe(channelName: String): Flow<String> {
+        return callbackFlow {
+            listeners.getOrPut(channelName) { mutableListOf() }.add(channel)
 
-        redisClient.run {
-            // Note: in a real implementation this would use a StatefulRedisPubSubConnection
-            // and register this channel with SUBSCRIBE. Here we wire a callback.
+            redisClient.run {
+                // Note: in a real implementation this would use a StatefulRedisPubSubConnection
+                // and register this channel with SUBSCRIBE. Here we wire a callback.
+            }
+
+            awaitClose {
+                unsubscribe(channelName, this@callbackFlow.channel)
+            }
         }
-
-        return messageChannel.consumeAsFlow()
     }
 
     /**
@@ -84,9 +88,12 @@ public class RedisPubSub(
     /** Removes a closed listener channel from the map. */
     public fun unsubscribe(
         channel: String,
-        listener: Channel<String>,
+        listener: SendChannel<String>,
     ) {
         listeners[channel]?.remove(listener)
+        if (listeners[channel]?.isEmpty() == true) {
+            listeners.remove(channel)
+        }
     }
 
     /** Closes all listener channels and clears the subscription map. */

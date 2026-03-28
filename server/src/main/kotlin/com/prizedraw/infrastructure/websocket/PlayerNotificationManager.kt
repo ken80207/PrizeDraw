@@ -5,6 +5,7 @@ import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
@@ -28,7 +29,7 @@ public class PlayerNotificationManager(
 ) {
     private val log = LoggerFactory.getLogger(PlayerNotificationManager::class.java)
     private val sessions = ConcurrentHashMap<UUID, CopyOnWriteArraySet<DefaultWebSocketServerSession>>()
-    private val subscribed = ConcurrentHashMap.newKeySet<UUID>()
+    private val subscriptions = ConcurrentHashMap<UUID, Job>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
@@ -44,8 +45,8 @@ public class PlayerNotificationManager(
         session: DefaultWebSocketServerSession,
     ) {
         sessions.getOrPut(playerId) { CopyOnWriteArraySet() }.add(session)
-        if (subscribed.add(playerId)) {
-            startSubscription(playerId)
+        if (!subscriptions.containsKey(playerId)) {
+            subscriptions[playerId] = startSubscription(playerId)
         }
         log.debug("Player {} notification session registered; count={}", playerId, sessionCount(playerId))
     }
@@ -62,7 +63,12 @@ public class PlayerNotificationManager(
         playerId: UUID,
         session: DefaultWebSocketServerSession,
     ) {
-        sessions[playerId]?.remove(session)
+        val playerSessions = sessions[playerId] ?: return
+        playerSessions.remove(session)
+        if (playerSessions.isEmpty()) {
+            sessions.remove(playerId)
+            subscriptions.remove(playerId)?.cancel()
+        }
         log.debug("Player {} notification session unregistered; remaining={}", playerId, sessionCount(playerId))
     }
 
@@ -102,10 +108,10 @@ public class PlayerNotificationManager(
 
     // --- Private helpers ---
 
-    private fun startSubscription(playerId: UUID) {
+    private fun startSubscription(playerId: UUID): Job {
         val channel = "ws:player:$playerId"
         val flow = redisPubSub.subscribe(channel)
-        scope.launch {
+        return scope.launch {
             flow.collect { message ->
                 broadcast(playerId, message)
             }

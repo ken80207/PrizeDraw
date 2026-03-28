@@ -59,7 +59,7 @@ internal class ShippingStatusChangedEvent(
     val playerId: UUID,
     val newStatus: String,
 ) : com.prizedraw.application.ports.output.DomainEvent {
-    override val eventType: String = "shipping.status.changed"
+    override val eventType: String = "shipping.status_changed"
     override val aggregateType: String = "ShippingOrder"
     override val aggregateId: UUID = orderId
 }

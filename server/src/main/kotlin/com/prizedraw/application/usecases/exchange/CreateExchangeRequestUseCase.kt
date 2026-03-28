@@ -176,7 +176,7 @@ internal class ExchangeCreatedEvent(
     val requestId: UUID,
     val recipientId: UUID,
 ) : com.prizedraw.application.ports.output.DomainEvent {
-    override val eventType: String = "exchange.request.created"
+    override val eventType: String = "exchange.requested"
     override val aggregateType: String = "ExchangeRequest"
     override val aggregateId: UUID = requestId
 }

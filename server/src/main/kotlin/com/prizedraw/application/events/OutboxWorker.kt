@@ -147,6 +147,8 @@ public class OutboxWorker(
             "player.level_up" -> handlePlayerLevelUp(event)
             "following.draw_started" -> handleFollowingNotification(event)
             "following.rare_prize_drawn" -> handleFollowingNotification(event)
+            "favorite.campaign_activated" -> handleFavoriteCampaignActivated(event)
+            "favorite.campaign_low_stock" -> handleFavoriteCampaignLowStock(event)
             else -> log.debug("OutboxEvent type '{}' has no handler; skipping", event.eventType)
         }
     }
@@ -253,6 +255,12 @@ public class OutboxWorker(
                 val campaignName = payload["campaignName"]?.jsonPrimitive?.content ?: ""
                 val prizeName = payload["prizeName"]?.jsonPrimitive?.content ?: ""
                 "Friend hit a rare prize!" to "$nickname drew $prizeName in $campaignName!"
+            }
+            "favorite.campaign_activated" -> {
+                "收藏的活動已上架" to "你收藏的活動已上架，現在可以前往查看。"
+            }
+            "favorite.campaign_low_stock" -> {
+                "收藏的活動即將售完" to "你收藏的活動票券即將售完，把握機會。"
             }
             else -> null
         }
@@ -473,6 +481,42 @@ public class OutboxWorker(
                 title = "Level Up!",
                 body = "Congratulations! You reached level $level ($tier).",
                 data = mapOf("eventType" to "player.level_up"),
+            ),
+        )
+    }
+
+    private suspend fun handleFavoriteCampaignActivated(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val campaignId = event.payload["campaignId"]?.jsonPrimitive?.content ?: return
+        val campaignType = event.payload["campaignType"]?.jsonPrimitive?.content ?: return
+        notificationService.sendPush(
+            PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "收藏的活動已上架",
+                body = "你收藏的活動已上架，現在可以前往查看。",
+                data =
+                    mapOf(
+                        "eventType" to "favorite.campaign_activated",
+                        "campaignId" to campaignId,
+                        "campaignType" to campaignType,
+                    ),
+            ),
+        )
+    }
+
+    private suspend fun handleFavoriteCampaignLowStock(event: OutboxEvent) {
+        val playerId = event.payload["playerId"]?.jsonPrimitive?.content ?: return
+        val campaignId = event.payload["campaignId"]?.jsonPrimitive?.content ?: return
+        notificationService.sendPush(
+            PlayerId.fromString(playerId),
+            PushNotificationPayload(
+                title = "收藏的活動即將售完",
+                body = "你收藏的活動票券即將售完，把握機會。",
+                data =
+                    mapOf(
+                        "eventType" to "favorite.campaign_low_stock",
+                        "campaignId" to campaignId,
+                    ),
             ),
         )
     }

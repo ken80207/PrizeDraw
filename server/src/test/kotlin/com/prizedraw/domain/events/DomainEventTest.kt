@@ -5,6 +5,7 @@ import com.prizedraw.application.events.ExchangeRejected
 import com.prizedraw.application.events.ExchangeRequested
 import com.prizedraw.application.events.PaymentFailed
 import com.prizedraw.application.events.PlayerLevelUp
+import com.prizedraw.application.events.ShippingStatusChanged
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
@@ -70,6 +71,20 @@ class DomainEventTest :
                     )
                 event.eventType shouldBe "player.level_up"
                 event.aggregateType shouldBe "Player"
+            }
+        }
+
+        describe("ShippingStatusChanged") {
+            it("has correct event type") {
+                val event =
+                    ShippingStatusChanged(
+                        shippingOrderId = UUID.randomUUID(),
+                        playerId = UUID.randomUUID(),
+                        newStatus = "SHIPPED",
+                        trackingNumber = "TRACK123",
+                    )
+                event.eventType shouldBe "shipping.status_changed"
+                event.aggregateType shouldBe "ShippingOrder"
             }
         }
     })
