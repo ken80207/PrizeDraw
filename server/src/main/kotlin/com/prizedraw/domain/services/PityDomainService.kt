@@ -85,12 +85,16 @@ public class PityDomainService {
         tracker: PityTracker?,
         now: Instant,
     ): Int {
-        if (tracker == null) return 0
+        if (tracker == null) {
+            return 0
+        }
         if (rule.accumulationMode == AccumulationMode.SESSION) {
             val timeout = rule.sessionTimeoutSeconds ?: return tracker.drawCount
             val lastDraw = tracker.lastDrawAt ?: return 0
             val elapsed = (now - lastDraw).inWholeSeconds
-            if (elapsed > timeout) return 0
+            if (elapsed > timeout) {
+                return 0
+            }
         }
         return tracker.drawCount
     }
