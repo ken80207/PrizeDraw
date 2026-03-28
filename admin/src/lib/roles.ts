@@ -21,6 +21,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: '📊', label: '總覽', minRole: 'OPERATOR' },
   { href: '/campaigns', icon: '🎰', label: '活動管理', minRole: 'OPERATOR' },
+  { href: '/grade-templates', icon: '🏷️', label: '等級模板', minRole: 'OPERATOR' },
   { href: '/shipping', icon: '📦', label: '出貨管理', minRole: 'OPERATOR' },
   { href: '/withdrawals', icon: '💰', label: '提領審核', minRole: 'ADMIN' },
   { href: '/players', icon: '👥', label: '玩家管理', minRole: 'OPERATOR' },
