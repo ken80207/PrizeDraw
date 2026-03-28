@@ -7,6 +7,7 @@ import com.prizedraw.application.ports.output.ICampaignRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.services.DrawSyncService
 import com.prizedraw.application.services.KujiQueueService
+import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.application.services.QueueOperationException
 import com.prizedraw.application.usecases.draw.InsufficientPointsException
 import com.prizedraw.application.usecases.draw.NotSessionHolderException
@@ -58,6 +59,7 @@ public fun Route.drawRoutes() {
     val campaignRepository: ICampaignRepository by inject()
     val ticketBoxRepository: ITicketBoxRepository by inject()
     val drawSyncService: DrawSyncService by inject()
+    val liveDrawService: LiveDrawService by inject()
 
     authenticate("player") {
         post(DrawEndpoints.DRAW_KUJI) {
@@ -73,7 +75,7 @@ public fun Route.drawRoutes() {
         }
 
         delete(DrawEndpoints.QUEUE_LEAVE) {
-            handleQueueLeave(kujiQueueService, campaignRepository, ticketBoxRepository)
+            handleQueueLeave(kujiQueueService, campaignRepository, ticketBoxRepository, liveDrawService)
         }
 
         post(DrawEndpoints.QUEUE_SWITCH_BOX) {
@@ -89,7 +91,7 @@ public fun Route.drawRoutes() {
         }
 
         post(DrawEndpoints.SYNC_COMPLETE) {
-            handleSyncComplete(drawSyncService)
+            handleSyncComplete(drawSyncService, liveDrawService)
         }
     }
 }
@@ -168,6 +170,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleQueueLeave(
     kujiQueueService: KujiQueueService,
     campaignRepository: ICampaignRepository,
     ticketBoxRepository: ITicketBoxRepository,
+    liveDrawService: LiveDrawService,
 ) {
     val principal = call.principal<PlayerPrincipal>()!!
     val request = call.receive<LeaveQueueRequest>()
@@ -178,6 +181,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleQueueLeave(
         }
     val sessionSeconds = resolveSessionSeconds(campaignRepository, ticketBoxRepository, boxId)
     kujiQueueService.leaveQueue(principal.playerId, boxId, sessionSeconds)
+    liveDrawService.endSessionsByPlayer(principal.playerId.value.toString())
     call.respond(HttpStatusCode.NoContent)
 }
 
@@ -308,7 +312,11 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleSyncCancel(drawS
         )
 }
 
-private suspend fun io.ktor.server.routing.RoutingContext.handleSyncComplete(drawSyncService: DrawSyncService) {
+private suspend fun io.ktor.server.routing.RoutingContext.handleSyncComplete(
+    drawSyncService: DrawSyncService,
+    liveDrawService: LiveDrawService,
+) {
+    val principal = call.principal<PlayerPrincipal>()!!
     val request = call.receive<DrawSyncCompleteRequest>()
     val sessionId =
         runCatching { UUID.fromString(request.sessionId) }.getOrElse {
@@ -317,7 +325,10 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleSyncComplete(dra
         }
     val result = runCatching { drawSyncService.completeDraw(sessionId) }
     result.fold(
-        onSuccess = { call.respond(HttpStatusCode.NoContent) },
+        onSuccess = {
+            liveDrawService.endSessionsByPlayer(principal.playerId.value.toString())
+            call.respond(HttpStatusCode.NoContent)
+        },
         onFailure = { ex ->
             when (ex) {
                 is IllegalStateException ->

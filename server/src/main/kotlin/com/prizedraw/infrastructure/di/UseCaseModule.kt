@@ -100,6 +100,7 @@ import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.application.services.FeedService
 import com.prizedraw.application.services.KujiQueueService
 import com.prizedraw.application.services.LevelService
+import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.application.services.PointsLedgerService
 import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.admin.ApproveCampaignUseCase
@@ -293,6 +294,7 @@ public val useCaseModule =
                         drawCore = get<DrawCore>(),
                         couponRepository = getOrNull<ICouponRepository>(),
                         feedService = get<FeedService>(),
+                        liveDrawService = get<LiveDrawService>(),
                     ),
             )
         }

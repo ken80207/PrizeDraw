@@ -13,8 +13,10 @@ import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.application.ports.output.IQueueRepository
 import com.prizedraw.application.ports.output.ITicketBoxRepository
 import com.prizedraw.application.services.FeedService
+import com.prizedraw.application.services.LiveDrawService
 import com.prizedraw.contracts.dto.draw.DrawResultDto
 import com.prizedraw.contracts.dto.draw.DrawnTicketResultDto
+import com.prizedraw.contracts.dto.livedraw.LiveDrawItemDto
 import com.prizedraw.contracts.enums.CampaignStatus
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.AuditActorType
@@ -75,6 +77,7 @@ public data class DrawKujiDeps(
     val drawCore: DrawCore,
     val couponRepository: ICouponRepository? = null,
     val feedService: FeedService,
+    val liveDrawService: LiveDrawService,
 )
 
 /**
@@ -167,6 +170,20 @@ public class DrawKujiUseCase(
                 drawnResults
             }
 
+        if (resolvedTickets.size >= 2) {
+            val campaign = deps.campaignRepository.findKujiById(box.kujiCampaignId)
+            val player = deps.playerRepository.findById(playerId)
+            deps.liveDrawService.startSession(
+                LiveDrawItemDto(
+                    sessionId = UUID.randomUUID().toString(),
+                    playerId = playerId.value.toString(),
+                    nickname = player?.nickname ?: "Player",
+                    campaignId = box.kujiCampaignId.value.toString(),
+                    campaignTitle = campaign?.title ?: "",
+                    quantity = resolvedTickets.size,
+                ),
+            )
+        }
         publishDrawEvents(box, results, playerId)
         publishFeedEvents(box.kujiCampaignId, results, playerId)
         return DrawResultDto(tickets = results)
