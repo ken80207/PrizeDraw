@@ -42,22 +42,25 @@ import com.prizedraw.screens.campaign.BannerItem
 // Sample / mock data for demo rendering prior to ViewModel wiring
 // ---------------------------------------------------------------------------
 
-private val sampleBanners = listOf(
-    BannerItem(
-        id = "b1",
-        imageUrl = "https://picsum.photos/seed/banner1/800/400",
-        title = "Demon Slayer:\nTo the Hashira Training",
-        subtitle = "The ultimate battle begins. Win the exclusive Hashira figures before they vanish into the night.",
-        drawPrice = 800,
-    ),
-    BannerItem(
-        id = "b2",
-        imageUrl = "https://picsum.photos/seed/banner2/800/400",
-        title = "One Piece:\nFinal Saga Edition",
-        subtitle = "Luffy and crew in stunning limited collector figures.",
-        drawPrice = 650,
-    ),
-)
+private val sampleBanners =
+    listOf(
+        BannerItem(
+            id = "b1",
+            imageUrl = "https://picsum.photos/seed/banner1/800/400",
+            title = "Demon Slayer:\nTo the Hashira Training",
+            subtitle =
+                "The ultimate battle begins. " +
+                    "Win the exclusive Hashira figures before they vanish into the night.",
+            drawPrice = 800,
+        ),
+        BannerItem(
+            id = "b2",
+            imageUrl = "https://picsum.photos/seed/banner2/800/400",
+            title = "One Piece:\nFinal Saga Edition",
+            subtitle = "Luffy and crew in stunning limited collector figures.",
+            drawPrice = 650,
+        ),
+    )
 
 private data class KujiCampaignCard(
     val id: String,
@@ -78,70 +81,72 @@ private data class InfiniteKujiCard(
     val srRate: String,
 )
 
-private val sampleKujiCampaigns = listOf(
-    KujiCampaignCard(
-        id = "k1",
-        imageUrl = "https://picsum.photos/seed/kuji1/300/300",
-        name = "Dragon Ball Super Hero",
-        points = 850,
-        remainingTickets = 24,
-        totalTickets = 40,
-    ),
-    KujiCampaignCard(
-        id = "k2",
-        imageUrl = "https://picsum.photos/seed/kuji2/300/300",
-        name = "Evangelion Unit-01 Awakening",
-        points = 700,
-        remainingTickets = 12,
-        totalTickets = 40,
-    ),
-    KujiCampaignCard(
-        id = "k3",
-        imageUrl = "https://picsum.photos/seed/kuji3/300/300",
-        name = "One Piece: Wano Country",
-        points = 950,
-        remainingTickets = 8,
-        totalTickets = 40,
-    ),
-    KujiCampaignCard(
-        id = "k4",
-        imageUrl = "https://picsum.photos/seed/kuji4/300/300",
-        name = "Spy x Family: Mission Start",
-        points = 650,
-        remainingTickets = 31,
-        totalTickets = 40,
-    ),
-)
+private val sampleKujiCampaigns =
+    listOf(
+        KujiCampaignCard(
+            id = "k1",
+            imageUrl = "https://picsum.photos/seed/kuji1/300/300",
+            name = "Dragon Ball Super Hero",
+            points = 850,
+            remainingTickets = 24,
+            totalTickets = 40,
+        ),
+        KujiCampaignCard(
+            id = "k2",
+            imageUrl = "https://picsum.photos/seed/kuji2/300/300",
+            name = "Evangelion Unit-01 Awakening",
+            points = 700,
+            remainingTickets = 12,
+            totalTickets = 40,
+        ),
+        KujiCampaignCard(
+            id = "k3",
+            imageUrl = "https://picsum.photos/seed/kuji3/300/300",
+            name = "One Piece: Wano Country",
+            points = 950,
+            remainingTickets = 8,
+            totalTickets = 40,
+        ),
+        KujiCampaignCard(
+            id = "k4",
+            imageUrl = "https://picsum.photos/seed/kuji4/300/300",
+            name = "Spy x Family: Mission Start",
+            points = 650,
+            remainingTickets = 31,
+            totalTickets = 40,
+        ),
+    )
 
-private val sampleInfiniteKuji = listOf(
-    InfiniteKujiCard(
-        id = "i1",
-        imageUrl = "https://picsum.photos/seed/inf1/300/300",
-        badge = "LIMITED",
-        title = "Limited \"Glitch\" Series Art Toy",
-        pricePerDraw = 450,
-        ssrRate = "1.0%",
-        srRate = "94.2%",
-    ),
-    InfiniteKujiCard(
-        id = "i2",
-        imageUrl = "https://picsum.photos/seed/inf2/300/300",
-        badge = "LIMITED",
-        title = "Cyber-Mechanical Keycap Set",
-        pricePerDraw = 350,
-        ssrRate = "1.2%",
-        srRate = "50.3%",
-    ),
-    InfiniteKujiCard(
-        id = "i3",
-        imageUrl = "https://picsum.photos/seed/inf3/300/300",
-        badge = "SPECIAL",
-        title = "V-Bucks & Points Multiplier",
-        pricePerDraw = 1200,
-        ssrRate = "20.0%",
-        srRate = "75.0%",
-    ),
-)
+private val sampleInfiniteKuji =
+    listOf(
+        InfiniteKujiCard(
+            id = "i1",
+            imageUrl = "https://picsum.photos/seed/inf1/300/300",
+            badge = "LIMITED",
+            title = "Limited \"Glitch\" Series Art Toy",
+            pricePerDraw = 450,
+            ssrRate = "1.0%",
+            srRate = "94.2%",
+        ),
+        InfiniteKujiCard(
+            id = "i2",
+            imageUrl = "https://picsum.photos/seed/inf2/300/300",
+            badge = "LIMITED",
+            title = "Cyber-Mechanical Keycap Set",
+            pricePerDraw = 350,
+            ssrRate = "1.2%",
+            srRate = "50.3%",
+        ),
+        InfiniteKujiCard(
+            id = "i3",
+            imageUrl = "https://picsum.photos/seed/inf3/300/300",
+            badge = "SPECIAL",
+            title = "V-Bucks & Points Multiplier",
+            pricePerDraw = 1200,
+            ssrRate = "20.0%",
+            srRate = "75.0%",
+        ),
+    )
 
 // ---------------------------------------------------------------------------
 // Public screen composable
@@ -250,17 +255,19 @@ private fun KujiCampaignCard(
     cardWidth: Dp,
     onClick: () -> Unit,
 ) {
-    val ticketProgress = if (campaign.totalTickets > 0) {
-        (campaign.remainingTickets.toFloat() / campaign.totalTickets.toFloat()).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val ticketProgress =
+        if (campaign.totalTickets > 0) {
+            (campaign.remainingTickets.toFloat() / campaign.totalTickets.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
 
     Surface(
-        modifier = Modifier
-            .width(cardWidth)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+        modifier =
+            Modifier
+                .width(cardWidth)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = RoundedCornerShape(12.dp),
     ) {
@@ -269,9 +276,10 @@ private fun KujiCampaignCard(
                 model = campaign.imageUrl,
                 contentDescription = campaign.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(cardWidth),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(cardWidth),
             )
             Column(modifier = Modifier.padding(10.dp)) {
                 Text(
@@ -292,17 +300,19 @@ private fun KujiCampaignCard(
                 Spacer(Modifier.height(4.dp))
                 // Ticket progress bar
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth(ticketProgress)
-                            .height(4.dp)
-                            .background(MaterialTheme.colorScheme.primary),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth(ticketProgress)
+                                .height(4.dp)
+                                .background(MaterialTheme.colorScheme.primary),
                     )
                 }
             }
@@ -317,10 +327,11 @@ private fun InfiniteKujiCard(
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
-            .width(cardWidth)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+        modifier =
+            Modifier
+                .width(cardWidth)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = RoundedCornerShape(12.dp),
     ) {
@@ -330,14 +341,16 @@ private fun InfiniteKujiCard(
                     model = item.imageUrl,
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(cardWidth),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(cardWidth),
                 )
                 Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp),
                     shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.tertiary,
                 ) {

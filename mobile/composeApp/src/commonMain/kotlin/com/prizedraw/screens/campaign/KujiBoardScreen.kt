@@ -46,7 +46,6 @@ import coil3.compose.AsyncImage
 import com.prizedraw.components.button.PrimaryButton
 import com.prizedraw.components.chat.ChatMessage
 import com.prizedraw.components.chat.LiveChatPanel
-import com.prizedraw.components.card.PrizeImageCard
 import com.prizedraw.components.layout.FilterTabs
 import com.prizedraw.components.layout.SectionHeader
 import com.prizedraw.components.user.PointsDisplay
@@ -62,12 +61,19 @@ import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
 // Sample chat messages for demo rendering
 // ---------------------------------------------------------------------------
 
-private val sampleChatMessages = listOf(
-    ChatMessage(id = "c1", senderName = "CyberPanda", text = "I need that Prize A!", timestamp = "now"),
-    ChatMessage(id = "c2", senderName = "Task_Art", text = "Anyone drawn in Box B yet?", timestamp = "1m"),
-    ChatMessage(id = "c3", senderName = "You", text = "Waiting for 1 tickets draw.", timestamp = "30s", isCurrentUser = true),
-    ChatMessage(id = "c4", senderName = "Lucky_Duck", text = "Pulled Prize C! Ronin Figurine!", timestamp = "2m"),
-)
+private val sampleChatMessages =
+    listOf(
+        ChatMessage(id = "c1", senderName = "CyberPanda", text = "I need that Prize A!", timestamp = "now"),
+        ChatMessage(id = "c2", senderName = "Task_Art", text = "Anyone drawn in Box B yet?", timestamp = "1m"),
+        ChatMessage(
+            id = "c3",
+            senderName = "You",
+            text = "Waiting for 1 tickets draw.",
+            timestamp = "30s",
+            isCurrentUser = true
+        ),
+        ChatMessage(id = "c4", senderName = "Lucky_Duck", text = "Pulled Prize C! Ronin Figurine!", timestamp = "2m"),
+    )
 
 // ---------------------------------------------------------------------------
 // Public screen composable
@@ -144,11 +150,12 @@ private fun KujiBoardMainContent(
     modifier: Modifier = Modifier,
 ) {
     var selectedBoxIndex by remember { mutableIntStateOf(0) }
-    val boxTabs = if (state.boxes.isNotEmpty()) {
-        state.boxes.map { it.name }
-    } else {
-        listOf("Box A", "Box B", "Box C")
-    }
+    val boxTabs =
+        if (state.boxes.isNotEmpty()) {
+            state.boxes.map { it.name }
+        } else {
+            listOf("Box A", "Box B", "Box C")
+        }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // Spectator banner
@@ -183,11 +190,12 @@ private fun KujiBoardMainContent(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.height(220.dp),
                 ) {
-                    val prizeItems = listOf(
-                        Triple("APEX PROTOTYPE X-01", "SSR", "1/2"),
-                        Triple("RONIN SPECTER 7", "SR", "3/4"),
-                        Triple("GOLDEN MASK", "A", "LOCKED"),
-                    )
+                    val prizeItems =
+                        listOf(
+                            Triple("APEX PROTOTYPE X-01", "SSR", "1/2"),
+                            Triple("RONIN SPECTER 7", "SR", "3/4"),
+                            Triple("GOLDEN MASK", "A", "LOCKED"),
+                        )
                     items(prizeItems) { (name, grade, remaining) ->
                         PrizePrizePoolCard(name = name, grade = grade, remaining = remaining)
                     }
@@ -217,10 +225,11 @@ private fun KujiBoardMainContent(
                     onTicketTapped = { ticketId ->
                         viewModel.onIntent(KujiCampaignIntent.SelectTicket(listOf(ticketId)))
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(240.dp)
-                        .padding(horizontal = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(240.dp)
+                            .padding(horizontal = 16.dp),
                 )
             }
         }
@@ -233,9 +242,10 @@ private fun KujiCampaignHero(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier
-            .height(200.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier =
+            modifier
+                .height(200.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         // Placeholder or campaign cover image
         if (campaign?.coverImageUrl != null) {
@@ -247,9 +257,10 @@ private fun KujiCampaignHero(
             )
         } else {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -264,9 +275,10 @@ private fun KujiCampaignHero(
         }
         // Overlay with badge and draw price
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
@@ -297,9 +309,10 @@ private fun KujiCampaignHero(
         }
         // Draw price badge
         Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
             shape = RoundedCornerShape(8.dp),
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
         ) {
@@ -335,20 +348,22 @@ private fun PrizePrizePoolCard(
     remaining: String,
 ) {
     Surface(
-        modifier = Modifier
-            .width(140.dp)
-            .fillMaxHeight(),
+        modifier =
+            Modifier
+                .width(140.dp)
+                .fillMaxHeight(),
         shape = RoundedCornerShape(10.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             // Grade badge on image placeholder
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.TopStart,
             ) {
                 Surface(
@@ -393,16 +408,18 @@ private fun SpectatorBanner(spectatorCount: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.error),
+            modifier =
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error),
         )
         Text(
             text = S("spectator.watching"),
@@ -462,24 +479,29 @@ public fun TicketCell(
         onClick = { if (isSelectable) onSelect() },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        colors = when {
-            isDrawn -> CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            )
-            isSelectable -> CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-            )
-            else -> CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            )
-        },
+        colors =
+            when {
+                isDrawn ->
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                isSelectable ->
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    )
+                else ->
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    )
+            },
         enabled = isSelectable || isDrawn,
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
         ) {
             if (isDrawn) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -508,11 +530,12 @@ public fun TicketCell(
                     text = ticket.position.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelectable) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    color =
+                        if (isSelectable) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
                 )
             }
         }
@@ -526,10 +549,11 @@ private fun KujiBottomBar(
 ) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -538,15 +562,16 @@ private fun KujiBottomBar(
             PointsDisplay(points = "25,000", label = "pts")
             Spacer(Modifier.height(2.dp))
             // Wait time and queue position
-            val queueInfo = if (state.queueEntry != null) {
-                if (state.isMyTurn) {
-                    "Your turn — ${state.sessionCountdown ?: 0}s remaining"
+            val queueInfo =
+                if (state.queueEntry != null) {
+                    if (state.isMyTurn) {
+                        "Your turn — ${state.sessionCountdown ?: 0}s remaining"
+                    } else {
+                        "~4 mins wait • ${state.queueEntry.position}th in line"
+                    }
                 } else {
-                    "~4 mins wait • ${state.queueEntry.position}th in line"
+                    "~4 mins wait • 12th in line"
                 }
-            } else {
-                "~4 mins wait • 12th in line"
-            }
             Text(
                 text = queueInfo,
                 style = MaterialTheme.typography.labelSmall,
@@ -570,9 +595,10 @@ private fun KujiSidePanel(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(16.dp),
+        modifier =
+            modifier
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Live Gallery Chat

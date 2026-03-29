@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -115,39 +114,44 @@ public fun BannerCarousel(
         ) { page ->
             val banner = banners[page]
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp)),
             ) {
                 AsyncImage(
                     model = banner.imageUrl,
                     contentDescription = banner.title,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(280.dp),
                 )
                 // Dark gradient overlay from bottom
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color(0xCC0A0A1A),
-                                    Color(0xF00A0A1A),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors =
+                                        listOf(
+                                            Color.Transparent,
+                                            Color(0xCC0A0A1A),
+                                            Color(0xF00A0A1A),
+                                        ),
+                                    startY = 40f,
                                 ),
-                                startY = 40f,
                             ),
-                        ),
                 )
                 // Content overlay
                 Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
                 ) {
                     // "FEATURED EVENT" badge
                     Surface(
@@ -182,11 +186,12 @@ public fun BannerCarousel(
                         Spacer(Modifier.height(14.dp))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        val priceLabel = if (banner.drawPrice > 0) {
-                            "Draw Now - ${banner.drawPrice} pts"
-                        } else {
-                            "Draw Now"
-                        }
+                        val priceLabel =
+                            if (banner.drawPrice > 0) {
+                                "Draw Now - ${banner.drawPrice} pts"
+                            } else {
+                                "Draw Now"
+                            }
                         PrimaryButton(
                             text = priceLabel,
                             onClick = { onDrawNow(banner.id) },
@@ -202,24 +207,26 @@ public fun BannerCarousel(
 
         // Page indicator dots
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             repeat(banners.size) { index ->
                 val isActive = pagerState.currentPage == index
                 Box(
-                    modifier = Modifier
-                        .size(if (isActive) 10.dp else 6.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isActive) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                Color.White.copy(alpha = 0.4f)
-                            },
-                        ),
+                    modifier =
+                        Modifier
+                            .size(if (isActive) 10.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isActive) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    Color.White.copy(alpha = 0.4f)
+                                },
+                            ),
                 )
             }
         }

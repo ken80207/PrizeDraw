@@ -20,10 +20,11 @@ public fun StatusChip(
 ) {
     val (bgColor, textColor) = statusColors(status)
     Box(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier =
+            modifier
+                .clip(MaterialTheme.shapes.small)
+                .background(bgColor)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Text(
             text = status.uppercase().replace("_", " "),
@@ -34,12 +35,11 @@ public fun StatusChip(
     }
 }
 
-private fun statusColors(status: String): Pair<Color, Color> {
-    return when (status.uppercase()) {
+private fun statusColors(status: String): Pair<Color, Color> =
+    when (status.uppercase()) {
         "OPEN" -> Color(0xFF4CAF50) to Color.White
         "IN_PROGRESS", "PENDING" -> Color(0xFFF59E0B) to Color(0xFF472A00)
         "RESOLVED", "COMPLETED" -> Color(0xFF666680) to Color.White
         "CLOSED" -> Color(0xFF444460) to Color.White
         else -> Color(0xFF666680) to Color.White
     }
-}

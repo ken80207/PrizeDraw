@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,11 +85,12 @@ public fun SupportTicketListScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTicketId by remember { mutableStateOf<String?>(null) }
 
-    val filteredTickets = if (searchQuery.isBlank()) {
-        state.tickets
-    } else {
-        state.tickets.filter { it.id.contains(searchQuery, ignoreCase = true) }
-    }
+    val filteredTickets =
+        if (searchQuery.isBlank()) {
+            state.tickets
+        } else {
+            state.tickets.filter { it.id.contains(searchQuery, ignoreCase = true) }
+        }
 
     Scaffold(
         topBar = {
@@ -109,42 +109,47 @@ public fun SupportTicketListScreen(
                         )
                     }
                 },
-                navigationIcon = if (onBack != null) {
-                    {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
+                navigationIcon =
+                    if (onBack != null) {
+                        {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
+                            }
                         }
-                    }
-                } else {
-                    {}
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
+                    } else {
+                        {}
+                    },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ),
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             val sizeClass = rememberWindowWidthSizeClass(maxWidth)
             val isTablet = sizeClass == WindowWidthSizeClass.Medium
 
             if (isTablet) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     // Left panel — ticket list
                     Column(
-                        modifier = Modifier
-                            .width(320.dp)
-                            .fillMaxHeight(),
+                        modifier =
+                            Modifier
+                                .width(320.dp)
+                                .fillMaxHeight(),
                     ) {
                         TicketListPanel(
                             tickets = filteredTickets,
@@ -156,7 +161,8 @@ public fun SupportTicketListScreen(
                             onTicketClick = { id ->
                                 selectedTicketId = id
                                 viewModel.onIntent(
-                                    com.prizedraw.viewmodels.support.SupportIntent.LoadTicketDetail(id),
+                                    com.prizedraw.viewmodels.support.SupportIntent
+                                        .LoadTicketDetail(id),
                                 )
                             },
                             onCreateTicket = onCreateTicket,
@@ -188,9 +194,10 @@ public fun SupportTicketListScreen(
                 }
             } else {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     TicketListPanel(
                         tickets = filteredTickets,
@@ -286,16 +293,17 @@ private fun TicketListCard(
     onClick: () -> Unit,
 ) {
     PrizeDrawCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .then(
-                if (isSelected) {
-                    Modifier
-                } else {
-                    Modifier
-                },
-            ),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .then(
+                    if (isSelected) {
+                        Modifier
+                    } else {
+                        Modifier
+                    },
+                ),
     ) {
         // Ticket ID + status
         Row(
@@ -334,12 +342,17 @@ private fun TicketListCard(
                 imageVector = categoryIcon(ticket.category),
                 contentDescription = ticket.category,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(end = 2.dp)
-                    .let { it },
+                modifier =
+                    Modifier
+                        .padding(end = 2.dp)
+                        .let { it },
             )
             Text(
-                text = ticket.category.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() },
+                text =
+                    ticket.category
+                        .replace("_", " ")
+                        .lowercase()
+                        .replaceFirstChar { it.uppercase() },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),

@@ -45,13 +45,14 @@ private data class SidebarNavItem(
     val route: String,
 )
 
-private val SIDEBAR_NAV_ITEMS = listOf(
-    SidebarNavItem(labelKey = "nav.home", icon = Icons.Outlined.Home, route = "campaigns"),
-    SidebarNavItem(labelKey = "nav.market", icon = Icons.Outlined.ShoppingCart, route = "trade"),
-    SidebarNavItem(labelKey = "nav.leaderboard", icon = Icons.Outlined.Star, route = "leaderboard"),
-    SidebarNavItem(labelKey = "nav.myPrizes", icon = Icons.Outlined.Favorite, route = "prizes"),
-    SidebarNavItem(labelKey = "nav.wallet", icon = Icons.AutoMirrored.Outlined.List, route = "wallet"),
-)
+private val SIDEBAR_NAV_ITEMS =
+    listOf(
+        SidebarNavItem(labelKey = "nav.home", icon = Icons.Outlined.Home, route = "campaigns"),
+        SidebarNavItem(labelKey = "nav.market", icon = Icons.Outlined.ShoppingCart, route = "trade"),
+        SidebarNavItem(labelKey = "nav.leaderboard", icon = Icons.Outlined.Star, route = "leaderboard"),
+        SidebarNavItem(labelKey = "nav.myPrizes", icon = Icons.Outlined.Favorite, route = "prizes"),
+        SidebarNavItem(labelKey = "nav.wallet", icon = Icons.AutoMirrored.Outlined.List, route = "wallet"),
+    )
 
 // ---------------------------------------------------------------------------
 // Sidebar composable
@@ -90,11 +91,12 @@ public fun Sidebar(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .width(200.dp)
-            .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = 16.dp),
+        modifier =
+            modifier
+                .width(200.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(vertical = 16.dp),
     ) {
         // Brand name
         Text(
@@ -131,9 +133,10 @@ public fun Sidebar(
                 nickname = userName,
                 avatarUrl = userAvatarUrl,
                 tierLabel = userTier.takeIf { it.isNotEmpty() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
 
@@ -172,29 +175,32 @@ private fun SidebarNavItemRow(
     isActive: Boolean,
     onClick: () -> Unit,
 ) {
-    val backgroundModifier = if (isActive) {
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-    } else {
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(8.dp))
-    }
+    val backgroundModifier =
+        if (isActive) {
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+        } else {
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .clip(RoundedCornerShape(8.dp))
+        }
 
-    val contentColor = if (isActive) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val contentColor =
+        if (isActive) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
     Row(
-        modifier = backgroundModifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+        modifier =
+            backgroundModifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
@@ -221,10 +227,11 @@ private fun SidebarActionRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {

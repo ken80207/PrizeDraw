@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -50,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -113,18 +111,23 @@ public fun SettingsScreen(
     var languageExpanded by remember { mutableStateOf(false) }
     var nickname by remember { mutableStateOf("Kaito_Arisaka") }
     var phone by remember { mutableStateOf("+886 912 *** 789") }
-    var bio by remember { mutableStateOf("Passionate collector of rare vinyl figures and neo-tokyo cyberpunk aesthetic. Always looking for A-Tier prizes.") }
+    var bio by remember {
+        mutableStateOf(
+            "Passionate collector of rare vinyl figures and neo-tokyo cyberpunk aesthetic. Always looking for A-Tier prizes."
+        )
+    }
     var notifyNewLotteries by remember { mutableStateOf(true) }
     var notifyBigPrize by remember { mutableStateOf(true) }
     var notifyTradeRequests by remember { mutableStateOf(false) }
     var isDarkMode by remember { mutableStateOf(true) }
 
-    val animationOptions = listOf(
-        AnimationOption(DrawAnimationMode.SCRATCH, S("settings.animationScratch"), Icons.Filled.Edit),
-        AnimationOption(DrawAnimationMode.TEAR, S("settings.animationTear"), Icons.Filled.Refresh),
-        AnimationOption(DrawAnimationMode.FLIP, S("settings.animationFlip"), Icons.Filled.Face),
-        AnimationOption(DrawAnimationMode.INSTANT, S("settings.animationInstant"), Icons.Filled.Build),
-    )
+    val animationOptions =
+        listOf(
+            AnimationOption(DrawAnimationMode.SCRATCH, S("settings.animationScratch"), Icons.Filled.Edit),
+            AnimationOption(DrawAnimationMode.TEAR, S("settings.animationTear"), Icons.Filled.Refresh),
+            AnimationOption(DrawAnimationMode.FLIP, S("settings.animationFlip"), Icons.Filled.Face),
+            AnimationOption(DrawAnimationMode.INSTANT, S("settings.animationInstant"), Icons.Filled.Build),
+        )
 
     Scaffold(
         topBar = {
@@ -151,27 +154,30 @@ public fun SettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ),
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             val sizeClass = rememberWindowWidthSizeClass(maxWidth)
             val isTablet = sizeClass == WindowWidthSizeClass.Medium
 
             if (isTablet) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
-                        .verticalScroll(rememberScrollState()),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .verticalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
@@ -194,7 +200,10 @@ public fun SettingsScreen(
                             notifyBigPrize = notifyBigPrize,
                             notifyTradeRequests = notifyTradeRequests,
                             onLanguageExpanded = { languageExpanded = it },
-                            onLanguageSelected = { selectedLanguage = it; languageExpanded = false },
+                            onLanguageSelected = {
+                                selectedLanguage = it
+                                languageExpanded = false
+                            },
                             onThemeToggle = { isDarkMode = it },
                             onNotifyNewLotteries = { notifyNewLotteries = it },
                             onNotifyBigPrize = { notifyBigPrize = it },
@@ -205,10 +214,11 @@ public fun SettingsScreen(
                 }
             } else {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     ProfileSection(nickname, phone, bio, onNicknameChange = { nickname = it })
@@ -221,7 +231,10 @@ public fun SettingsScreen(
                         notifyBigPrize = notifyBigPrize,
                         notifyTradeRequests = notifyTradeRequests,
                         onLanguageExpanded = { languageExpanded = it },
-                        onLanguageSelected = { selectedLanguage = it; languageExpanded = false },
+                        onLanguageSelected = {
+                            selectedLanguage = it
+                            languageExpanded = false
+                        },
                         onThemeToggle = { isDarkMode = it },
                         onNotifyNewLotteries = { notifyNewLotteries = it },
                         onNotifyBigPrize = { notifyBigPrize = it },
@@ -245,15 +258,17 @@ private fun ProfileSection(
     PrizeDrawCard {
         // Avatar with edit overlay
         Box(
-            modifier = Modifier
-                .size(72.dp)
-                .align(Alignment.CenterHorizontally),
+            modifier =
+                Modifier
+                    .size(72.dp)
+                    .align(Alignment.CenterHorizontally),
         ) {
             Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier =
+                    Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -264,11 +279,12 @@ private fun ProfileSection(
                 )
             }
             Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .align(Alignment.BottomEnd),
+                modifier =
+                    Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .align(Alignment.BottomEnd),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -310,10 +326,11 @@ private fun ProfileSection(
                 label = { Text("NICKNAME", style = MaterialTheme.typography.labelSmall) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                ),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    ),
             )
             Column(modifier = Modifier.weight(1f)) {
                 OutlinedTextField(
@@ -326,10 +343,11 @@ private fun ProfileSection(
                     trailingIcon = {
                         StatusChip(status = "VERIFIED")
                     },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    ),
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        ),
                 )
             }
         }
@@ -343,10 +361,11 @@ private fun ProfileSection(
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 4,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            ),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
         )
     }
 }
@@ -368,41 +387,44 @@ private fun AnimationPreferencesSection(
                     val isSelected = selectedMode == option.mode
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .clickable { onModeSelected(option.mode) }
-                            .padding(8.dp),
+                        modifier =
+                            Modifier
+                                .clickable { onModeSelected(option.mode) }
+                                .padding(8.dp),
                     ) {
                         Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isSelected) {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                ).then(
-                                    if (isSelected) {
-                                        Modifier.border(
-                                            2.dp,
-                                            MaterialTheme.colorScheme.primary,
-                                            CircleShape,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                ),
+                            modifier =
+                                Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) {
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        },
+                                    ).then(
+                                        if (isSelected) {
+                                            Modifier.border(
+                                                2.dp,
+                                                MaterialTheme.colorScheme.primary,
+                                                CircleShape,
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = option.icon,
                                 contentDescription = option.label,
-                                tint = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
+                                tint =
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -410,11 +432,12 @@ private fun AnimationPreferencesSection(
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -459,9 +482,10 @@ private fun AppSettingsSection(
                     onExpandedChange = { onLanguageExpanded(!languageExpanded) },
                 ) {
                     Row(
-                        modifier = Modifier
-                            .menuAnchor()
-                            .clickable { onLanguageExpanded(!languageExpanded) },
+                        modifier =
+                            Modifier
+                                .menuAnchor()
+                                .clickable { onLanguageExpanded(!languageExpanded) },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
@@ -510,21 +534,32 @@ private fun AppSettingsSection(
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = "Dark",
-                        tint = if (isDarkMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint =
+                            if (isDarkMode) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         modifier = Modifier.size(20.dp),
                     )
                     Switch(
                         checked = !isDarkMode,
                         onCheckedChange = { onThemeToggle(!it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        ),
+                        colors =
+                            SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
                     )
                     Icon(
                         imageVector = Icons.Filled.Settings,
                         contentDescription = "Light",
-                        tint = if (!isDarkMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint =
+                            if (!isDarkMode) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -583,10 +618,11 @@ private fun NotificationToggle(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-            ),
+            colors =
+                SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                ),
         )
     }
 }
@@ -640,11 +676,12 @@ private fun LinkedAccountButton(
     icon: ImageVector?,
 ) {
     Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable { },
+        modifier =
+            Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable { },
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) {

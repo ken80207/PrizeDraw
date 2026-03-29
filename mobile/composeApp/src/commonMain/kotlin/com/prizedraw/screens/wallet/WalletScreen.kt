@@ -1,7 +1,6 @@
 package com.prizedraw.screens.wallet
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,8 +36,6 @@ import com.prizedraw.components.card.StatCard
 import com.prizedraw.components.common.TransactionRow
 import com.prizedraw.components.layout.FilterTabs
 import com.prizedraw.components.layout.SectionHeader
-import com.prizedraw.contracts.dto.player.DrawPointTransactionDto
-import com.prizedraw.contracts.dto.player.RevenuePointTransactionDto
 import com.prizedraw.contracts.dto.player.WalletDto
 import com.prizedraw.i18n.S
 import com.prizedraw.navigation.WindowWidthSizeClass
@@ -54,11 +51,12 @@ private data class RechargePackage(
     val isPopular: Boolean = false,
 )
 
-private val RECHARGE_PACKAGES = listOf(
-    RechargePackage(label = "Starter Pack", pts = 500, bonusPts = 0, price = "\$4.99"),
-    RechargePackage(label = "Custom Pack", pts = 1_000, bonusPts = 50, price = "\$9.99", isPopular = true),
-    RechargePackage(label = "Whale Pack", pts = 5_000, bonusPts = 500, price = "\$44.99"),
-)
+private val RECHARGE_PACKAGES =
+    listOf(
+        RechargePackage(label = "Starter Pack", pts = 500, bonusPts = 0, price = "\$4.99"),
+        RechargePackage(label = "Custom Pack", pts = 1_000, bonusPts = 50, price = "\$9.99", isPopular = true),
+        RechargePackage(label = "Whale Pack", pts = 5_000, bonusPts = 500, price = "\$44.99"),
+    )
 
 /**
  * Wallet screen displaying dual point balances, quick recharge packages,
@@ -171,7 +169,11 @@ public fun WalletScreen(
             if (selectedTransactionTab == 0 || selectedTransactionTab == 1) {
                 items(wallet.drawTransactions, key = { "draw-${it.id}" }) { tx ->
                     TransactionRow(
-                        date = tx.createdAt.toString().take(16).replace("T", " "),
+                        date =
+                            tx.createdAt
+                                .toString()
+                                .take(16)
+                                .replace("T", " "),
                         type = tx.type.name,
                         description = tx.description ?: tx.type.name,
                         amount = "${if (tx.amount >= 0) "+" else ""}${tx.amount}",
@@ -185,7 +187,11 @@ public fun WalletScreen(
             if (selectedTransactionTab == 0 || selectedTransactionTab == 2 || selectedTransactionTab == 3) {
                 items(wallet.revenueTransactions, key = { "rev-${it.id}" }) { tx ->
                     TransactionRow(
-                        date = tx.createdAt.toString().take(16).replace("T", " "),
+                        date =
+                            tx.createdAt
+                                .toString()
+                                .take(16)
+                                .replace("T", " "),
                         type = tx.type.name,
                         description = tx.description ?: tx.type.name,
                         amount = "${if (tx.amount >= 0) "+" else ""}${tx.amount}",
@@ -290,9 +296,10 @@ private fun RechargePackageCard(
 
         if (pkg.isPopular) {
             Badge(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = (-4).dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = (-4).dp),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
@@ -346,14 +353,14 @@ private fun ProfitWithdrawalCard(
         )
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(8.dp),
-                )
-                .padding(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(8.dp),
+                    ).padding(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -24,16 +24,18 @@ public fun PrizeDrawOutlinedButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier
-            .height(48.dp)
-            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
+        modifier =
+            modifier
+                .height(48.dp)
+                .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
     ) {
         Text(

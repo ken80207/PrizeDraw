@@ -40,17 +40,19 @@ import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.leaderboard.LeaderboardIntent
 import com.prizedraw.viewmodels.leaderboard.LeaderboardViewModel
 
-private val LEADERBOARD_TYPE_TABS = listOf(
-    LeaderboardType.DRAW_COUNT,
-    LeaderboardType.PRIZE_GRADE,
-    LeaderboardType.TRADE_VOLUME,
-)
+private val LEADERBOARD_TYPE_TABS =
+    listOf(
+        LeaderboardType.DRAW_COUNT,
+        LeaderboardType.PRIZE_GRADE,
+        LeaderboardType.TRADE_VOLUME,
+    )
 
-private val PERIOD_TABS = listOf(
-    LeaderboardPeriod.TODAY,
-    LeaderboardPeriod.THIS_WEEK,
-    LeaderboardPeriod.THIS_MONTH,
-)
+private val PERIOD_TABS =
+    listOf(
+        LeaderboardPeriod.TODAY,
+        LeaderboardPeriod.THIS_WEEK,
+        LeaderboardPeriod.THIS_MONTH,
+    )
 
 /**
  * Leaderboard screen with podium display for top 3 players and ranked list below.
@@ -100,29 +102,30 @@ public fun LeaderboardScreen(
                 periodTabs.forEachIndexed { index, label ->
                     val isSelected = periodIndex == index
                     Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                },
-                                shape = MaterialTheme.shapes.small,
-                            )
-                            .clickable {
-                                viewModel.onIntent(LeaderboardIntent.SelectPeriod(PERIOD_TABS[index]))
-                            }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        modifier =
+                            Modifier
+                                .background(
+                                    color =
+                                        if (isSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        },
+                                    shape = MaterialTheme.shapes.small,
+                                ).clickable {
+                                    viewModel.onIntent(LeaderboardIntent.SelectPeriod(PERIOD_TABS[index]))
+                                }.padding(horizontal = 10.dp, vertical = 6.dp),
                     ) {
                         Text(
                             text = label,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                         )
                     }
                 }
@@ -173,10 +176,11 @@ public fun LeaderboardScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                        .clickable { /* TODO: navigate to full ranking */ },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                            .clickable { /* TODO: navigate to full ranking */ },
                 )
             }
         }
@@ -195,9 +199,10 @@ private fun PodiumSection(top3: List<LeaderboardEntryDto>) {
     val third = top3.getOrNull(2)
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 24.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -254,11 +259,12 @@ private fun PodiumEntry(
     isCenter: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val rankColor = when (entry.rank) {
-        1 -> MaterialTheme.colorScheme.primary
-        2 -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.tertiary
-    }
+    val rankColor =
+        when (entry.rank) {
+            1 -> MaterialTheme.colorScheme.primary
+            2 -> MaterialTheme.colorScheme.secondary
+            else -> MaterialTheme.colorScheme.tertiary
+        }
 
     Column(
         modifier = modifier.padding(horizontal = 8.dp),
@@ -275,10 +281,11 @@ private fun PodiumEntry(
 
         // Avatar
         Box(
-            modifier = Modifier
-                .size(avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier =
+                Modifier
+                    .size(avatarSize)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -291,20 +298,22 @@ private fun PodiumEntry(
 
         // Rank badge below avatar
         Box(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .background(color = rankColor, shape = CircleShape)
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+            modifier =
+                Modifier
+                    .padding(top = 4.dp)
+                    .background(color = rankColor, shape = CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
         ) {
             Text(
-                text = "${entry.rank}st".let {
-                    when (entry.rank) {
-                        1 -> "1st"
-                        2 -> "2nd"
-                        3 -> "3rd"
-                        else -> "${entry.rank}th"
-                    }
-                },
+                text =
+                    "${entry.rank}st".let {
+                        when (entry.rank) {
+                            1 -> "1st"
+                            2 -> "2nd"
+                            3 -> "3rd"
+                            else -> "${entry.rank}th"
+                        }
+                    },
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary,
@@ -368,14 +377,13 @@ private fun PodiumEntry(
 }
 
 @Composable
-private fun LeaderboardListRow(
-    entry: LeaderboardEntryDto,
-) {
+private fun LeaderboardListRow(entry: LeaderboardEntryDto) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Rank number
@@ -440,10 +448,11 @@ private fun LeaderboardListRow(
 @Composable
 private fun SelfRankBar(selfRank: SelfRankDto) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

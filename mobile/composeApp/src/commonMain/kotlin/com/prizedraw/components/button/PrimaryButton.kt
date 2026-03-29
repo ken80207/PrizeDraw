@@ -23,17 +23,19 @@ public fun PrimaryButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier
-            .height(48.dp)
-            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
+        modifier =
+            modifier
+                .height(48.dp)
+                .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         enabled = enabled,
         shape = MaterialTheme.shapes.extraLarge,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
     ) {
         Text(

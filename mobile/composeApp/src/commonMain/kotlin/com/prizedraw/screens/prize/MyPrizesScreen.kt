@@ -120,13 +120,14 @@ public fun MyPrizesScreen(
                         )
                     }
                     else -> {
-                        val displayedPrizes = if (searchQuery.isBlank()) {
-                            state.filteredPrizes
-                        } else {
-                            state.filteredPrizes.filter {
-                                it.name.contains(searchQuery, ignoreCase = true)
+                        val displayedPrizes =
+                            if (searchQuery.isBlank()) {
+                                state.filteredPrizes
+                            } else {
+                                state.filteredPrizes.filter {
+                                    it.name.contains(searchQuery, ignoreCase = true)
+                                }
                             }
-                        }
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(gridColumns),
                             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -150,9 +151,10 @@ public fun MyPrizesScreen(
 
             // Fixed bottom stats bar
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 StatCard(

@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -58,14 +57,18 @@ import com.prizedraw.viewmodels.auth.AuthIntent
 import com.prizedraw.viewmodels.auth.AuthState
 import com.prizedraw.viewmodels.auth.AuthViewModel
 
-private data class CountryCode(val code: String, val dialCode: String)
-
-private val COUNTRY_CODES = listOf(
-    CountryCode("TW", "+886"),
-    CountryCode("US", "+1"),
-    CountryCode("JP", "+81"),
-    CountryCode("HK", "+852"),
+private data class CountryCode(
+    val code: String,
+    val dialCode: String,
 )
+
+private val COUNTRY_CODES =
+    listOf(
+        CountryCode("TW", "+886"),
+        CountryCode("US", "+1"),
+        CountryCode("JP", "+81"),
+        CountryCode("HK", "+852"),
+    )
 
 /**
  * Login screen presenting the KUJI NOIR branded entry flow.
@@ -112,25 +115,28 @@ public fun LoginScreen(
     var countryExpanded by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceDim),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceDim),
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier
-                .widthIn(max = 400.dp)
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 400.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Logo area
             Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                    .padding(4.dp),
+                modifier =
+                    Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .padding(4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -176,10 +182,11 @@ public fun LoginScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = MaterialTheme.shapes.medium,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                         border = null,
                     ) {
                         Row(
@@ -216,10 +223,11 @@ public fun LoginScreen(
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = MaterialTheme.shapes.medium,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
+                            colors =
+                                ButtonDefaults.outlinedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                ),
                             border = null,
                         ) {
                             Icon(
@@ -236,10 +244,11 @@ public fun LoginScreen(
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = MaterialTheme.shapes.medium,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
+                            colors =
+                                ButtonDefaults.outlinedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                ),
                             border = null,
                         ) {
                             Icon(
@@ -297,18 +306,20 @@ public fun LoginScreen(
                                 value = selectedCountry.dialCode,
                                 onValueChange = {},
                                 readOnly = true,
-                                modifier = Modifier
-                                    .width(96.dp)
-                                    .menuAnchor(),
+                                modifier =
+                                    Modifier
+                                        .width(96.dp)
+                                        .menuAnchor(),
                                 singleLine = true,
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryExpanded)
                                 },
                                 shape = MaterialTheme.shapes.medium,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                ),
+                                colors =
+                                    OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    ),
                             )
                             ExposedDropdownMenu(
                                 expanded = countryExpanded,
@@ -333,10 +344,11 @@ public fun LoginScreen(
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             shape = MaterialTheme.shapes.medium,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            ),
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                ),
                         )
                     }
 
@@ -360,10 +372,11 @@ public fun LoginScreen(
                                 )
                             }
                         },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                        ),
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            ),
                     )
 
                     Spacer(Modifier.height(20.dp))
@@ -389,24 +402,26 @@ public fun LoginScreen(
 
                     // Register link
                     Text(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                append("New here? ")
-                            }
-                            withStyle(
-                                SpanStyle(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold,
-                                ),
-                            ) {
-                                append("Register with phone")
-                            }
-                        },
+                        text =
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                    append("New here? ")
+                                }
+                                withStyle(
+                                    SpanStyle(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
+                                    ),
+                                ) {
+                                    append("Register with phone")
+                                }
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { },
                     )
                 }
             }

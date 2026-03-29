@@ -45,13 +45,19 @@ private val roomCleanupInterval = 2.minutes
 public fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: DEFAULT_PORT
     log.info("realtime-gateway starting on port {}", port)
-    val env = io.ktor.server.engine.applicationEnvironment {
-        config = io.ktor.server.config.HoconApplicationConfig(com.typesafe.config.ConfigFactory.load())
-        log = LoggerFactory.getLogger("ktor.application")
-    }
+    val env =
+        io.ktor.server.engine.applicationEnvironment {
+            config =
+                io.ktor.server.config.HoconApplicationConfig(
+                    com.typesafe.config.ConfigFactory
+                        .load(),
+                )
+            log = LoggerFactory.getLogger("ktor.application")
+        }
     embeddedServer(CIO, env, configure = {
         connector { this.port = port }
-    }).start(wait = true)
+    })
+        .start(wait = true)
 }
 
 /**

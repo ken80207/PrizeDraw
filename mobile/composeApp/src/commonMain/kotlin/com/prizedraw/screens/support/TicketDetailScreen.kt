@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -141,9 +140,10 @@ public fun TicketDetailScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("common.back"))
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                    ),
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                        ),
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
@@ -220,12 +220,15 @@ private fun DetailContent(
                 // Message thread
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
+                    contentPadding =
+                        androidx.compose.foundation.layout
+                            .PaddingValues(vertical = 16.dp),
                 ) {
                     if (messages.isEmpty()) {
                         item {
@@ -289,10 +292,11 @@ private fun AgentInfoBar(
     onCloseTicket: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -342,11 +346,12 @@ private fun MessageBubble(message: TicketMessageDto) {
     ) {
         if (!isPlayer) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(end = 4.dp),
+                modifier =
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(end = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -359,22 +364,23 @@ private fun MessageBubble(message: TicketMessageDto) {
             Spacer(modifier = Modifier.size(8.dp))
         }
         Column(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (isPlayer) 16.dp else 4.dp,
-                        bottomEnd = if (isPlayer) 4.dp else 16.dp,
-                    ),
-                ).background(
-                    if (isPlayer) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-                ).padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = if (isPlayer) 16.dp else 4.dp,
+                            bottomEnd = if (isPlayer) 4.dp else 16.dp,
+                        ),
+                    ).background(
+                        if (isPlayer) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                    ).padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (!isPlayer) {
                 Text(
@@ -388,20 +394,22 @@ private fun MessageBubble(message: TicketMessageDto) {
             Text(
                 text = message.body,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isPlayer) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+                color =
+                    if (isPlayer) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
             )
             Text(
                 text = message.createdAt.takeLast(8).take(5),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isPlayer) {
-                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                },
+                color =
+                    if (isPlayer) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    },
                 modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
             )
         }
@@ -416,10 +424,11 @@ private fun MessageInputBar(
     onSend: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -430,10 +439,11 @@ private fun MessageInputBar(
             modifier = Modifier.weight(1f),
             maxLines = 3,
             shape = MaterialTheme.shapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            ),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
         )
         IconButton(
             onClick = onSend,
@@ -442,11 +452,12 @@ private fun MessageInputBar(
             Icon(
                 Icons.AutoMirrored.Filled.Send,
                 contentDescription = S("support.sendReply"),
-                tint = if (replyText.isNotBlank()) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                tint =
+                    if (replyText.isNotBlank()) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
             )
         }
     }
@@ -459,11 +470,12 @@ private fun SatisfactionRatingRow(
 ) {
     PrizeDrawCard(modifier = Modifier.padding(12.dp)) {
         Text(
-            text = if (currentScore != null) {
-                "${S("support.thanksFeedback")} ($currentScore/5)"
-            } else {
-                S("support.satisfactionPrompt")
-            },
+            text =
+                if (currentScore != null) {
+                    "${S("support.thanksFeedback")} ($currentScore/5)"
+                } else {
+                    S("support.satisfactionPrompt")
+                },
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(8.dp))
@@ -476,11 +488,12 @@ private fun SatisfactionRatingRow(
                     Text(
                         text = if (currentScore != null && score <= currentScore) "\u2605" else "\u2606",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = if (currentScore != null && score <= currentScore) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color =
+                            if (currentScore != null && score <= currentScore) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
             }

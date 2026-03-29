@@ -35,7 +35,6 @@ import com.prizedraw.components.animation.AnimatedReveal
 import com.prizedraw.components.button.PrimaryButton
 import com.prizedraw.components.button.PrizeDrawOutlinedButton
 import com.prizedraw.components.card.PrizeDrawCard
-import com.prizedraw.components.card.StatCard
 import com.prizedraw.contracts.enums.DrawAnimationMode
 
 /**
@@ -78,22 +77,25 @@ public fun DrawRevealScreen(
     var revealed by remember { mutableStateOf(false) }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0A0A1A),
-                        Color(0xFF151530),
-                        Color(0xFF0A0A1A),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors =
+                            listOf(
+                                Color(0xFF0A0A1A),
+                                Color(0xFF151530),
+                                Color(0xFF0A0A1A),
+                            ),
                     ),
                 ),
-            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(16.dp))
@@ -106,10 +108,11 @@ public fun DrawRevealScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = campaignTitle.let { title ->
-                            // Render italic style within the title (e.g. "Zenith Cyber-Geisha Edition")
-                            title
-                        },
+                        text =
+                            campaignTitle.let { title ->
+                                // Render italic style within the title (e.g. "Zenith Cyber-Geisha Edition")
+                                title
+                            },
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
@@ -134,9 +137,10 @@ public fun DrawRevealScreen(
                             imageVector = Icons.Filled.Timer,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .width(14.dp)
-                                .height(14.dp),
+                            modifier =
+                                Modifier
+                                    .width(14.dp)
+                                    .height(14.dp),
                         )
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
@@ -159,9 +163,10 @@ public fun DrawRevealScreen(
 
             // Animated reveal area (center)
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
                 AnimatedReveal(
@@ -192,9 +197,10 @@ public fun DrawRevealScreen(
                 // Series serial badge (top-right of image area)
                 if (revealed && seriesSerial.isNotBlank()) {
                     Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp),
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp),
                         shape = RoundedCornerShape(6.dp),
                         color = MaterialTheme.colorScheme.primary,
                     ) {
@@ -226,10 +232,11 @@ public fun DrawRevealScreen(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit(
-                        2f,
-                        androidx.compose.ui.unit.TextUnitType.Sp,
-                    ),
+                    letterSpacing =
+                        androidx.compose.ui.unit.TextUnit(
+                            2f,
+                            androidx.compose.ui.unit.TextUnitType.Sp,
+                        ),
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -270,10 +277,11 @@ public fun DrawRevealScreen(
                     text = "SWIPE TO REVEAL DESTINY",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit(
-                        1.5f,
-                        androidx.compose.ui.unit.TextUnitType.Sp,
-                    ),
+                    letterSpacing =
+                        androidx.compose.ui.unit.TextUnit(
+                            1.5f,
+                            androidx.compose.ui.unit.TextUnitType.Sp,
+                        ),
                 )
                 Spacer(Modifier.height(12.dp))
             }

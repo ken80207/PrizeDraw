@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -38,13 +38,14 @@ private data class ShellNavItem(
     val route: String,
 )
 
-private val SHELL_NAV_ITEMS = listOf(
-    ShellNavItem(labelKey = "nav.home", icon = Icons.Outlined.Home, route = "campaigns"),
-    ShellNavItem(labelKey = "nav.market", icon = Icons.Outlined.ShoppingCart, route = "trade"),
-    ShellNavItem(labelKey = "nav.leaderboard", icon = Icons.Outlined.Star, route = "leaderboard"),
-    ShellNavItem(labelKey = "nav.myPrizes", icon = Icons.Outlined.Favorite, route = "prizes"),
-    ShellNavItem(labelKey = "nav.wallet", icon = Icons.AutoMirrored.Outlined.List, route = "wallet"),
-)
+private val SHELL_NAV_ITEMS =
+    listOf(
+        ShellNavItem(labelKey = "nav.home", icon = Icons.Outlined.Home, route = "campaigns"),
+        ShellNavItem(labelKey = "nav.market", icon = Icons.Outlined.ShoppingCart, route = "trade"),
+        ShellNavItem(labelKey = "nav.leaderboard", icon = Icons.Outlined.Star, route = "leaderboard"),
+        ShellNavItem(labelKey = "nav.myPrizes", icon = Icons.Outlined.Favorite, route = "prizes"),
+        ShellNavItem(labelKey = "nav.wallet", icon = Icons.AutoMirrored.Outlined.List, route = "wallet"),
+    )
 
 // ---------------------------------------------------------------------------
 // AppShell composable
@@ -142,9 +143,10 @@ private fun PhoneShell(
                     }
                     // Profile avatar placeholder — size matches typical avatar button
                     Box(
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(36.dp),
+                        modifier =
+                            Modifier
+                                .padding(end = 8.dp)
+                                .size(36.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         // TODO(T220): replace with UserAvatarButton once profile state is available
@@ -176,9 +178,10 @@ private fun PhoneShell(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
             contentAlignment = Alignment.TopStart,
         ) {
             content()
@@ -214,9 +217,10 @@ private fun TabletShell(
             userAvatarUrl = userAvatarUrl,
         )
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize(),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxSize(),
             contentAlignment = Alignment.TopStart,
         ) {
             content()

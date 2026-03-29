@@ -29,20 +29,24 @@ public fun Route.bannerRoutes() {
     val json = Json { ignoreUnknownKeys = true }
 
     get(BannerEndpoints.BANNERS) {
-        val banners: List<BannerDto> = try {
-            val cached = cacheService.get(CACHE_KEY)
-            if (cached != null) {
-                json.decodeFromString(cached)
-            } else {
-                val active = bannerRepository.findAllActive().map { it.toPublicDto() }
-                cacheService.set(CACHE_KEY, json.encodeToString(active), CACHE_TTL_SECONDS)
-                active
+        val banners: List<BannerDto> =
+            try {
+                val cached = cacheService.get(CACHE_KEY)
+                if (cached != null) {
+                    json.decodeFromString(cached)
+                } else {
+                    val active = bannerRepository.findAllActive().map { it.toPublicDto() }
+                    cacheService.set(CACHE_KEY, json.encodeToString(active), CACHE_TTL_SECONDS)
+                    active
+                }
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Exception,
+            ) {
+                org.slf4j.LoggerFactory
+                    .getLogger("BannerRoutes")
+                    .warn("Failed to load banners, returning empty list: {}", e.message)
+                emptyList()
             }
-        } catch (e: Exception) {
-            org.slf4j.LoggerFactory.getLogger("BannerRoutes")
-                .warn("Failed to load banners, returning empty list: {}", e.message)
-            emptyList()
-        }
         call.response.header("Cache-Control", "public, max-age=60")
         call.respond(HttpStatusCode.OK, banners)
     }

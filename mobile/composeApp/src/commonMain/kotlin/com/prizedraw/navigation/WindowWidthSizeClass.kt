@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 public enum class WindowWidthSizeClass {
     /** Phone portrait: width < 600dp */
     Compact,
+
     /** Tablet / phone landscape: width >= 600dp */
     Medium,
 }
@@ -19,11 +20,10 @@ public enum class WindowWidthSizeClass {
  * Remembers the [WindowWidthSizeClass] for the given [widthDp].
  */
 @Composable
-public fun rememberWindowWidthSizeClass(widthDp: Dp): WindowWidthSizeClass {
-    return remember(widthDp) {
+public fun rememberWindowWidthSizeClass(widthDp: Dp): WindowWidthSizeClass =
+    remember(widthDp) {
         when {
             widthDp < 600.dp -> WindowWidthSizeClass.Compact
             else -> WindowWidthSizeClass.Medium
         }
     }
-}

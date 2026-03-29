@@ -117,20 +117,22 @@ public fun MarketplaceScreen(
                         )
                     }
                     else -> {
-                        val displayedListings = if (searchQuery.isBlank()) {
-                            state.listings
-                        } else {
-                            state.listings.filter {
-                                it.prizeName.contains(searchQuery, ignoreCase = true) ||
-                                    it.sellerNickname.contains(searchQuery, ignoreCase = true)
+                        val displayedListings =
+                            if (searchQuery.isBlank()) {
+                                state.listings
+                            } else {
+                                state.listings.filter {
+                                    it.prizeName.contains(searchQuery, ignoreCase = true) ||
+                                        it.sellerNickname.contains(searchQuery, ignoreCase = true)
+                                }
                             }
-                        }
                         Column(modifier = Modifier.fillMaxSize()) {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(gridColumns),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                modifier =
+                                    Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {

@@ -31,19 +31,21 @@ public fun PrizeImageCard(
     onClick: (() -> Unit)? = null,
 ) {
     PrizeDrawCard(
-        modifier = modifier.then(
-            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
-        ),
+        modifier =
+            modifier.then(
+                if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+            ),
     ) {
         Box {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = name,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentScale = ContentScale.Crop,
             )
             TierBadge(

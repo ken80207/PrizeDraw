@@ -59,8 +59,11 @@ public fun LiveChatPanel(
         ) {
             if (isLive) {
                 Box(
-                    modifier = Modifier.size(8.dp).clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.error),
+                    modifier =
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }
@@ -101,7 +104,10 @@ public fun LiveChatPanel(
                 shape = MaterialTheme.shapes.medium,
             )
             IconButton(onClick = {
-                if (input.isNotBlank()) { onSendMessage(input.trim()); input = "" }
+                if (input.isNotBlank()) {
+                    onSendMessage(input.trim())
+                    input = ""
+                }
             }) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
@@ -120,8 +126,12 @@ private fun ChatBubble(message: ChatMessage) {
             text = message.senderName,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = if (message.isCurrentUser) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            color =
+                if (message.isCurrentUser) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
         )
         Text(
             text = message.text,

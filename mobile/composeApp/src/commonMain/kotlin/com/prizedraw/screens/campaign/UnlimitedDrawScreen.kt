@@ -36,11 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.prizedraw.components.button.PrimaryButton
 import com.prizedraw.components.chat.ChatMessage
 import com.prizedraw.components.chat.LiveChatPanel
@@ -62,42 +60,67 @@ import com.prizedraw.viewmodels.draw.UnlimitedDrawViewModel
 // Sample data for demo rendering prior to ViewModel wiring
 // ---------------------------------------------------------------------------
 
-private val sampleLiveDrops = listOf(
-    LiveDrop(
-        id = "d1",
-        playerName = "S.Tanaka just pulled",
-        prizeName = "CYBER SHOGUN",
-        tierGrade = "SSR",
-        timestamp = "just now",
-    ),
-    LiveDrop(
-        id = "d2",
-        playerName = "Yuki_02 just pulled",
-        prizeName = "NEON KATANA",
-        tierGrade = "SR",
-        timestamp = "1m",
-    ),
-    LiveDrop(
-        id = "d3",
-        playerName = "Hiro_X just pulled",
-        prizeName = "LOGOUT BUTTON",
-        tierGrade = "B",
-        timestamp = "3m",
-    ),
-)
+private val sampleLiveDrops =
+    listOf(
+        LiveDrop(
+            id = "d1",
+            playerName = "S.Tanaka just pulled",
+            prizeName = "CYBER SHOGUN",
+            tierGrade = "SSR",
+            timestamp = "just now",
+        ),
+        LiveDrop(
+            id = "d2",
+            playerName = "Yuki_02 just pulled",
+            prizeName = "NEON KATANA",
+            tierGrade = "SR",
+            timestamp = "1m",
+        ),
+        LiveDrop(
+            id = "d3",
+            playerName = "Hiro_X just pulled",
+            prizeName = "LOGOUT BUTTON",
+            tierGrade = "B",
+            timestamp = "3m",
+        ),
+    )
 
-private val sampleGalleryChatMessages = listOf(
-    ChatMessage(id = "m1", senderName = "VERTA_DEV", text = "Just saw a guy win 3 SRs in a row..the luck is insane today!", timestamp = "now"),
-    ChatMessage(id = "m2", senderName = "You", text = "Saving up for a 10-pull, wish me luck!", timestamp = "30s", isCurrentUser = true),
-    ChatMessage(id = "m3", senderName = "MIKA_CHAN", text = "The SSR drop rate seems higher in the last hour, anyone else noticed?", timestamp = "2m"),
-)
+private val sampleGalleryChatMessages =
+    listOf(
+        ChatMessage(
+            id = "m1",
+            senderName = "VERTA_DEV",
+            text = "Just saw a guy win 3 SRs in a row..the luck is insane today!",
+            timestamp = "now"
+        ),
+        ChatMessage(
+            id = "m2",
+            senderName = "You",
+            text = "Saving up for a 10-pull, wish me luck!",
+            timestamp = "30s",
+            isCurrentUser = true
+        ),
+        ChatMessage(
+            id = "m3",
+            senderName = "MIKA_CHAN",
+            text = "The SSR drop rate seems higher in the last hour, anyone else noticed?",
+            timestamp = "2m"
+        ),
+    )
 
-private val sampleTierProbabilities = listOf(
-    TierProbabilityRow("SSR", "Legendary Relics", "Full Set Collectible • NFT • +500 redeemable", "1.0%", "~100 max"),
-    TierProbabilityRow("SR", "Premium Figures", "Hand-painted Resin Statue", "4.5%", "5 - 122"),
-    TierProbabilityRow("A", "Rare Accessories", "Acrylic Stands & Keychains", "24.5%", "80+ items"),
-    TierProbabilityRow("N", "Standard Goods", "Art Cards & Stickers", "70.0%", "∞ Cards & Stickers"),
-)
+private val sampleTierProbabilities =
+    listOf(
+        TierProbabilityRow(
+            "SSR",
+            "Legendary Relics",
+            "Full Set Collectible • NFT • +500 redeemable",
+            "1.0%",
+            "~100 max"
+        ),
+        TierProbabilityRow("SR", "Premium Figures", "Hand-painted Resin Statue", "4.5%", "5 - 122"),
+        TierProbabilityRow("A", "Rare Accessories", "Acrylic Stands & Keychains", "24.5%", "80+ items"),
+        TierProbabilityRow("N", "Standard Goods", "Art Cards & Stickers", "70.0%", "∞ Cards & Stickers"),
+    )
 
 private data class TierProbabilityRow(
     val grade: String,
@@ -242,24 +265,26 @@ private fun UnlimitedMainColumn(
 
         // Tier probability table
         item {
-            val definitions = if (prizeDefinitions.isNotEmpty()) {
-                prizeDefinitions.map { def ->
-                    TierProbabilityRow(
-                        grade = def.grade,
-                        name = def.name,
-                        description = def.name,
-                        probability = def.probabilityBps?.let { bps ->
-                            val pct = bps / 100.0
-                            val intPart = pct.toInt()
-                            val fracPart = ((pct - intPart) * 10).toInt()
-                            "$intPart.${fracPart}%"
-                        } ?: "--",
-                        quantity = "--",
-                    )
+            val definitions =
+                if (prizeDefinitions.isNotEmpty()) {
+                    prizeDefinitions.map { def ->
+                        TierProbabilityRow(
+                            grade = def.grade,
+                            name = def.name,
+                            description = def.name,
+                            probability =
+                                def.probabilityBps?.let { bps ->
+                                    val pct = bps / 100.0
+                                    val intPart = pct.toInt()
+                                    val fracPart = ((pct - intPart) * 10).toInt()
+                                    "$intPart.$fracPart%"
+                                } ?: "--",
+                            quantity = "--",
+                        )
+                    }
+                } else {
+                    sampleTierProbabilities
                 }
-            } else {
-                sampleTierProbabilities
-            }
             TierProbabilitySection(
                 rows = definitions,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -281,15 +306,17 @@ private fun UnlimitedMainColumn(
                     viewerCount = 2358,
                     onSendMessage = {},
                     isLive = true,
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .height(280.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .height(280.dp),
                 )
             }
         }
 
         // YOUR HISTORY section
-        if (drawHistory.isNotEmpty() || true /* always show section header */) {
+        // always show section header
+        if (drawHistory.isNotEmpty() || true) {
             item {
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -335,28 +362,32 @@ private fun UnlimitedHeroBanner(
     onDraw: () -> Unit,
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(220.dp),
     ) {
         // Background gradient
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF3D1A00),
-                            Color(0xFF0A0A1A),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors =
+                                listOf(
+                                    Color(0xFF3D1A00),
+                                    Color(0xFF0A0A1A),
+                                ),
                         ),
                     ),
-                ),
         )
         // Campaign title and draw button
         Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(20.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(20.dp),
         ) {
             Text(
                 text = campaign?.title ?: "INFINITE KUJI\nULTRA BLITZ",
@@ -381,9 +412,10 @@ private fun UnlimitedHeroBanner(
         }
         // SSR prize badge on the right
         Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Surface(
@@ -489,9 +521,10 @@ private fun TierProbabilityCard(row: TierProbabilityRow) {
 @Composable
 private fun UnlimitedSidePanel(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(16.dp),
+        modifier =
+            modifier
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         LiveDropsFeed(
@@ -540,18 +573,20 @@ private fun UnlimitedSidePanel(modifier: Modifier = Modifier) {
 @Composable
 private fun DrawHistoryRow(result: UnlimitedDrawResultDto) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.small,
-                ),
+            modifier =
+                Modifier
+                    .size(8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small,
+                    ),
         )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -587,18 +622,20 @@ private fun SampleHistoryRow(
     date: String,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.small,
-                ),
+            modifier =
+                Modifier
+                    .size(8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small,
+                    ),
         )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -649,22 +686,25 @@ private fun ResultRevealOverlay(
         exit = fadeOut(),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f)),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f)),
             contentAlignment = Alignment.Center,
         ) {
             result?.let { r ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .padding(16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(0.8f)
+                            .padding(16.dp),
                     onClick = onDismiss,
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        ),
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),

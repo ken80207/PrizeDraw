@@ -23,10 +23,11 @@ public fun TierBadge(
 ) {
     val (bgColor, textColor) = tierColors(grade)
     Box(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier =
+            modifier
+                .clip(MaterialTheme.shapes.small)
+                .background(bgColor)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Text(
             text = grade.uppercase(),
@@ -37,8 +38,8 @@ public fun TierBadge(
     }
 }
 
-private fun tierColors(grade: String): Pair<Color, Color> {
-    return when (grade.uppercase()) {
+private fun tierColors(grade: String): Pair<Color, Color> =
+    when (grade.uppercase()) {
         "SSR" -> Color(0xFFFF6B6B) to Color.White
         "SR" -> PrizeDrawPrimary to Color(0xFF472A00)
         "A" -> PrizeDrawSecondary to Color(0xFF1A1A40)
@@ -47,4 +48,3 @@ private fun tierColors(grade: String): Pair<Color, Color> {
         "LAST" -> Color(0xFFFF4500) to Color.White
         else -> Color(0xFF666680) to Color.White
     }
-}
