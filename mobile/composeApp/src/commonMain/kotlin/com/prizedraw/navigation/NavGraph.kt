@@ -52,6 +52,7 @@ import com.prizedraw.viewmodels.draw.UnlimitedDrawViewModel
 import com.prizedraw.viewmodels.leaderboard.LeaderboardViewModel
 import com.prizedraw.viewmodels.prize.PrizeInventoryViewModel
 import com.prizedraw.viewmodels.support.SupportViewModel
+import com.prizedraw.theme.PrizeDrawTheme
 import com.prizedraw.viewmodels.trade.MarketplaceViewModel
 import kotlinx.coroutines.delay
 
@@ -154,6 +155,7 @@ public fun PrizeDrawNavGraph(
     onOpenAppStore: (url: String) -> Unit = {},
     fetchServerStatus: suspend () -> ServerStatusResponse? = { null },
 ) {
+    PrizeDrawTheme {
     // TODO: Source from settings / DataStore once onboarding UI is ready.
     //  Flip to `true` to enable the onboarding flow for first-time users.
     val showOnboarding = false
@@ -198,7 +200,7 @@ public fun PrizeDrawNavGraph(
                 // The LaunchedEffect loop handles polling; this provides immediate feedback.
             },
         )
-        return
+        return@PrizeDrawTheme
     }
 
     // ---- Update required overlay ----
@@ -225,7 +227,7 @@ public fun PrizeDrawNavGraph(
                     null
                 },
         )
-        return
+        return@PrizeDrawTheme
     }
 
     // ---- Non-blocking announcements banner ----
@@ -514,4 +516,5 @@ public fun PrizeDrawNavGraph(
             } // end NavHost
         } // end Box
     } // end Column
+    } // end PrizeDrawTheme
 }
