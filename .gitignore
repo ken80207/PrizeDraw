@@ -54,6 +54,7 @@ dist/
 .env.test.local
 .env.production.local
 infra/docker/.env
+infra/docker/env/.env.prod
 *.pem
 *.key
 *.cert

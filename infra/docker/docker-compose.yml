@@ -51,19 +51,26 @@ services:
       timeout: 20s
       retries: 3
 
-  server:
+  # ---- Backend Microservices ----
+
+  core-api:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile.server
-    container_name: prizedraw-server
+      dockerfile: infra/docker/Dockerfile.core-api
+    container_name: prizedraw-core-api
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
+      APP_ENV: ${APP_ENV:-dev}
       PORT: 9092
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw}
       DATABASE_USER: ${POSTGRES_USER:-prizedraw}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-prizedraw}
@@ -75,14 +82,98 @@ services:
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       STORAGE_BUCKET: ${STORAGE_BUCKET:-prizedraw}
-      CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001}
+      CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001,localhost:3002}
+      DRAW_SERVICE_URL: http://draw-service:9093
+      REALTIME_GATEWAY_URL: http://realtime-gateway:9094
+      NOTIFICATION_WORKER_URL: http://notification-worker:9095
     ports:
-      - "${SERVER_PORT:-9092}:9092"
+      - "${CORE_API_PORT:-9092}:9092"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9092/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  draw-service:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.draw-service
+    container_name: prizedraw-draw-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      PORT: 9093
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-prizedraw}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+      CORE_API_URL: http://core-api:9092
+      REALTIME_GATEWAY_URL: http://realtime-gateway:9094
+    ports:
+      - "${DRAW_SERVICE_PORT:-9093}:9093"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9093/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  realtime-gateway:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.realtime-gateway
+    container_name: prizedraw-realtime-gateway
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      PORT: 9094
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+      CORE_API_URL: http://core-api:9092
+    ports:
+      - "${REALTIME_GATEWAY_PORT:-9094}:9094"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9094/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.notification-worker
+    container_name: prizedraw-notification-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      PORT: 9095
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-prizedraw}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redispassword}@redis:6379
+      CORE_API_URL: http://core-api:9092
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9095/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---- Frontend Services ----
 
   web:
     build:
@@ -91,10 +182,10 @@ services:
     container_name: prizedraw-web
     restart: unless-stopped
     depends_on:
-      - server
+      - core-api
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:9092}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:9092}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:9094}
     ports:
       - "${WEB_PORT:-3000}:3000"
 
@@ -105,7 +196,7 @@ services:
     container_name: prizedraw-admin
     restart: unless-stopped
     depends_on:
-      - server
+      - core-api
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:9092}
     ports:
@@ -118,7 +209,7 @@ services:
     container_name: prizedraw-cs
     restart: unless-stopped
     depends_on:
-      - server
+      - core-api
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:9092}
     ports:

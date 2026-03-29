@@ -1,0 +1,62 @@
+# ============================================================
+# Multi-stage Dockerfile for the Core API service (Ktor/JVM)
+# Stage 1: Build the fat JAR with Gradle
+# Stage 2: Minimal runtime image with Eclipse Temurin JRE 21
+# ============================================================
+
+# ---- Build Stage ----
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+WORKDIR /build
+
+# Copy Gradle wrapper and config first for layer caching
+COPY gradlew .
+COPY gradle/ gradle/
+COPY settings.gradle.kts .
+COPY build.gradle.kts .
+
+# Copy module build files
+COPY api-contracts/build.gradle.kts api-contracts/
+COPY server/build.gradle.kts server/
+COPY kmp-shared-js/build.gradle.kts kmp-shared-js/
+
+# Download dependencies (cached layer if build files unchanged)
+RUN ./gradlew dependencies --no-daemon --quiet || true
+
+# Copy source code
+COPY api-contracts/src/ api-contracts/src/
+COPY server/src/ server/src/
+COPY kmp-shared-js/src/ kmp-shared-js/src/
+
+# Build the shadow JAR
+RUN ./gradlew :server:shadowJar --no-daemon -x test
+
+# ---- Runtime Stage ----
+FROM eclipse-temurin:21-jre-alpine AS runtime
+
+# Create non-root user for security
+RUN addgroup -S prizedraw && adduser -S prizedraw -G prizedraw
+
+WORKDIR /app
+
+# Copy the fat JAR from build stage
+COPY --from=builder /build/server/build/libs/prize-draw-server-*.jar app.jar
+
+# Set ownership
+RUN chown -R prizedraw:prizedraw /app
+
+USER prizedraw
+
+EXPOSE 9092
+
+# JVM tuning for containerized environment
+ENV JAVA_OPTS="\
+  -server \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0 \
+  -XX:+UseG1GC \
+  -XX:+ExitOnOutOfMemoryError \
+  -Djava.security.egd=file:/dev/./urandom \
+  -Dkotlinx.coroutines.debug=off"
+
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
