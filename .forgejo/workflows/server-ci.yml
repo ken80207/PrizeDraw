@@ -52,14 +52,11 @@ jobs:
             -e POSTGRES_DB=prizedraw_test \
             -e POSTGRES_USER=prizedraw \
             -e POSTGRES_PASSWORD=prizedraw \
-            -p 5434:5432 \
             postgres:16-alpine
 
           docker run -d --name test-redis \
-            -p 6381:6379 \
             redis:7-alpine
 
-          # Wait for healthy
           for i in $(seq 1 15); do
             if docker exec test-postgres pg_isready -U prizedraw 2>/dev/null; then
               echo "PostgreSQL ready"
@@ -67,7 +64,6 @@ jobs:
             fi
             sleep 2
           done
-
           for i in $(seq 1 10); do
             if docker exec test-redis redis-cli ping 2>/dev/null | grep -q PONG; then
               echo "Redis ready"
@@ -75,6 +71,11 @@ jobs:
             fi
             sleep 1
           done
+
+          PG_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-postgres)
+          REDIS_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-redis)
+          echo "PG_IP=${PG_IP}" >> $GITHUB_ENV
+          echo "REDIS_IP=${REDIS_IP}" >> $GITHUB_ENV
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck --no-daemon
@@ -92,10 +93,10 @@ jobs:
             :api-contracts:allTests \
             --no-daemon
         env:
-          DATABASE_URL: jdbc:postgresql://localhost:5434/prizedraw_test
+          DATABASE_URL: jdbc:postgresql://${{ env.PG_IP }}:5432/prizedraw_test
           DATABASE_USER: prizedraw
           DATABASE_PASSWORD: prizedraw
-          REDIS_URL: redis://localhost:6381
+          REDIS_URL: redis://${{ env.REDIS_IP }}:6379
           JWT_SECRET: test-secret-for-ci-only
 
       - name: Build shadow JARs
