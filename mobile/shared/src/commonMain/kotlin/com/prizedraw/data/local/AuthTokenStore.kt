@@ -1,47 +1,51 @@
 package com.prizedraw.data.local
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 /**
- * Encrypted local storage for JWT access and refresh tokens.
+ * In-memory token storage for development.
  *
- * Uses DataStore with EncryptedPreferences on Android and iOS Keychain on iOS
- * to persist tokens securely across app restarts.
- *
- * TODO(T092): Implement with DataStore Preferences + encryption:
- *   - Android: `androidx.datastore.preferences.core.Preferences` + `EncryptedSharedPreferences`
- *   - iOS: `NSUserDefaults` + `SecKeychain` via expect/actual
+ * Production implementation (T092) will use DataStore with EncryptedPreferences
+ * on Android and iOS Keychain on iOS.
  */
 public class AuthTokenStore {
+    private var _accessToken: String? = null
+    private var _refreshToken: String? = null
+    private val _isLoggedIn = MutableStateFlow(false)
+
+    /** Observable login state. */
+    public val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
     /**
      * Persists the access and refresh token pair.
-     *
-     * @param accessToken The JWT access token.
-     * @param refreshToken The opaque `familyToken:rawToken` refresh token.
      */
     public suspend fun saveTokens(
         accessToken: String,
         refreshToken: String,
     ) {
-        TODO("T092: implement DataStore encrypted token persistence")
+        _accessToken = accessToken
+        _refreshToken = refreshToken
+        _isLoggedIn.value = true
     }
 
     /**
      * Returns the stored access token, or null if no session exists.
      */
-    public suspend fun getAccessToken(): String? {
-        TODO("T092: implement DataStore read")
-    }
+    public suspend fun getAccessToken(): String? = _accessToken
 
     /**
      * Returns the stored refresh token, or null if no session exists.
      */
-    public suspend fun getRefreshToken(): String? {
-        TODO("T092: implement DataStore read")
-    }
+    public suspend fun getRefreshToken(): String? = _refreshToken
 
     /**
      * Clears all stored tokens (used on logout).
      */
     public suspend fun clearTokens() {
-        TODO("T092: implement DataStore clear")
+        _accessToken = null
+        _refreshToken = null
+        _isLoggedIn.value = false
     }
 }

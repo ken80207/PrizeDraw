@@ -56,6 +56,7 @@ import com.prizedraw.i18n.S
 import com.prizedraw.viewmodels.auth.AuthIntent
 import com.prizedraw.viewmodels.auth.AuthState
 import com.prizedraw.viewmodels.auth.AuthViewModel
+import com.prizedraw.viewmodels.auth.DEV_PLAYERS
 
 private data class CountryCode(
     val code: String,
@@ -174,6 +175,54 @@ public fun LoginScreen(
                         CircularProgressIndicator()
                     }
                 } else {
+                    // Dev mode mock login buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Face,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = "Dev Mode",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        DEV_PLAYERS.forEach { player ->
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.onIntent(
+                                        AuthIntent.DevMockLogin(player.id, player.nickname),
+                                    )
+                                },
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                shape = MaterialTheme.shapes.small,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            ) {
+                                Text(
+                                    text = player.nickname,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
                     // Google full-width button
                     OutlinedButton(
                         onClick = {
