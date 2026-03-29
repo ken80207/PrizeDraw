@@ -1,274 +1,87 @@
-name: Deploy to Production
+name: Deploy Services
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
+        description: 'Target environment'
         required: true
-        default: production
         type: choice
         options:
+          - dev
           - staging
-          - production
-      skip_tests:
-        description: "Skip test run (use for hotfix only)"
+          - prod
+      image_tag:
+        description: 'Image tag to deploy (defaults to latest main SHA)'
         required: false
-        default: false
-        type: boolean
+        type: string
 
 concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: false   # Never cancel an in-flight production deployment
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
-  SERVER_IMAGE: ghcr.io/${{ github.repository_owner }}/prizedraw-server
-  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/prizedraw-web
-  ADMIN_IMAGE: ghcr.io/${{ github.repository_owner }}/prizedraw-admin
-  K8S_NAMESPACE: prizeDraw
+  IMAGE_PREFIX: ghcr.io/prizedraw
+  SERVICES: core-api draw-service realtime-gateway notification-worker
 
 jobs:
   # ===========================================================================
-  # 1. Build & Test
+  # 1. Validate — ensure the build workflow succeeded for this tag
   # ===========================================================================
-  build-and-test:
-    name: Build & Test
+  validate:
+    name: Validate Build Artifacts
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_tests }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: "21"
-          distribution: temurin
-          cache: gradle
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-
-      - name: Gradle — test + lint
-        run: ./gradlew test ktlintCheck detekt --no-daemon --parallel
-        env:
-          GRADLE_OPTS: "-Xmx2g -Dorg.gradle.daemon=false"
-
-      - name: Web — install + lint + test
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter web lint
-          pnpm --filter web build
-          pnpm --filter admin lint
-          pnpm --filter admin build
-
-      - name: Upload test reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: |
-            server/build/reports/tests/
-            server/build/reports/detekt/
-          retention-days: 7
-
-  # ===========================================================================
-  # 2. Build Docker Images
-  # ===========================================================================
-  build-images:
-    name: Build Docker Images
-    runs-on: ubuntu-latest
-    needs: [build-and-test]
-    if: always() && (needs.build-and-test.result == 'success' || needs.build-and-test.result == 'skipped')
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
-      server-digest: ${{ steps.build-server.outputs.digest }}
-      web-digest: ${{ steps.build-web.outputs.digest }}
-      admin-digest: ${{ steps.build-admin.outputs.digest }}
-
+      image-tag: ${{ steps.resolve-tag.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Resolve image tag
+        id: resolve-tag
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.sha }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $TAG"
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.SERVER_IMAGE }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Set up JDK 21 (for shadowJar)
-        uses: actions/setup-java@v4
-        with:
-          java-version: "21"
-          distribution: temurin
-          cache: gradle
-
-      - name: Build server shadow JAR
-        run: ./gradlew :server:shadowJar --no-daemon
+      - name: Verify images exist in GHCR
+        run: |
+          TAG="${{ steps.resolve-tag.outputs.tag }}"
+          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+            echo "Checking $IMAGE_PREFIX/$SERVICE:$TAG ..."
+            docker manifest inspect "$IMAGE_PREFIX/$SERVICE:$TAG" > /dev/null 2>&1 || {
+              echo "ERROR: Image $IMAGE_PREFIX/$SERVICE:$TAG not found in registry"
+              exit 1
+            }
+          done
         env:
-          GRADLE_OPTS: "-Xmx2g -Dorg.gradle.daemon=false"
-
-      - name: Build and push server image
-        id: build-server
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/Dockerfile.server
-          push: true
-          tags: ${{ env.SERVER_IMAGE }}:${{ steps.meta.outputs.version }},${{ env.SERVER_IMAGE }}:latest
-          cache-from: type=gha,scope=server
-          cache-to: type=gha,mode=max,scope=server
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Build and push web image
-        id: build-web
-        uses: docker/build-push-action@v6
-        with:
-          context: web
-          file: infra/docker/Dockerfile.web
-          push: true
-          tags: ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.version }},${{ env.WEB_IMAGE }}:latest
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
-
-      - name: Build and push admin image
-        id: build-admin
-        uses: docker/build-push-action@v6
-        with:
-          context: admin
-          file: infra/docker/Dockerfile.admin
-          push: true
-          tags: ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.version }},${{ env.ADMIN_IMAGE }}:latest
-          cache-from: type=gha,scope=admin
-          cache-to: type=gha,mode=max,scope=admin
+          DOCKER_CLI_EXPERIMENTAL: enabled
 
   # ===========================================================================
-  # 3. Database Migration (Flyway)
-  # ===========================================================================
-  migrate-database:
-    name: Run Flyway Migrations
-    runs-on: ubuntu-latest
-    needs: [build-images]
-    environment:
-      name: ${{ inputs.environment || 'production' }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "v1.29.0"
-
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
-
-      - name: Apply Flyway migration Job
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: flyway-migrate-${{ needs.build-images.outputs.image-tag }}
-            namespace: ${{ env.K8S_NAMESPACE }}
-            labels:
-              app: flyway-migrate
-              version: ${{ needs.build-images.outputs.image-tag }}
-          spec:
-            backoffLimit: 2
-            ttlSecondsAfterFinished: 3600
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                  - name: flyway
-                    image: ${{ env.SERVER_IMAGE }}:${{ needs.build-images.outputs.image-tag }}
-                    command: ["java", "-cp", "/app/prize-draw-server.jar", "org.flywaydb.commandline.Main", "migrate"]
-                    env:
-                      - name: FLYWAY_URL
-                        valueFrom:
-                          secretKeyRef:
-                            name: prizeDraw-secrets
-                            key: database-url
-                      - name: FLYWAY_USER
-                        valueFrom:
-                          secretKeyRef:
-                            name: prizeDraw-secrets
-                            key: database-user
-                      - name: FLYWAY_PASSWORD
-                        valueFrom:
-                          secretKeyRef:
-                            name: prizeDraw-secrets
-                            key: database-password
-                    resources:
-                      requests:
-                        cpu: 100m
-                        memory: 256Mi
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-          EOF
-
-      - name: Wait for migration to complete
-        run: |
-          kubectl wait job/flyway-migrate-${{ needs.build-images.outputs.image-tag }} \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --for=condition=complete \
-            --timeout=300s
-
-      - name: Check migration logs on failure
-        if: failure()
-        run: |
-          kubectl logs -l job-name=flyway-migrate-${{ needs.build-images.outputs.image-tag }} \
-            --namespace=${{ env.K8S_NAMESPACE }}
-
-  # ===========================================================================
-  # 4. Rolling Update (K8s Deployments)
+  # 2. Deploy (with prod approval gate)
   # ===========================================================================
   deploy:
-    name: Rolling Update
+    name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    needs: [build-images, migrate-database]
+    needs: [validate]
     environment:
-      name: ${{ inputs.environment || 'production' }}
-      url: https://prizedraw.tw
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'prod' && 'https://prizedraw.tw' || inputs.environment == 'staging' && 'https://staging.prizedraw.tw' || 'https://dev.prizedraw.tw' }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: "v1.29.0"
+          version: 'v1.29.0'
+
+      - name: Install Kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: '5.3.0'
 
       - name: Configure kubeconfig
         run: |
@@ -276,87 +89,125 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Update server image
+      - name: Update image tags with Kustomize
+        working-directory: infra/k8s/overlays/${{ inputs.environment }}
         run: |
-          kubectl set image deployment/prizeDraw-server \
-            server=${{ env.SERVER_IMAGE }}:${{ needs.build-images.outputs.image-tag }} \
-            --namespace=${{ env.K8S_NAMESPACE }}
+          TAG="${{ needs.validate.outputs.image-tag }}"
+          kustomize edit set image \
+            ghcr.io/prizedraw/core-api=${{ env.IMAGE_PREFIX }}/core-api:${TAG} \
+            ghcr.io/prizedraw/draw-service=${{ env.IMAGE_PREFIX }}/draw-service:${TAG} \
+            ghcr.io/prizedraw/realtime-gateway=${{ env.IMAGE_PREFIX }}/realtime-gateway:${TAG} \
+            ghcr.io/prizedraw/notification-worker=${{ env.IMAGE_PREFIX }}/notification-worker:${TAG}
 
-      - name: Update web image
+      - name: Apply Kustomize overlay
         run: |
-          kubectl set image deployment/prizeDraw-web \
-            web=${{ env.WEB_IMAGE }}:${{ needs.build-images.outputs.image-tag }} \
-            --namespace=${{ env.K8S_NAMESPACE }}
+          kubectl apply -k infra/k8s/overlays/${{ inputs.environment }}/
 
-      - name: Update admin image
+      - name: Verify rollout — all services
         run: |
-          kubectl set image deployment/prizeDraw-admin \
-            admin=${{ env.ADMIN_IMAGE }}:${{ needs.build-images.outputs.image-tag }} \
-            --namespace=${{ env.K8S_NAMESPACE }}
-
-      - name: Wait for server rollout
-        run: |
-          kubectl rollout status deployment/prizeDraw-server \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --timeout=300s
-
-      - name: Wait for web rollout
-        run: |
-          kubectl rollout status deployment/prizeDraw-web \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --timeout=180s
-
-      - name: Wait for admin rollout
-        run: |
-          kubectl rollout status deployment/prizeDraw-admin \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --timeout=180s
+          NAMESPACE="prizedraw-${{ inputs.environment }}"
+          FAILED=0
+          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+            echo "Waiting for prizedraw-${SERVICE} rollout..."
+            if ! kubectl rollout status deployment/prizedraw-${SERVICE} \
+              --namespace="${NAMESPACE}" \
+              --timeout=300s; then
+              echo "ERROR: prizedraw-${SERVICE} rollout failed"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -ne 0 ]; then
+            echo "One or more deployments failed to roll out"
+            exit 1
+          fi
 
   # ===========================================================================
-  # 5. Smoke Test
+  # 3. Smoke Test
   # ===========================================================================
   smoke-test:
-    name: Smoke Test
+    name: Smoke Test (${{ inputs.environment }})
     runs-on: ubuntu-latest
     needs: [deploy]
 
     steps:
+      - name: Determine base URL
+        id: urls
+        run: |
+          case "${{ inputs.environment }}" in
+            prod)    echo "base_url=https://api.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
+            staging) echo "base_url=https://api.staging.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
+            dev)     echo "base_url=https://api.dev.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - name: Wait for ingress propagation
         run: sleep 10
 
-      - name: Health check — API server
+      - name: Health check — core-api
         run: |
+          BASE="${{ steps.urls.outputs.base_url }}"
           for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 10 \
-              https://api.prizedraw.tw/health)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/health")
             if [ "$STATUS" = "200" ]; then
-              echo "Health check passed (attempt $i)"
+              echo "core-api health check passed (attempt $i)"
               exit 0
             fi
-            echo "Health check attempt $i failed with status $STATUS — retrying in 10s"
+            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
             sleep 10
           done
-          echo "Health check failed after 5 attempts"
+          echo "core-api health check failed after 5 attempts"
           exit 1
 
-      - name: Readiness check — API server
+      - name: Health check — draw-service
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 10 \
-            https://api.prizedraw.tw/ready)
-          if [ "$STATUS" != "200" ]; then
-            echo "Readiness check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Readiness check passed"
+          BASE="${{ steps.urls.outputs.base_url }}"
+          for i in $(seq 1 5); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/draw/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "draw-service health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            sleep 10
+          done
+          echo "draw-service health check failed after 5 attempts"
+          exit 1
+
+      - name: Health check — realtime-gateway
+        run: |
+          BASE="${{ steps.urls.outputs.base_url }}"
+          for i in $(seq 1 5); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/realtime/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "realtime-gateway health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            sleep 10
+          done
+          echo "realtime-gateway health check failed after 5 attempts"
+          exit 1
+
+      - name: Health check — notification-worker
+        run: |
+          BASE="${{ steps.urls.outputs.base_url }}"
+          for i in $(seq 1 5); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/notifications/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "notification-worker health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            sleep 10
+          done
+          echo "notification-worker health check failed after 5 attempts"
+          exit 1
 
       - name: Smoke test — campaign list endpoint
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 10 \
+          BASE="${{ steps.urls.outputs.base_url }}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
             -H "Accept: application/json" \
-            https://api.prizedraw.tw/api/v1/campaigns/kuji)
+            "${BASE}/api/v1/campaigns/kuji")
           if [ "$STATUS" != "200" ]; then
             echo "Campaign list smoke test failed with status $STATUS"
             exit 1
@@ -364,7 +215,7 @@ jobs:
           echo "Campaign list smoke test passed"
 
   # ===========================================================================
-  # 6. Rollback on failure
+  # 4. Rollback on failure
   # ===========================================================================
   rollback:
     name: Rollback on Failure
@@ -376,7 +227,7 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: "v1.29.0"
+          version: 'v1.29.0'
 
       - name: Configure kubeconfig
         run: |
@@ -384,31 +235,40 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Rollback server deployment
+      - name: Rollback all deployments
         run: |
-          kubectl rollout undo deployment/prizeDraw-server \
-            --namespace=${{ env.K8S_NAMESPACE }}
-          kubectl rollout status deployment/prizeDraw-server \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --timeout=180s
+          NAMESPACE="prizedraw-${{ inputs.environment }}"
+          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+            echo "Rolling back prizedraw-${SERVICE}..."
+            kubectl rollout undo deployment/prizedraw-${SERVICE} \
+              --namespace="${NAMESPACE}"
+          done
 
-      - name: Rollback web deployment
+      - name: Wait for rollback to complete
         run: |
-          kubectl rollout undo deployment/prizeDraw-web \
-            --namespace=${{ env.K8S_NAMESPACE }}
-
-      - name: Rollback admin deployment
-        run: |
-          kubectl rollout undo deployment/prizeDraw-admin \
-            --namespace=${{ env.K8S_NAMESPACE }}
+          NAMESPACE="prizedraw-${{ inputs.environment }}"
+          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+            echo "Waiting for prizedraw-${SERVICE} rollback..."
+            kubectl rollout status deployment/prizedraw-${SERVICE} \
+              --namespace="${NAMESPACE}" \
+              --timeout=180s
+          done
 
       - name: Notify on rollback
         uses: actions/github-script@v7
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '## Deployment Rolled Back\n\nThe deployment of `${{ needs.build-images.outputs.image-tag }}` failed and has been automatically rolled back to the previous version.\n\nPlease review the workflow logs for details.'
-            })
+            const env = '${{ inputs.environment }}';
+            const tag = '${{ needs.validate.outputs.image-tag }}';
+            const body = [
+              '## Deployment Rolled Back',
+              '',
+              `Environment: **${env}**`,
+              `Image tag: \`${tag}\``,
+              '',
+              'The deployment failed and has been automatically rolled back to the previous version.',
+              'Please review the workflow logs for details.'
+            ].join('\n');
+
+            // Post as a workflow annotation since this is workflow_dispatch (no PR/issue)
+            core.warning(body);
