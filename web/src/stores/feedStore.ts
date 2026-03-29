@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import type { DrawFeedEvent } from "@/services/feedWebSocket";
 
@@ -67,8 +68,11 @@ export const useFeedStore = create<FeedStore>((set) => ({
 }));
 
 export function useFilteredFeedItems(): DrawFeedEvent[] {
-  return useFeedStore((state) => {
-    const { items, selectedCampaignIds, selectedGrades } = state;
+  const items = useFeedStore((state) => state.items);
+  const selectedCampaignIds = useFeedStore((state) => state.selectedCampaignIds);
+  const selectedGrades = useFeedStore((state) => state.selectedGrades);
+
+  return useMemo(() => {
     return items.filter((item) => {
       if (selectedCampaignIds.size > 0 && !selectedCampaignIds.has(item.campaignId)) {
         return false;
@@ -78,5 +82,5 @@ export function useFilteredFeedItems(): DrawFeedEvent[] {
       }
       return true;
     });
-  });
+  }, [items, selectedCampaignIds, selectedGrades]);
 }
