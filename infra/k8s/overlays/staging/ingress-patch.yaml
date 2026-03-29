@@ -1,0 +1,115 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prizedraw-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  tls:
+    - hosts:
+        - api.staging.prizedraw.tw
+        - www.staging.prizedraw.tw
+        - staging.prizedraw.tw
+        - admin.staging.prizedraw.tw
+        - cs.staging.prizedraw.tw
+      secretName: prizedraw-staging-tls-cert
+  rules:
+    - host: api.staging.prizedraw.tw
+      http:
+        paths:
+          - path: /api/v1/draws
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-draw-service
+                port:
+                  name: http
+          - path: /api/v1/leaderboards
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-draw-service
+                port:
+                  name: http
+          - path: /api/v1/live-draws
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-draw-service
+                port:
+                  name: http
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-realtime-gateway
+                port:
+                  name: http
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: prizedraw-core-api
+                port:
+                  name: http
+          - path: /ready
+            pathType: Exact
+            backend:
+              service:
+                name: prizedraw-core-api
+                port:
+                  name: http
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: prizedraw-core-api
+                port:
+                  name: http
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-core-api
+                port:
+                  name: http
+    - host: staging.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-web
+                port:
+                  name: http
+    - host: www.staging.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-web
+                port:
+                  name: http
+    - host: admin.staging.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-admin
+                port:
+                  name: http
+    - host: cs.staging.prizedraw.tw
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prizedraw-cs
+                port:
+                  name: http

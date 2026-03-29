@@ -1,0 +1,35 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prizedraw-core-api-pdb
+  labels:
+    app.kubernetes.io/component: core-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: core-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prizedraw-draw-service-pdb
+  labels:
+    app.kubernetes.io/component: draw-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: draw-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prizedraw-realtime-gateway-pdb
+  labels:
+    app.kubernetes.io/component: realtime-gateway
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: realtime-gateway
