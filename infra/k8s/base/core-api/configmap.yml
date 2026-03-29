@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prizedraw-core-api-config
+  labels:
+    app: core-api
+    component: backend
+data:
+  PORT: "9092"
+  APP_ENV: "dev"
+  LOG_LEVEL: "INFO"
+  JWT_ISSUER: "prizedraw"
+  JWT_AUDIENCE: "prizedraw-api"
+  DATABASE_POOL_SIZE: "10"
+  RATE_LIMIT_ENABLED: "true"
+  DRAW_SERVICE_URL: "http://prizedraw-draw-service:80"
+  REALTIME_GATEWAY_URL: "http://prizedraw-realtime-gateway:80"

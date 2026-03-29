@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prizedraw-notification-worker-config
+  labels:
+    app: notification-worker
+    component: backend
+data:
+  PORT: "9095"
+  APP_ENV: "dev"
+  LOG_LEVEL: "INFO"
+  OUTBOX_POLL_INTERVAL_MS: "2000"

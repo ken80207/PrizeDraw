@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prizedraw
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: prizedraw
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  # --- Core API ---
+  - core-api/deployment.yml
+  - core-api/service.yml
+  - core-api/configmap.yml
+  - core-api/hpa.yml
+  # --- Draw Service ---
+  - draw-service/deployment.yml
+  - draw-service/service.yml
+  - draw-service/configmap.yml
+  - draw-service/hpa.yml
+  # --- Realtime Gateway ---
+  - realtime-gateway/deployment.yml
+  - realtime-gateway/service.yml
+  - realtime-gateway/configmap.yml
+  - realtime-gateway/hpa.yml
+  # --- Notification Worker ---
+  - notification-worker/deployment.yml
+  - notification-worker/configmap.yml
+  - notification-worker/hpa.yml
+  # --- Data Stores ---
+  - postgres/statefulset.yml
+  - redis/statefulset.yml
+  # --- Ingress ---
+  - ingress/ingress.yml

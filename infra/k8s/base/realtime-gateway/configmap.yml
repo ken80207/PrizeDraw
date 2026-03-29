@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prizedraw-realtime-gateway-config
+  labels:
+    app: realtime-gateway
+    component: backend
+data:
+  PORT: "9094"
+  APP_ENV: "dev"
+  LOG_LEVEL: "INFO"
+  CORE_API_URL: "http://prizedraw-core-api:80"
+  DRAW_SERVICE_URL: "http://prizedraw-draw-service:80"

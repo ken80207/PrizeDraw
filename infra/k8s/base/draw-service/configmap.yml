@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prizedraw-draw-service-config
+  labels:
+    app: draw-service
+    component: backend
+data:
+  PORT: "9093"
+  APP_ENV: "dev"
+  LOG_LEVEL: "INFO"
+  DATABASE_POOL_SIZE: "10"
+  CORE_API_URL: "http://prizedraw-core-api:80"
