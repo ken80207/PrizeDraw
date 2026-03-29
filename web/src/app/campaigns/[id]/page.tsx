@@ -902,8 +902,8 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     if (!player) return;
     apiClient
-      .get<{ drawPoints: number }>("/api/v1/players/me/wallet")
-      .then((w) => setPlayerPoints(w.drawPoints))
+      .get<{ drawPointsBalance: number }>("/api/v1/players/me/wallet")
+      .then((w) => setPlayerPoints(w.drawPointsBalance ?? 0))
       .catch(() => setPlayerPoints(0));
   }, [player]);
 
