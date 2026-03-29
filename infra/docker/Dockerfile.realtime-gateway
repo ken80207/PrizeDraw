@@ -15,8 +15,10 @@ COPY gradle/ gradle/
 COPY settings.gradle.kts .
 COPY build.gradle.kts .
 
-# Copy module build files
+# Copy module build files (realtime-gateway → shared → db-schema → api-contracts)
 COPY api-contracts/build.gradle.kts api-contracts/
+COPY db-schema/build.gradle.kts db-schema/
+COPY shared/build.gradle.kts shared/
 COPY realtime-gateway/build.gradle.kts realtime-gateway/
 
 # Download dependencies (cached layer if build files unchanged)
@@ -24,6 +26,8 @@ RUN ./gradlew dependencies --no-daemon --quiet || true
 
 # Copy source code
 COPY api-contracts/src/ api-contracts/src/
+COPY db-schema/src/ db-schema/src/
+COPY shared/src/ shared/src/
 COPY realtime-gateway/src/ realtime-gateway/src/
 
 # Build the shadow JAR
