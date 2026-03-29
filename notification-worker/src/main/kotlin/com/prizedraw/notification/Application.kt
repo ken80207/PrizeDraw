@@ -7,6 +7,7 @@ import com.prizedraw.notification.worker.LowStockNotificationJob
 import com.prizedraw.notification.worker.OutboxWorker
 import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
+import com.prizedraw.shared.plugins.configureMetrics
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -72,6 +73,7 @@ public fun main() {
                 redisClient.ping()
             },
         )
+        configureMetrics()
     }.start(wait = true)
 }
 

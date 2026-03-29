@@ -7,6 +7,7 @@ import com.prizedraw.draw.plugins.configureDrawRouting
 import com.prizedraw.draw.plugins.configureSecurity
 import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
+import com.prizedraw.shared.plugins.configureMetrics
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -106,6 +107,9 @@ public fun Application.module() {
             redis.ping()
         },
     )
+
+    // --- Prometheus metrics endpoint ---
+    configureMetrics()
 
     // --- Draw Routes ---
     configureDrawRouting()

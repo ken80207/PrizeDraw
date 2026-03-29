@@ -7,6 +7,7 @@ import com.prizedraw.realtime.plugins.configureRouting
 import com.prizedraw.realtime.services.RoomScalingService
 import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
+import com.prizedraw.shared.plugins.configureMetrics
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
@@ -83,6 +84,9 @@ public fun Application.module() {
             redis.ping()
         },
     )
+
+    // --- Prometheus metrics endpoint ---
+    configureMetrics()
 
     // --- WebSocket Routes ---
     configureRouting()
