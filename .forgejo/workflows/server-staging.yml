@@ -165,10 +165,10 @@ jobs:
           NAS_USER="${{ secrets.NAS_USER }}"
 
           ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} \
-            "mkdir -p ~/prizedraw-staging"
+            "mkdir -p /home/${NAS_USER}/prizedraw-staging"
 
-          scp -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new \
-            deployment/nas-staging/docker-compose.yml ${NAS_USER}@${NAS_HOST}:~/prizedraw-staging/
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} \
+            "cat > /home/${NAS_USER}/prizedraw-staging/docker-compose.yml" < deployment/nas-staging/docker-compose.yml
 
       - name: Create .env and deploy
         run: |
@@ -176,7 +176,7 @@ jobs:
           NAS_USER="${{ secrets.NAS_USER }}"
 
           ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << ENDSSH
-            cd ~/prizedraw-staging
+            cd /home/${{ secrets.NAS_USER }}/prizedraw-staging
 
             cat > .env << 'ENVEOF'
           APP_ENV=staging
