@@ -289,53 +289,65 @@ public fun PrizeDrawNavGraph(
                     )
                 }
 
-                // Main shell
+                // Main shell — adaptive (phone bottom-nav / tablet sidebar)
                 composable(Routes.HOME) {
-                    HomeScreen(
+                    var currentTabRoute by remember { mutableStateOf("campaigns") }
+                    AppShell(
+                        currentRoute = currentTabRoute,
+                        onNavigate = { route -> currentTabRoute = route },
                         onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                        onNavigateToSupport = { navController.navigate(Routes.SUPPORT) },
                         onNavigateToNotifications = { /* TODO: notifications route */ },
-                        tabContent = { route ->
-                            when (route) {
-                                "campaigns" ->
-                                    CampaignListScreen(
-                                        viewModel = campaignViewModel,
-                                        onCampaignSelected = { campaignId ->
-                                            navController.navigate(
-                                                Routes.KUJI_BOARD.replace("{campaignId}", campaignId),
-                                            )
-                                        },
-                                    )
-
-                                "prizes" ->
-                                    MyPrizesScreen(
-                                        viewModel = prizeViewModel,
-                                        onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
-                                    )
-
-                                "trade" ->
-                                    MarketplaceScreen(
-                                        viewModel = marketplaceViewModel,
-                                        onListingClick = { /* TODO(T172): navigate to listing detail */ },
-                                        onCreateListing = { /* TODO(T172): navigate to create listing */ },
-                                    )
-
-                                "wallet" ->
-                                    WalletScreen(
-                                        // TODO(T172): source from WalletViewModel
-                                        wallet =
-                                            WalletDto(
-                                                drawPointsBalance = 0,
-                                                revenuePointsBalance = 0,
-                                                drawTransactions = emptyList(),
-                                                revenueTransactions = emptyList(),
-                                            ),
-                                        onTopUp = { /* TODO: payment top-up route */ },
-                                    )
-
-                                else -> Unit
+                        onLogout = {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(0) { inclusive = true }
                             }
                         },
-                    )
+                    ) {
+                        when (currentTabRoute) {
+                            "campaigns" ->
+                                HomeScreen(
+                                    onCampaignSelected = { campaignId ->
+                                        navController.navigate(
+                                            Routes.KUJI_BOARD.replace("{campaignId}", campaignId),
+                                        )
+                                    },
+                                    onViewAllKuji = { /* TODO: kuji list route */ },
+                                    onViewAllInfinite = { /* TODO: infinite list route */ },
+                                )
+
+                            "trade" ->
+                                MarketplaceScreen(
+                                    viewModel = marketplaceViewModel,
+                                    onListingClick = { /* TODO(T172): navigate to listing detail */ },
+                                    onCreateListing = { /* TODO(T172): navigate to create listing */ },
+                                )
+
+                            "leaderboard" ->
+                                LeaderboardScreen(viewModel = leaderboardViewModel)
+
+                            "prizes" ->
+                                MyPrizesScreen(
+                                    viewModel = prizeViewModel,
+                                    onPrizeClick = { /* TODO(T125): navigate to prize detail */ },
+                                )
+
+                            "wallet" ->
+                                WalletScreen(
+                                    // TODO(T172): source from WalletViewModel
+                                    wallet =
+                                        WalletDto(
+                                            drawPointsBalance = 0,
+                                            revenuePointsBalance = 0,
+                                            drawTransactions = emptyList(),
+                                            revenueTransactions = emptyList(),
+                                        ),
+                                    onTopUp = { /* TODO: payment top-up route */ },
+                                )
+
+                            else -> Unit
+                        }
+                    }
                 }
 
                 // Campaigns
