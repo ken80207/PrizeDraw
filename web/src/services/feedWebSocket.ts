@@ -35,8 +35,8 @@ export type LiveDrawListener = (msg: LiveDrawStartedMessage | LiveDrawEndedMessa
 
 const BASE_WS_URL =
   process.env.NEXT_PUBLIC_WS_URL ?? `ws://${typeof window !== "undefined" ? window.location.host : "localhost:9092"}`;
-const MAX_RETRIES = 10;
-const BASE_BACKOFF_MS = 1000;
+const MAX_RETRIES = 3;
+const BASE_BACKOFF_MS = 3000;
 
 let ws: WebSocket | null = null;
 let retries = 0;
