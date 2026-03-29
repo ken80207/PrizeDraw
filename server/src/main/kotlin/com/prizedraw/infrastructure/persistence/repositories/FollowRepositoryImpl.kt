@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IFollowRepository
 import com.prizedraw.domain.entities.Follow
 import com.prizedraw.infrastructure.persistence.inTransaction
-import com.prizedraw.infrastructure.persistence.tables.FollowsTable
+import com.prizedraw.schema.tables.FollowsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

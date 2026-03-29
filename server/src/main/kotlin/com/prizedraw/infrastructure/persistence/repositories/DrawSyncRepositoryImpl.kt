@@ -2,7 +2,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IDrawSyncRepository
 import com.prizedraw.domain.entities.DrawSyncSession
-import com.prizedraw.infrastructure.persistence.tables.DrawSyncSessionsTable
+import com.prizedraw.schema.tables.DrawSyncSessionsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

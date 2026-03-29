@@ -5,7 +5,7 @@ import com.prizedraw.application.ports.output.IPlayerRepository
 import com.prizedraw.contracts.endpoints.AdminEndpoints
 import com.prizedraw.contracts.enums.StaffRole
 import com.prizedraw.domain.entities.Player
-import com.prizedraw.infrastructure.persistence.tables.PlayersTable
+import com.prizedraw.schema.tables.PlayersTable
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.respond

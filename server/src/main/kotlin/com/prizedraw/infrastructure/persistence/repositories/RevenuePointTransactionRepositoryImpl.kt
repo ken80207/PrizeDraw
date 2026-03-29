@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IRevenuePointTransactionRepository
 import com.prizedraw.domain.entities.RevenuePointTransaction
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.RevenuePointTransactionsTable
+import com.prizedraw.schema.tables.RevenuePointTransactionsTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant

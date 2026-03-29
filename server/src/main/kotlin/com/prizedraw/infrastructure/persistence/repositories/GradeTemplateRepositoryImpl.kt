@@ -3,8 +3,8 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IGradeTemplateRepository
 import com.prizedraw.domain.entities.GradeTemplate
 import com.prizedraw.domain.entities.GradeTemplateItem
-import com.prizedraw.infrastructure.persistence.tables.GradeTemplateItemsTable
-import com.prizedraw.infrastructure.persistence.tables.GradeTemplatesTable
+import com.prizedraw.schema.tables.GradeTemplateItemsTable
+import com.prizedraw.schema.tables.GradeTemplatesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

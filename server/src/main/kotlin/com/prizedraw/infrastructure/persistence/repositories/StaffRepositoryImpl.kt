@@ -4,7 +4,7 @@ import com.prizedraw.application.ports.output.IStaffRepository
 import com.prizedraw.domain.entities.Staff
 import com.prizedraw.domain.valueobjects.EmailAddress
 import com.prizedraw.domain.valueobjects.StaffId
-import com.prizedraw.infrastructure.persistence.tables.StaffTable
+import com.prizedraw.schema.tables.StaffTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

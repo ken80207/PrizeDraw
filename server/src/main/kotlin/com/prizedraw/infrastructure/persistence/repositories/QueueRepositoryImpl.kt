@@ -6,8 +6,8 @@ import com.prizedraw.contracts.enums.QueueEntryStatus
 import com.prizedraw.domain.entities.Queue
 import com.prizedraw.domain.entities.QueueEntry
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.QueueEntriesTable
-import com.prizedraw.infrastructure.persistence.tables.QueuesTable
+import com.prizedraw.schema.tables.QueueEntriesTable
+import com.prizedraw.schema.tables.QueuesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

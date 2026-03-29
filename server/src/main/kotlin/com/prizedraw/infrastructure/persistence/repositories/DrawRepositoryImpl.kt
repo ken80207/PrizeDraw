@@ -10,10 +10,10 @@ import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
-import com.prizedraw.infrastructure.persistence.tables.DrawTicketsTable
-import com.prizedraw.infrastructure.persistence.tables.PlayersTable
-import com.prizedraw.infrastructure.persistence.tables.PrizeDefinitionsTable
-import com.prizedraw.infrastructure.persistence.tables.TicketBoxesTable
+import com.prizedraw.schema.tables.DrawTicketsTable
+import com.prizedraw.schema.tables.PlayersTable
+import com.prizedraw.schema.tables.PrizeDefinitionsTable
+import com.prizedraw.schema.tables.TicketBoxesTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
@@ -32,6 +32,8 @@ import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import com.prizedraw.contracts.enums.DrawTicketStatus as ContractsDrawTicketStatus
+import com.prizedraw.contracts.enums.TicketBoxStatus as ContractsTicketBoxStatus
 
 public class DrawRepositoryImpl : IDrawRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -51,7 +53,7 @@ public class DrawRepositoryImpl : IDrawRepository {
                 .selectAll()
                 .where {
                     (DrawTicketsTable.ticketBoxId eq boxId) and
-                        (DrawTicketsTable.status eq DrawTicketStatus.AVAILABLE)
+                        (DrawTicketsTable.status eq ContractsDrawTicketStatus.AVAILABLE)
                 }.map { it.toDrawTicket() }
         }
 
@@ -73,7 +75,7 @@ public class DrawRepositoryImpl : IDrawRepository {
         newSuspendedTransaction {
             val offsetAt = OffsetDateTime.ofInstant(at.toJavaInstant(), ZoneOffset.UTC)
             DrawTicketsTable.update({ DrawTicketsTable.id eq ticketId }) {
-                it[status] = DrawTicketStatus.DRAWN
+                it[status] = ContractsDrawTicketStatus.DRAWN
                 it[drawnByPlayerId] = playerId.value
                 it[drawnAt] = offsetAt
                 it[DrawTicketsTable.prizeInstanceId] = prizeInstanceId.value
@@ -114,7 +116,7 @@ public class DrawRepositoryImpl : IDrawRepository {
                 ).selectAll()
                 .where {
                     (DrawTicketsTable.ticketBoxId inList boxIds) and
-                        (DrawTicketsTable.status eq DrawTicketStatus.DRAWN)
+                        (DrawTicketsTable.status eq ContractsDrawTicketStatus.DRAWN)
                 }.orderBy(DrawTicketsTable.drawnAt, SortOrder.DESC)
                 .limit(limit)
                 .map { row ->
@@ -143,7 +145,7 @@ public class DrawRepositoryImpl : IDrawRepository {
             ticketBoxId = this[DrawTicketsTable.ticketBoxId],
             prizeDefinitionId = PrizeDefinitionId(this[DrawTicketsTable.prizeDefinitionId]),
             position = this[DrawTicketsTable.position],
-            status = this[DrawTicketsTable.status],
+            status = this[DrawTicketsTable.status].toDomainEnum(),
             drawnByPlayerId = this[DrawTicketsTable.drawnByPlayerId]?.let { PlayerId(it) },
             drawnAt = this[DrawTicketsTable.drawnAt]?.toInstant()?.toKotlinInstant(),
             prizeInstanceId = this[DrawTicketsTable.prizeInstanceId]?.let { PrizeInstanceId(it) },
@@ -197,7 +199,7 @@ public class TicketBoxRepositoryImpl : ITicketBoxRepository {
                     it[name] = box.name
                     it[totalTickets] = box.totalTickets
                     it[remainingTickets] = box.remainingTickets
-                    it[status] = box.status
+                    it[status] = box.status.toContractsEnum()
                     it[soldOutAt] =
                         box.soldOutAt?.let { i -> OffsetDateTime.ofInstant(i.toJavaInstant(), ZoneOffset.UTC) }
                     it[displayOrder] = box.displayOrder
@@ -209,7 +211,7 @@ public class TicketBoxRepositoryImpl : ITicketBoxRepository {
                     it[name] = box.name
                     it[totalTickets] = box.totalTickets
                     it[remainingTickets] = box.remainingTickets
-                    it[status] = box.status
+                    it[status] = box.status.toContractsEnum()
                     it[soldOutAt] =
                         box.soldOutAt?.let { i -> OffsetDateTime.ofInstant(i.toJavaInstant(), ZoneOffset.UTC) }
                     it[displayOrder] = box.displayOrder
@@ -230,10 +232,19 @@ public class TicketBoxRepositoryImpl : ITicketBoxRepository {
             name = this[TicketBoxesTable.name],
             totalTickets = this[TicketBoxesTable.totalTickets],
             remainingTickets = this[TicketBoxesTable.remainingTickets],
-            status = this[TicketBoxesTable.status],
+            status = this[TicketBoxesTable.status].toDomainEnum(),
             soldOutAt = this[TicketBoxesTable.soldOutAt]?.toInstant()?.toKotlinInstant(),
             displayOrder = this[TicketBoxesTable.displayOrder],
             createdAt = this[TicketBoxesTable.createdAt].toInstant().toKotlinInstant(),
             updatedAt = this[TicketBoxesTable.updatedAt].toInstant().toKotlinInstant(),
         )
 }
+
+// Enum adapters between domain layer and contracts layer (same values, different packages).
+
+private fun ContractsDrawTicketStatus.toDomainEnum(): DrawTicketStatus = enumValueOf(name)
+
+private fun ContractsTicketBoxStatus.toDomainEnum(): com.prizedraw.domain.entities.TicketBoxStatus = enumValueOf(name)
+
+private fun com.prizedraw.domain.entities.TicketBoxStatus.toContractsEnum(): ContractsTicketBoxStatus =
+    enumValueOf(name)

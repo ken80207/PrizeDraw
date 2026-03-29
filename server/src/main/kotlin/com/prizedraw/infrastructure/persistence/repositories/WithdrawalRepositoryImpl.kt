@@ -4,7 +4,7 @@ import com.prizedraw.application.ports.output.IWithdrawalRepository
 import com.prizedraw.contracts.enums.WithdrawalStatus
 import com.prizedraw.domain.entities.WithdrawalRequest
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.WithdrawalRequestsTable
+import com.prizedraw.schema.tables.WithdrawalRequestsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

@@ -6,7 +6,7 @@ import com.prizedraw.domain.entities.CampaignFavorite
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.infrastructure.persistence.inTransaction
-import com.prizedraw.infrastructure.persistence.tables.CampaignFavoritesTable
+import com.prizedraw.schema.tables.CampaignFavoritesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

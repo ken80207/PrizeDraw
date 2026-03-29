@@ -2,7 +2,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.ITierConfigRepository
 import com.prizedraw.domain.entities.TierConfig
-import com.prizedraw.infrastructure.persistence.tables.TierConfigsTable
+import com.prizedraw.schema.tables.TierConfigsTable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.sql.SortOrder

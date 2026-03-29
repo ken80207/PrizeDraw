@@ -4,7 +4,7 @@ import com.prizedraw.application.ports.output.IXpTransactionRepository
 import com.prizedraw.domain.entities.XpSourceType
 import com.prizedraw.domain.entities.XpTransaction
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.XpTransactionsTable
+import com.prizedraw.schema.tables.XpTransactionsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.SortOrder

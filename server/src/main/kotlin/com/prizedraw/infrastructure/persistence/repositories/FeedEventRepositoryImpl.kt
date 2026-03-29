@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IFeedEventRepository
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.domain.entities.FeedEvent
-import com.prizedraw.infrastructure.persistence.tables.FeedEventsTable
+import com.prizedraw.schema.tables.FeedEventsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.SortOrder

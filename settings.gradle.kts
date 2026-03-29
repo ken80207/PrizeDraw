@@ -21,6 +21,8 @@ dependencyResolutionManagement {
 
 include(":api-contracts")
 include(":kmp-game-shared")
+include(":db-schema")
+include(":shared")
 include(":server")
 include(":kmp-shared-js")
 

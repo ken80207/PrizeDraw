@@ -5,7 +5,7 @@ import com.prizedraw.contracts.enums.ShippingOrderStatus
 import com.prizedraw.domain.entities.ShippingOrder
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
-import com.prizedraw.infrastructure.persistence.tables.ShippingOrdersTable
+import com.prizedraw.schema.tables.ShippingOrdersTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

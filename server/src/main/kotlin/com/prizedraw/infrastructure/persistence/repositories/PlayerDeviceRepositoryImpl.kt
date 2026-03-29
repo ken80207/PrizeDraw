@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IPlayerDeviceRepository
 import com.prizedraw.domain.entities.DevicePlatform
 import com.prizedraw.domain.entities.PlayerDevice
-import com.prizedraw.infrastructure.persistence.tables.PlayerDevicesTable
+import com.prizedraw.schema.tables.PlayerDevicesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

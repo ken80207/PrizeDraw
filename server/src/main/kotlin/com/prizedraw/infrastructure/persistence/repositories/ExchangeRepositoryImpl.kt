@@ -6,8 +6,8 @@ import com.prizedraw.domain.entities.ExchangeRequest
 import com.prizedraw.domain.entities.ExchangeRequestItem
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
-import com.prizedraw.infrastructure.persistence.tables.ExchangeRequestItemsTable
-import com.prizedraw.infrastructure.persistence.tables.ExchangeRequestsTable
+import com.prizedraw.schema.tables.ExchangeRequestItemsTable
+import com.prizedraw.schema.tables.ExchangeRequestsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

@@ -13,7 +13,7 @@ import com.prizedraw.application.ports.output.DomainEvent
 import com.prizedraw.application.ports.output.IOutboxRepository
 import com.prizedraw.domain.entities.OutboxEvent
 import com.prizedraw.domain.entities.OutboxEventStatus
-import com.prizedraw.infrastructure.persistence.tables.OutboxEventsTable
+import com.prizedraw.schema.tables.OutboxEventsTable
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

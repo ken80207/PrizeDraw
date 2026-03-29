@@ -8,9 +8,9 @@ import com.prizedraw.domain.entities.PityTracker
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
-import com.prizedraw.infrastructure.persistence.tables.PityPrizePoolTable
-import com.prizedraw.infrastructure.persistence.tables.PityRulesTable
-import com.prizedraw.infrastructure.persistence.tables.PityTrackersTable
+import com.prizedraw.schema.tables.PityPrizePoolTable
+import com.prizedraw.schema.tables.PityRulesTable
+import com.prizedraw.schema.tables.PityTrackersTable
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

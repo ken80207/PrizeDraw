@@ -6,7 +6,7 @@ import com.prizedraw.contracts.enums.OAuthProvider
 import com.prizedraw.domain.entities.Player
 import com.prizedraw.domain.valueobjects.PhoneNumber
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.PlayersTable
+import com.prizedraw.schema.tables.PlayersTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant

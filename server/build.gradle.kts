@@ -19,10 +19,13 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":api-contracts"))
+    // Shared infrastructure: HealthCheck plugin, JwtVerifier, CircuitBreakers,
+    // and EnvironmentConfig. Also brings in :db-schema (all Exposed table objects),
+    // :api-contracts (shared DTOs/enums), Ktor server core, Ktor client,
+    // Micrometer, Resilience4j, and Nimbus JOSE+JWT transitively.
+    implementation(project(":shared"))
 
-    // Ktor Server
-    implementation(libs.ktor.server.core)
+    // Ktor Server — additional plugins not in :shared
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
@@ -36,13 +39,6 @@ dependencies {
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.server.compression)
     implementation(libs.ktor.server.caching.headers)
-
-    // Exposed ORM
-    implementation(libs.exposed.core)
-    implementation(libs.exposed.dao)
-    implementation(libs.exposed.jdbc)
-    implementation(libs.exposed.json)
-    implementation(libs.exposed.kotlin.datetime)
 
     // Koin DI
     implementation(libs.koin.ktor)
@@ -62,7 +58,6 @@ dependencies {
     implementation(libs.lettuce.core)
 
     // Auth
-    implementation(libs.nimbus.jose.jwt)
     implementation(libs.bcrypt)
 
     // AWS S3
@@ -72,11 +67,7 @@ dependencies {
     implementation(libs.firebase.admin)
 
     // Monitoring
-    implementation(libs.micrometer.registry.prometheus)
     implementation(libs.opentelemetry.api)
-
-    // Logging
-    implementation(libs.logback.classic)
 
     // Testing
     testImplementation(libs.kotest.runner.junit5)

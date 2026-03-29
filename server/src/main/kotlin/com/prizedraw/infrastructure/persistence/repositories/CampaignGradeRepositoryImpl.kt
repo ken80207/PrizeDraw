@@ -4,8 +4,8 @@ import com.prizedraw.application.ports.output.ICampaignGradeRepository
 import com.prizedraw.domain.entities.CampaignGrade
 import com.prizedraw.domain.valueobjects.CampaignGradeId
 import com.prizedraw.domain.valueobjects.CampaignId
-import com.prizedraw.infrastructure.persistence.tables.CampaignGradesTable
-import com.prizedraw.infrastructure.persistence.tables.PrizeDefinitionsTable
+import com.prizedraw.schema.tables.CampaignGradesTable
+import com.prizedraw.schema.tables.PrizeDefinitionsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

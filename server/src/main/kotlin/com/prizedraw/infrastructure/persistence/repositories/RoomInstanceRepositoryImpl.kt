@@ -2,8 +2,8 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IRoomInstanceRepository
 import com.prizedraw.domain.entities.RoomInstance
-import com.prizedraw.infrastructure.persistence.tables.CampaignViewerStatsTable
-import com.prizedraw.infrastructure.persistence.tables.RoomInstancesTable
+import com.prizedraw.schema.tables.CampaignViewerStatsTable
+import com.prizedraw.schema.tables.RoomInstancesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

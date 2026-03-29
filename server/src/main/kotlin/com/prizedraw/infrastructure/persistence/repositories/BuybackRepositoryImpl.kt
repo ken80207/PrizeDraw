@@ -5,7 +5,7 @@ import com.prizedraw.domain.entities.BuybackRecord
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
-import com.prizedraw.infrastructure.persistence.tables.BuybackRecordsTable
+import com.prizedraw.schema.tables.BuybackRecordsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

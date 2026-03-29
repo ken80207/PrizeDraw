@@ -4,7 +4,7 @@ import com.prizedraw.application.services.TokenService
 import com.prizedraw.domain.entities.RefreshTokenFamily
 import com.prizedraw.domain.entities.TokenActorType
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.RefreshTokenFamiliesTable
+import com.prizedraw.schema.tables.RefreshTokenFamiliesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

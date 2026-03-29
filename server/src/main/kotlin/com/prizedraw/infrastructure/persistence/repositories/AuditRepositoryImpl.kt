@@ -1,9 +1,10 @@
 package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IAuditRepository
+import com.prizedraw.domain.entities.AuditActorType
 import com.prizedraw.domain.entities.AuditLog
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.AuditLogsTable
+import com.prizedraw.schema.tables.AuditLogsTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
@@ -23,6 +24,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import com.prizedraw.contracts.enums.AuditActorType as ContractsAuditActorType
 
 public class AuditRepositoryImpl : IAuditRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -34,7 +36,7 @@ public class AuditRepositoryImpl : IAuditRepository {
     override fun record(log: AuditLog) {
         AuditLogsTable.insert {
             it[id] = log.id
-            it[actorType] = log.actorType
+            it[actorType] = log.actorType.toContractsEnum()
             it[actorPlayerId] = log.actorPlayerId?.value
             it[actorStaffId] = log.actorStaffId
             it[action] = log.action
@@ -122,7 +124,7 @@ public class AuditRepositoryImpl : IAuditRepository {
     private fun ResultRow.toAuditLog(): AuditLog =
         AuditLog(
             id = this[AuditLogsTable.id],
-            actorType = this[AuditLogsTable.actorType],
+            actorType = this[AuditLogsTable.actorType].toDomainEnum(),
             actorPlayerId = this[AuditLogsTable.actorPlayerId]?.let { PlayerId(it) },
             actorStaffId = this[AuditLogsTable.actorStaffId],
             action = this[AuditLogsTable.action],
@@ -140,3 +142,9 @@ public class AuditRepositoryImpl : IAuditRepository {
             createdAt = this[AuditLogsTable.createdAt].toInstant().toKotlinInstant(),
         )
 }
+
+// Enum adapters between domain layer and contracts layer (same values, different packages).
+
+private fun AuditActorType.toContractsEnum(): ContractsAuditActorType = enumValueOf(name)
+
+private fun ContractsAuditActorType.toDomainEnum(): AuditActorType = enumValueOf(name)

@@ -3,9 +3,9 @@ package com.prizedraw.api.routes
 import com.prizedraw.api.plugins.requireStaffWithRole
 import com.prizedraw.contracts.endpoints.AdminEndpoints
 import com.prizedraw.contracts.enums.StaffRole
-import com.prizedraw.infrastructure.persistence.tables.KujiCampaignsTable
-import com.prizedraw.infrastructure.persistence.tables.PrizeDefinitionsTable
-import com.prizedraw.infrastructure.persistence.tables.UnlimitedCampaignsTable
+import com.prizedraw.schema.tables.KujiCampaignsTable
+import com.prizedraw.schema.tables.PrizeDefinitionsTable
+import com.prizedraw.schema.tables.UnlimitedCampaignsTable
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.respond

@@ -3,12 +3,13 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.ISupportRepository
 import com.prizedraw.contracts.enums.SupportTicketStatus
 import com.prizedraw.domain.entities.MessageAttachment
+import com.prizedraw.domain.entities.MessageChannel
 import com.prizedraw.domain.entities.SupportTicket
 import com.prizedraw.domain.entities.SupportTicketMessage
 import com.prizedraw.domain.entities.SupportTicketPriority
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.SupportTicketMessagesTable
-import com.prizedraw.infrastructure.persistence.tables.SupportTicketsTable
+import com.prizedraw.schema.tables.SupportTicketMessagesTable
+import com.prizedraw.schema.tables.SupportTicketsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
@@ -25,6 +26,8 @@ import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import com.prizedraw.contracts.enums.MessageChannel as ContractsMessageChannel
+import com.prizedraw.contracts.enums.SupportTicketPriority as ContractsSupportTicketPriority
 
 public class SupportRepositoryImpl : ISupportRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,7 +71,7 @@ public class SupportRepositoryImpl : ISupportRepository {
                         condition = condition and (SupportTicketsTable.status eq status)
                     }
                     if (priority != null) {
-                        condition = condition and (SupportTicketsTable.priority eq priority)
+                        condition = condition and (SupportTicketsTable.priority eq priority.toContractsEnum())
                     }
                     if (assignedToStaffId != null) {
                         condition = condition and (SupportTicketsTable.assignedToStaffId eq assignedToStaffId)
@@ -96,7 +99,7 @@ public class SupportRepositoryImpl : ISupportRepository {
                     it[category] = ticket.category
                     it[subject] = ticket.subject
                     it[status] = ticket.status
-                    it[priority] = ticket.priority
+                    it[priority] = ticket.priority.toContractsEnum()
                     it[satisfactionScore] = ticket.satisfactionScore
                     it[lineThreadId] = ticket.lineThreadId
                     it[contextTradeOrderId] = ticket.contextTradeOrderId
@@ -112,7 +115,7 @@ public class SupportRepositoryImpl : ISupportRepository {
                 SupportTicketsTable.update({ SupportTicketsTable.id eq ticket.id }) {
                     it[assignedToStaffId] = ticket.assignedToStaffId
                     it[status] = ticket.status
-                    it[priority] = ticket.priority
+                    it[priority] = ticket.priority.toContractsEnum()
                     it[satisfactionScore] = ticket.satisfactionScore
                     it[resolvedAt] = ticket.resolvedAt?.toOffsetDateTime()
                     it[closedAt] = ticket.closedAt?.toOffsetDateTime()
@@ -157,7 +160,7 @@ public class SupportRepositoryImpl : ISupportRepository {
                             }
                         ),
                     )
-                it[channel] = message.channel
+                it[channel] = message.channel.toContractsEnum()
                 it[lineMessageId] = message.lineMessageId
                 it[createdAt] = OffsetDateTime.ofInstant(message.createdAt.toJavaInstant(), ZoneOffset.UTC)
             }
@@ -176,7 +179,7 @@ public class SupportRepositoryImpl : ISupportRepository {
             category = this[SupportTicketsTable.category],
             subject = this[SupportTicketsTable.subject],
             status = this[SupportTicketsTable.status],
-            priority = this[SupportTicketsTable.priority],
+            priority = this[SupportTicketsTable.priority].toDomainEnum(),
             satisfactionScore = this[SupportTicketsTable.satisfactionScore],
             lineThreadId = this[SupportTicketsTable.lineThreadId],
             contextTradeOrderId = this[SupportTicketsTable.contextTradeOrderId],
@@ -211,7 +214,7 @@ public class SupportRepositoryImpl : ISupportRepository {
             authorStaffId = this[SupportTicketMessagesTable.authorStaffId],
             body = this[SupportTicketMessagesTable.body],
             attachments = attachments,
-            channel = this[SupportTicketMessagesTable.channel],
+            channel = this[SupportTicketMessagesTable.channel].toDomainEnum(),
             lineMessageId = this[SupportTicketMessagesTable.lineMessageId],
             createdAt = this[SupportTicketMessagesTable.createdAt].toInstant().toKotlinInstant(),
         )
@@ -220,3 +223,13 @@ public class SupportRepositoryImpl : ISupportRepository {
 
 private fun kotlinx.datetime.Instant.toOffsetDateTime(): OffsetDateTime =
     OffsetDateTime.ofInstant(toJavaInstant(), ZoneOffset.UTC)
+
+// Enum adapters between domain layer and contracts layer (same values, different packages).
+
+private fun SupportTicketPriority.toContractsEnum(): ContractsSupportTicketPriority = enumValueOf(name)
+
+private fun ContractsSupportTicketPriority.toDomainEnum(): SupportTicketPriority = enumValueOf(name)
+
+private fun MessageChannel.toContractsEnum(): ContractsMessageChannel = enumValueOf(name)
+
+private fun ContractsMessageChannel.toDomainEnum(): MessageChannel = enumValueOf(name)

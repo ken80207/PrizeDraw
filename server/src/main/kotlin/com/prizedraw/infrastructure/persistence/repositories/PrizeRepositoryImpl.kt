@@ -3,6 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IPrizeRepository
 import com.prizedraw.contracts.enums.CampaignType
 import com.prizedraw.contracts.enums.PrizeState
+import com.prizedraw.domain.entities.PrizeAcquisitionMethod
 import com.prizedraw.domain.entities.PrizeDefinition
 import com.prizedraw.domain.entities.PrizeInstance
 import com.prizedraw.domain.valueobjects.CampaignGradeId
@@ -10,8 +11,8 @@ import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
 import com.prizedraw.domain.valueobjects.PrizeDefinitionId
 import com.prizedraw.domain.valueobjects.PrizeInstanceId
-import com.prizedraw.infrastructure.persistence.tables.PrizeDefinitionsTable
-import com.prizedraw.infrastructure.persistence.tables.PrizeInstancesTable
+import com.prizedraw.schema.tables.PrizeDefinitionsTable
+import com.prizedraw.schema.tables.PrizeInstancesTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
@@ -30,6 +31,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import com.prizedraw.contracts.enums.PrizeAcquisitionMethod as ContractsPrizeAcquisitionMethod
 
 public class PrizeRepositoryImpl : IPrizeRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -147,7 +149,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
                 it[id] = instance.id.value
                 it[prizeDefinitionId] = instance.prizeDefinitionId.value
                 it[ownerId] = instance.ownerId.value
-                it[acquisitionMethod] = instance.acquisitionMethod
+                it[acquisitionMethod] = instance.acquisitionMethod.toContractsEnum()
                 it[sourceDrawTicketId] = instance.sourceDrawTicketId
                 it[sourceTradeOrderId] = instance.sourceTradeOrderId
                 it[sourceExchangeRequestId] = instance.sourceExchangeRequestId
@@ -269,7 +271,7 @@ public class PrizeRepositoryImpl : IPrizeRepository {
             id = PrizeInstanceId(this[PrizeInstancesTable.id]),
             prizeDefinitionId = PrizeDefinitionId(this[PrizeInstancesTable.prizeDefinitionId]),
             ownerId = PlayerId(this[PrizeInstancesTable.ownerId]),
-            acquisitionMethod = this[PrizeInstancesTable.acquisitionMethod],
+            acquisitionMethod = this[PrizeInstancesTable.acquisitionMethod].toDomainEnum(),
             sourceDrawTicketId = this[PrizeInstancesTable.sourceDrawTicketId],
             sourceTradeOrderId = this[PrizeInstancesTable.sourceTradeOrderId],
             sourceExchangeRequestId = this[PrizeInstancesTable.sourceExchangeRequestId],
@@ -283,3 +285,9 @@ public class PrizeRepositoryImpl : IPrizeRepository {
 
 private fun kotlinx.datetime.Instant.toOffsetDateTime(): java.time.OffsetDateTime =
     java.time.OffsetDateTime.ofInstant(toJavaInstant(), java.time.ZoneOffset.UTC)
+
+// Enum adapters between domain layer and contracts layer (same values, different packages).
+
+private fun PrizeAcquisitionMethod.toContractsEnum(): ContractsPrizeAcquisitionMethod = enumValueOf(name)
+
+private fun ContractsPrizeAcquisitionMethod.toDomainEnum(): PrizeAcquisitionMethod = enumValueOf(name)

@@ -2,7 +2,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IChatRepository
 import com.prizedraw.domain.entities.ChatMessage
-import com.prizedraw.infrastructure.persistence.tables.ChatMessagesTable
+import com.prizedraw.schema.tables.ChatMessagesTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant

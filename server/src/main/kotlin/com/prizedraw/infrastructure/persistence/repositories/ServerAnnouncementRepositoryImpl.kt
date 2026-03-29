@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.IServerAnnouncementRepository
 import com.prizedraw.domain.entities.AnnouncementEntityType
 import com.prizedraw.domain.entities.ServerAnnouncement
-import com.prizedraw.infrastructure.persistence.tables.ServerAnnouncementTable
+import com.prizedraw.schema.tables.ServerAnnouncementTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant

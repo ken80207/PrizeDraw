@@ -27,6 +27,7 @@ shadow = "8.1.1"
 nimbus-jose-jwt = "9.47"
 bcrypt = "0.10.2"
 micrometer = "1.14.2"
+resilience4j = "2.2.0"
 opentelemetry = "1.45.0"
 firebase-admin = "9.4.2"
 
@@ -120,7 +121,12 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 
 # Monitoring
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
+ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer-jvm", version.ref = "ktor" }
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
+
+# Resilience4j
+resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
+resilience4j-kotlin = { module = "io.github.resilience4j:resilience4j-kotlin", version.ref = "resilience4j" }
 
 # Testing
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }

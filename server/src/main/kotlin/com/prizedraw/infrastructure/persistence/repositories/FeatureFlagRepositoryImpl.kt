@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.FeatureFlagContext
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
 import com.prizedraw.domain.entities.FeatureFlag
-import com.prizedraw.infrastructure.persistence.tables.FeatureFlagsTable
+import com.prizedraw.schema.tables.FeatureFlagsTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant

@@ -2,7 +2,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.IBannerRepository
 import com.prizedraw.domain.entities.Banner
-import com.prizedraw.infrastructure.persistence.tables.BannersTable
+import com.prizedraw.schema.tables.BannersTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow

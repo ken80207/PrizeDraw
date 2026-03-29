@@ -3,7 +3,7 @@ package com.prizedraw.infrastructure.persistence.repositories
 import com.prizedraw.application.ports.output.INotificationRepository
 import com.prizedraw.domain.entities.Notification
 import com.prizedraw.infrastructure.persistence.inTransaction
-import com.prizedraw.infrastructure.persistence.tables.NotificationsTable
+import com.prizedraw.schema.tables.NotificationsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json

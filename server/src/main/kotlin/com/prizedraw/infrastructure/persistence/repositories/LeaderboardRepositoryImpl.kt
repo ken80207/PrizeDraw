@@ -4,8 +4,9 @@ import com.prizedraw.application.ports.output.ILeaderboardRepository
 import com.prizedraw.application.ports.output.LeaderboardEntry
 import com.prizedraw.domain.valueobjects.CampaignId
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.DrawTicketsTable
-import com.prizedraw.infrastructure.persistence.tables.PlayersTable
+import com.prizedraw.schema.tables.DrawTicketsTable
+import com.prizedraw.schema.tables.PlayersTable
+import com.prizedraw.schema.tables.TicketBoxesTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toJavaInstant
 import org.jetbrains.exposed.sql.JoinType
@@ -67,17 +68,15 @@ public class LeaderboardRepositoryImpl : ILeaderboardRepository {
             val untilOdt = OffsetDateTime.ofInstant(until.toJavaInstant(), ZoneOffset.UTC)
 
             // Join through ticket_boxes to scope by campaign
-            val ticketBoxesTable = com.prizedraw.infrastructure.persistence.tables.TicketBoxesTable
-
             DrawTicketsTable
-                .join(ticketBoxesTable, JoinType.INNER, DrawTicketsTable.ticketBoxId, ticketBoxesTable.id)
+                .join(TicketBoxesTable, JoinType.INNER, DrawTicketsTable.ticketBoxId, TicketBoxesTable.id)
                 .join(PlayersTable, JoinType.INNER, DrawTicketsTable.drawnByPlayerId, PlayersTable.id)
                 .select(
                     DrawTicketsTable.drawnByPlayerId,
                     PlayersTable.nickname,
                     DrawTicketsTable.id.count(),
                 ).where {
-                    (ticketBoxesTable.kujiCampaignId eq campaignId.value) and
+                    (TicketBoxesTable.kujiCampaignId eq campaignId.value) and
                         (DrawTicketsTable.drawnByPlayerId.isNotNull()) and
                         (DrawTicketsTable.drawnAt greaterEq fromOdt) and
                         (DrawTicketsTable.drawnAt less untilOdt)

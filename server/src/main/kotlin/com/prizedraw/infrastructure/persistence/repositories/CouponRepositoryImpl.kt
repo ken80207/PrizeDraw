@@ -2,13 +2,15 @@ package com.prizedraw.infrastructure.persistence.repositories
 
 import com.prizedraw.application.ports.output.ICouponRepository
 import com.prizedraw.domain.entities.Coupon
+import com.prizedraw.domain.entities.CouponApplicableTo
+import com.prizedraw.domain.entities.CouponDiscountType
 import com.prizedraw.domain.entities.DiscountCode
 import com.prizedraw.domain.entities.PlayerCoupon
 import com.prizedraw.domain.entities.PlayerCouponStatus
 import com.prizedraw.domain.valueobjects.PlayerId
-import com.prizedraw.infrastructure.persistence.tables.CouponsTable
-import com.prizedraw.infrastructure.persistence.tables.DiscountCodesTable
-import com.prizedraw.infrastructure.persistence.tables.PlayerCouponsTable
+import com.prizedraw.schema.tables.CouponsTable
+import com.prizedraw.schema.tables.DiscountCodesTable
+import com.prizedraw.schema.tables.PlayerCouponsTable
 import kotlinx.datetime.toJavaInstant
 import kotlinx.datetime.toKotlinInstant
 import org.jetbrains.exposed.sql.ResultRow
@@ -21,6 +23,9 @@ import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import com.prizedraw.contracts.enums.CouponApplicableTo as ContractsCouponApplicableTo
+import com.prizedraw.contracts.enums.CouponDiscountType as ContractsCouponDiscountType
+import com.prizedraw.contracts.enums.PlayerCouponStatus as ContractsPlayerCouponStatus
 
 public class CouponRepositoryImpl : ICouponRepository {
     // --- Coupon ---
@@ -55,9 +60,9 @@ public class CouponRepositoryImpl : ICouponRepository {
                     it[id] = coupon.id
                     it[name] = coupon.name
                     it[description] = coupon.description
-                    it[discountType] = coupon.discountType
+                    it[discountType] = coupon.discountType.toContractsEnum()
                     it[discountValue] = coupon.discountValue
-                    it[applicableTo] = coupon.applicableTo
+                    it[applicableTo] = coupon.applicableTo.toContractsEnum()
                     it[maxUsesPerPlayer] = coupon.maxUsesPerPlayer
                     it[totalIssued] = coupon.totalIssued
                     it[totalUsed] = coupon.totalUsed
@@ -159,7 +164,7 @@ public class CouponRepositoryImpl : ICouponRepository {
                 .where {
                     val base = PlayerCouponsTable.playerId eq playerId.value
                     if (status != null) {
-                        base and (PlayerCouponsTable.status eq status)
+                        base and (PlayerCouponsTable.status eq status.toContractsEnum())
                     } else {
                         base
                     }
@@ -181,7 +186,7 @@ public class CouponRepositoryImpl : ICouponRepository {
                     it[couponId] = playerCoupon.couponId
                     it[discountCodeId] = playerCoupon.discountCodeId
                     it[useCount] = playerCoupon.useCount
-                    it[status] = playerCoupon.status
+                    it[status] = playerCoupon.status.toContractsEnum()
                     it[issuedAt] = playerCoupon.issuedAt.toOffsetDateTime()
                     it[lastUsedAt] = playerCoupon.lastUsedAt?.toOffsetDateTime()
                     it[createdAt] = playerCoupon.createdAt.toOffsetDateTime()
@@ -190,7 +195,7 @@ public class CouponRepositoryImpl : ICouponRepository {
             } else {
                 PlayerCouponsTable.update({ PlayerCouponsTable.id eq playerCoupon.id }) {
                     it[useCount] = playerCoupon.useCount
-                    it[status] = playerCoupon.status
+                    it[status] = playerCoupon.status.toContractsEnum()
                     it[lastUsedAt] = playerCoupon.lastUsedAt?.toOffsetDateTime()
                     it[updatedAt] = playerCoupon.updatedAt.toOffsetDateTime()
                 }
@@ -207,9 +212,9 @@ public class CouponRepositoryImpl : ICouponRepository {
             id = this[CouponsTable.id],
             name = this[CouponsTable.name],
             description = this[CouponsTable.description],
-            discountType = this[CouponsTable.discountType],
+            discountType = this[CouponsTable.discountType].toDomainEnum(),
             discountValue = this[CouponsTable.discountValue],
-            applicableTo = this[CouponsTable.applicableTo],
+            applicableTo = this[CouponsTable.applicableTo].toDomainEnum(),
             maxUsesPerPlayer = this[CouponsTable.maxUsesPerPlayer],
             totalIssued = this[CouponsTable.totalIssued],
             totalUsed = this[CouponsTable.totalUsed],
@@ -243,7 +248,7 @@ public class CouponRepositoryImpl : ICouponRepository {
             couponId = this[PlayerCouponsTable.couponId],
             discountCodeId = this[PlayerCouponsTable.discountCodeId],
             useCount = this[PlayerCouponsTable.useCount],
-            status = this[PlayerCouponsTable.status],
+            status = this[PlayerCouponsTable.status].toDomainEnum(),
             issuedAt = this[PlayerCouponsTable.issuedAt].toInstant().toKotlinInstant(),
             lastUsedAt = this[PlayerCouponsTable.lastUsedAt]?.toInstant()?.toKotlinInstant(),
             createdAt = this[PlayerCouponsTable.createdAt].toInstant().toKotlinInstant(),
@@ -253,3 +258,17 @@ public class CouponRepositoryImpl : ICouponRepository {
 
 private fun kotlinx.datetime.Instant.toOffsetDateTime(): OffsetDateTime =
     OffsetDateTime.ofInstant(toJavaInstant(), ZoneOffset.UTC)
+
+// Enum adapters between domain layer and contracts layer (same values, different packages).
+
+private fun CouponDiscountType.toContractsEnum(): ContractsCouponDiscountType = enumValueOf(name)
+
+private fun ContractsCouponDiscountType.toDomainEnum(): CouponDiscountType = enumValueOf(name)
+
+private fun CouponApplicableTo.toContractsEnum(): ContractsCouponApplicableTo = enumValueOf(name)
+
+private fun ContractsCouponApplicableTo.toDomainEnum(): CouponApplicableTo = enumValueOf(name)
+
+private fun PlayerCouponStatus.toContractsEnum(): ContractsPlayerCouponStatus = enumValueOf(name)
+
+private fun ContractsPlayerCouponStatus.toDomainEnum(): PlayerCouponStatus = enumValueOf(name)
