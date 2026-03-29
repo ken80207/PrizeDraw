@@ -31,7 +31,7 @@ public fun Application.configureCORS() {
                 if (h.startsWith("http")) h else "http://$h"
             }
         } else {
-            listOf("http://localhost:3000", "http://localhost:3001", "http://localhost:3002")
+            listOf("http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003")
         }
 
     install(CORS) {

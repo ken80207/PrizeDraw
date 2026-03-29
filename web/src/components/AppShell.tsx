@@ -69,6 +69,7 @@ function SideNav({ pathname, player }: { pathname: string; player: PlayerDto | n
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={`flex items-center gap-3 px-4 py-3 rounded-full font-headline tracking-wider uppercase text-xs font-bold transition-all duration-300 ${
                 active
                   ? "bg-primary-container/10 text-primary-container"
@@ -163,7 +164,7 @@ function MobileBottomBar({ pathname }: { pathname: string }) {
       {MOBILE_NAV.map((item) => {
         const active = isActive(pathname, item.href);
         return (
-          <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center">
+          <Link key={item.href} href={item.href} aria-label={tn(item.labelKey)} aria-current={active ? "page" : undefined} className="flex flex-col items-center justify-center">
             {active ? (
               <span className="flex items-center justify-center bg-gradient-to-tr from-primary to-primary-container text-surface-dim rounded-full p-2 h-12 w-12 scale-110">
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>

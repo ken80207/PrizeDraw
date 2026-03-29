@@ -82,7 +82,7 @@ services:
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       STORAGE_BUCKET: ${STORAGE_BUCKET:-prizedraw}
-      CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001,localhost:3002}
+      CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001,localhost:3002,localhost:3003}
       DRAW_SERVICE_URL: http://draw-service:9093
       REALTIME_GATEWAY_URL: http://realtime-gateway:9094
       NOTIFICATION_WORKER_URL: http://notification-worker:9095

@@ -14,6 +14,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -44,10 +45,15 @@ private const val DEFAULT_PORT = 9093
  * no HTTP call to the Core API is made for authentication.
  */
 public fun main() {
-    log.info("draw-service starting on port {}", System.getenv("PORT") ?: DEFAULT_PORT)
-    embeddedServer(CIO, port = System.getenv("PORT")?.toIntOrNull() ?: DEFAULT_PORT) {
-        module()
-    }.start(wait = true)
+    val port = System.getenv("PORT")?.toIntOrNull() ?: DEFAULT_PORT
+    log.info("draw-service starting on port {}", port)
+    val env = io.ktor.server.engine.applicationEnvironment {
+        config = io.ktor.server.config.HoconApplicationConfig(com.typesafe.config.ConfigFactory.load())
+        log = LoggerFactory.getLogger("ktor.application")
+    }
+    embeddedServer(CIO, env, configure = {
+        connector { this.port = port }
+    }).start(wait = true)
 }
 
 /**

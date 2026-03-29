@@ -130,6 +130,7 @@ export default function TradePage() {
             <input
               type="text"
               placeholder={tt("searchPlaceholder")}
+              aria-label={tt("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-xl bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -163,6 +164,7 @@ export default function TradePage() {
                 <input
                   type="number"
                   placeholder="Min"
+                  aria-label={tt("priceMin")}
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value)}
                   className="w-20 bg-transparent px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
@@ -171,6 +173,7 @@ export default function TradePage() {
                 <input
                   type="number"
                   placeholder="Max"
+                  aria-label={tt("priceMax")}
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
                   className="w-20 bg-transparent px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"

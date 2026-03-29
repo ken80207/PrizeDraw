@@ -338,7 +338,9 @@
     "listingNotAvailable": "此商品已無法購買",
     "buyDrawPoints": "抽獎點數",
     "processing": "處理中...",
-    "loadFailed": "載入市集失敗"
+    "loadFailed": "載入市集失敗",
+    "priceMin": "最低價格",
+    "priceMax": "最高價格"
   },
   "exchange": {
     "title": "賞品交換",

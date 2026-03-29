@@ -104,10 +104,12 @@ export default function LeaderboardPage() {
               </h1>
             </div>
             {/* Type tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+            <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar" role="tablist">
               {TYPE_TABS.map((tab) => (
                 <button
                   key={tab.value}
+                  role="tab"
+                  aria-selected={type === tab.value}
                   onClick={() => setType(tab.value)}
                   className={`shrink-0 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-headline font-bold tracking-wide transition-all ${
                     type === tab.value
@@ -123,10 +125,12 @@ export default function LeaderboardPage() {
           </div>
 
           {/* Period tabs */}
-          <div className="flex items-center bg-surface-container-low p-1.5 rounded-full self-start shrink-0">
+          <div className="flex items-center bg-surface-container-low p-1.5 rounded-full self-start shrink-0" role="tablist">
             {PERIOD_TABS.map((tab) => (
               <button
                 key={tab.value}
+                role="tab"
+                aria-selected={period === tab.value}
                 data-testid={
                   tab.value === "TODAY" ? "period-today"
                   : tab.value === "THIS_WEEK" ? "period-this-week"

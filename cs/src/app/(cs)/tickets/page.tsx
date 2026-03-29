@@ -146,7 +146,7 @@ export default function TicketsPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Filter panel */}
-        <aside className="w-44 flex-shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4">
+        <aside className="hidden w-44 flex-shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 md:block">
           {/* Status filter */}
           <div className="mb-5">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">

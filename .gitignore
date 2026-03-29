@@ -109,3 +109,4 @@ DerivedData/
 .kotlin/
 kotlin-js-store/
 .worktrees/
+.gstack/

@@ -35,28 +35,9 @@ export default function DashboardPage() {
     ]).then(([statsResult, activityResult]) => {
       if (statsResult.status === "fulfilled") {
         setStats(statsResult.value);
-      } else {
-        setStats({
-          todayRevenue: 45200,
-          activePlayers: 1234,
-          activeCampaigns: 8,
-          pendingWithdrawals: 3,
-          openTickets: 12,
-          pendingShipments: 5,
-          revenueChange: 12,
-          playerChange: 5,
-        });
       }
       if (activityResult.status === "fulfilled") {
         setActivity(activityResult.value);
-      } else {
-        setActivity([
-          { id: "1", type: "draw", message: "PlayerXXX 抽到 A賞（一番賞 ABC）", timestamp: "14:32" },
-          { id: "2", type: "trade", message: "交易完成 #1234（350 點）", timestamp: "14:30" },
-          { id: "3", type: "ticket", message: "新工單 #1567 已建立", timestamp: "14:28" },
-          { id: "4", type: "draw", message: "PlayerYYY 抽到 B賞（無限賞 XYZ）", timestamp: "14:25" },
-          { id: "5", type: "withdrawal", message: "提領申請 #89（$380）待審核", timestamp: "14:20" },
-        ]);
       }
       setIsLoading(false);
     });
@@ -121,53 +102,19 @@ export default function DashboardPage() {
         {/* Charts */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Revenue chart placeholder */}
+            {/* Revenue chart — TODO: integrate real chart library (e.g. recharts) with API data */}
             <div className="rounded-lg border border-slate-200 bg-white p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">近 7 日營收趨勢</h3>
-              <div className="flex items-end gap-1 h-32">
-                {[38, 42, 35, 50, 48, 44, 45].map((v, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-t bg-indigo-200 hover:bg-indigo-400 transition-colors cursor-pointer"
-                    style={{ height: `${(v / 55) * 100}%` }}
-                    title={`$${v},000`}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 flex justify-between text-xs text-slate-400">
-                <span>週一</span>
-                <span>今日</span>
+              <div className="flex items-center justify-center h-32 text-sm text-slate-400">
+                接入 API 後顯示圖表
               </div>
             </div>
 
-            {/* Campaign distribution */}
+            {/* Campaign distribution — TODO: integrate real data */}
             <div className="rounded-lg border border-slate-200 bg-white p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">活動類型分佈</h3>
-              <div className="flex items-center justify-center h-32">
-                <div className="relative">
-                  <svg width="100" height="100" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#e0e7ff" strokeWidth="3.8" />
-                    <circle
-                      cx="18" cy="18" r="15.9" fill="transparent"
-                      stroke="#4f46e5" strokeWidth="3.8"
-                      strokeDasharray="60 40"
-                      strokeDashoffset="25"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-slate-700">60%</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 flex justify-center gap-4 text-xs text-slate-500">
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-indigo-500 inline-block" />
-                  一番賞
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-indigo-200 inline-block" />
-                  無限賞
-                </span>
+              <div className="flex items-center justify-center h-32 text-sm text-slate-400">
+                接入 API 後顯示圖表
               </div>
             </div>
           </div>

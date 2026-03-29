@@ -66,7 +66,7 @@ async function request<T>(
     }
     // Refresh failed — clear session so the UI can redirect to login
     authStore.clearSession();
-    throw new ApiError(401, "Session expired. Please log in again.");
+    throw new ApiError(401, "登入已過期，請重新登入");
   }
 
   if (!res.ok) {

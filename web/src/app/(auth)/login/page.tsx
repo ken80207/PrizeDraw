@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useAuthStore } from "@/stores/authStore";
+import { apiClient } from "@/services/apiClient";
+import type { PlayerDto } from "@/stores/authStore";
 
 type OAuthProvider = "GOOGLE" | "APPLE" | "LINE";
 
@@ -133,6 +136,11 @@ export default function LoginPage() {
 
         {/* Glass card */}
         <div className="glass-panel rounded-2xl p-8 md:p-10 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+          {/* Dev Mode Login */}
+          {process.env.NEXT_PUBLIC_DEV_MODE === "true" && (
+            <DevLoginPanel />
+          )}
+
           {/* Social login — 3 buttons in a row */}
           <div className="grid grid-cols-3 gap-4 mb-10">
             <SocialButton
@@ -186,6 +194,7 @@ export default function LoginPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t("phonePlaceholder")}
+                  aria-label={t("phoneNumber")}
                   className="flex-1 bg-[#0c0c1f] border-none rounded-xl px-4 py-4 text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all font-medium"
                 />
               </div>
@@ -212,6 +221,7 @@ export default function LoginPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder={t("codePlaceholder")}
+                  aria-label={t("verificationCode")}
                   className="w-full bg-[#0c0c1f] border-none rounded-xl px-4 py-4 text-[#e2e0fc] placeholder:text-[#d8c3ad]/30 tracking-[0.5em] text-center focus:outline-none focus:ring-1 focus:ring-[#ffc174] transition-all font-bold"
                 />
               </div>
@@ -277,12 +287,14 @@ interface SocialButtonProps {
   onClick: () => void;
 }
 
-function SocialButton({ icon, loading, disabled, onClick }: SocialButtonProps) {
+function SocialButton({ provider, icon, loading, disabled, onClick }: SocialButtonProps) {
+  const providerLabel = provider === "GOOGLE" ? "Google" : provider === "APPLE" ? "Apple" : "LINE";
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={`${providerLabel} 登入`}
       className="flex items-center justify-center h-14 bg-[#28283d] rounded-full hover:bg-[#37374d] transition-colors group disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? (
@@ -293,6 +305,66 @@ function SocialButton({ icon, loading, disabled, onClick }: SocialButtonProps) {
         </span>
       )}
     </button>
+  );
+}
+
+const DEV_PLAYERS = [
+  { id: "00000000-0000-0000-0000-000000000001", nickname: "玩家小明" },
+  { id: "00000000-0000-0000-0000-000000000002", nickname: "玩家小花" },
+  { id: "00000000-0000-0000-0000-000000000003", nickname: "觀戰者小王" },
+];
+
+function DevLoginPanel() {
+  const router = useRouter();
+  const [devLoading, setDevLoading] = useState<string | null>(null);
+
+  async function handleDevLogin(playerId: string) {
+    setDevLoading(playerId);
+    try {
+      const res = await fetch("/api/dev-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId }),
+      });
+      if (!res.ok) throw new Error("Dev login failed");
+      const { accessToken, refreshToken } = await res.json();
+
+      const playerRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/players/me`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!playerRes.ok) throw new Error("Failed to fetch player");
+      const player: PlayerDto = await playerRes.json();
+
+      useAuthStore.getState().setSession(player, accessToken, refreshToken);
+      router.push("/");
+    } catch (e) {
+      console.error("Dev login error:", e);
+    } finally {
+      setDevLoading(null);
+    }
+  }
+
+  return (
+    <div className="mb-6 rounded-xl border border-dashed border-[#ffc174]/40 bg-[#ffc174]/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="material-symbols-outlined text-[#ffc174] text-sm">engineering</span>
+        <span className="text-xs font-bold text-[#ffc174] uppercase tracking-wider">Dev Mode</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {DEV_PLAYERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => handleDevLogin(p.id)}
+            disabled={devLoading !== null}
+            className="px-4 py-2 rounded-lg bg-[#28283d] border border-[#ffc174]/30 text-sm font-medium text-[#e2e0fc] hover:bg-[#37374d] transition-colors disabled:opacity-50"
+          >
+            {devLoading === p.id ? "..." : p.nickname}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

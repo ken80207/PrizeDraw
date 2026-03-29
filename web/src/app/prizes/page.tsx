@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useAuthStore } from "@/stores/authStore";
 import { apiClient } from "@/services/apiClient";
 import { Skeleton } from "@/components/LoadingSkeleton";
 import { toast } from "@/components/Toast";
@@ -32,8 +34,20 @@ function gradeStyle(grade: string): string {
 }
 
 export default function PrizesPage() {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const t = useTranslations("prizes");
   const tCommon = useTranslations("common");
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const FILTER_TABS: { label: string; value: FilterState }[] = [
     { label: t("filterAll"), value: "ALL" },

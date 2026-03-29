@@ -298,7 +298,9 @@
     "confirmListing": "Confirm Listing",
     "sortNewest": "Newest",
     "sortPriceLow": "Price: Low to High",
-    "sortPriceHigh": "Price: High to Low"
+    "sortPriceHigh": "Price: High to Low",
+    "priceMin": "Minimum price",
+    "priceMax": "Maximum price"
   },
   "exchange": {
     "title": "Prize Exchange",

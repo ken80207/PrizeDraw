@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useAuthStore } from "@/stores/authStore";
 import { apiClient } from "@/services/apiClient";
 import { Skeleton } from "@/components/LoadingSkeleton";
 
@@ -42,8 +43,20 @@ function getTxIcon(type: string): string {
 }
 
 export default function WalletPage() {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const tw = useTranslations("wallet");
   const tc = useTranslations("common");
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const TX_TYPE_LABEL: Record<string, string> = {
     DRAW_PURCHASE: tw("recharge"),
@@ -61,7 +74,6 @@ export default function WalletPage() {
     return TX_TYPE_LABEL[type] ?? type.toLowerCase().replace(/_/g, " ");
   }
 
-  const router = useRouter();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

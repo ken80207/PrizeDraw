@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { authStore, subscribeToAuthStore } from "@/stores/authStore";
+import { authStore, subscribeToAuthStore, useAuthStore } from "@/stores/authStore";
 import type { PlayerDto } from "@/stores/authStore";
 import { apiClient } from "@/services/apiClient";
 import { toast } from "@/components/Toast";
@@ -22,7 +22,18 @@ export default function SettingsPage() {
   const tFollow = useTranslations("follow");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [player, setPlayer] = useState<PlayerDto | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
   const [nickname, setNickname] = useState("");
   const [editingNickname, setEditingNickname] = useState(false);
   const [animationMode, setAnimationMode] = useState<AnimationMode>("INSTANT");
