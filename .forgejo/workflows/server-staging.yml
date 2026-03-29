@@ -266,11 +266,11 @@ jobs:
           NAS_HOST="${{ secrets.NAS_HOST }}"
           NAS_USER="${{ secrets.NAS_USER }}"
           SERVICES="${{ needs.detect-changes.outputs.services-to-build }}"
+          DEPLOY_DIR="/home/${NAS_USER}/prizedraw-staging"
+          SSH_CMD="ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST}"
 
-          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << ENDSSH
-            cd /home/${{ secrets.NAS_USER }}/prizedraw-staging
-
-            cat > .env << 'ENVEOF'
+          # Write .env file
+          ${SSH_CMD} "cat > ${DEPLOY_DIR}/.env" << 'ENVEOF'
           APP_ENV=staging
           LOG_LEVEL=INFO
           RATE_LIMIT_ENABLED=true
@@ -290,64 +290,19 @@ jobs:
           IMAGE_TAG=staging
           ENVEOF
 
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+          # Login to GHCR on NAS
+          ${SSH_CMD} "echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u kennily --password-stdin"
 
-            # Start infra services first and wait for healthy
-            docker compose up -d postgres redis minio
-            echo "Waiting for infra services..."
-            for i in \$(seq 1 20); do
-              if docker compose exec -T postgres pg_isready -U prizedraw 2>/dev/null; then
-                echo "✅ PostgreSQL ready"
-                break
-              fi
-              sleep 3
-            done
-            for i in \$(seq 1 10); do
-              if docker compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; then
-                echo "✅ Redis ready"
-                break
-              fi
-              sleep 2
-            done
+          # Pull changed service images
+          for SERVICE in $(echo "${SERVICES}" | tr ',' ' '); do
+            echo "📦 Pulling ${SERVICE}..."
+            ${SSH_CMD} "cd ${DEPLOY_DIR} && docker compose pull ${SERVICE}"
+          done
 
-            # Deploy core-api first if it's in the list (runs Flyway migrations)
-            if echo "${SERVICES}" | grep -q "core-api"; then
-              echo "🚀 Deploying core-api first (Flyway migrations)..."
-              docker compose pull core-api
-              docker compose up -d --no-deps core-api
-              for i in \$(seq 1 12); do
-                if curl -sf http://localhost:9092/health > /dev/null 2>&1; then
-                  echo "✅ core-api is healthy"
-                  break
-                fi
-                if [ \$i -eq 12 ]; then
-                  echo "❌ core-api failed health check"
-                  docker logs prizedraw-staging-core-api --tail 30
-                  exit 1
-                fi
-                sleep 5
-              done
-            fi
-
-            # Deploy remaining changed services
-            REMAINING=""
-            for SERVICE in $(echo "${SERVICES}" | tr ',' ' '); do
-              if [ "\$SERVICE" != "core-api" ]; then
-                REMAINING="\$REMAINING \$SERVICE"
-              fi
-            done
-
-            if [ -n "\$REMAINING" ]; then
-              echo "🚀 Deploying:\$REMAINING"
-              for SERVICE in \$REMAINING; do
-                docker compose pull \$SERVICE
-              done
-              for SERVICE in \$REMAINING; do
-                docker compose up -d --no-deps \$SERVICE
-              done
-            fi
-
-          ENDSSH
+          # Deploy all services - docker-compose handles ordering via depends_on + healthcheck
+          # (postgres/redis/minio start first, wait until healthy, then app services start)
+          echo "🚀 Deploying..."
+          ${SSH_CMD} "cd ${DEPLOY_DIR} && docker compose up -d"
 
       - name: Health check
         run: |
