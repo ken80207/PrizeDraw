@@ -21,39 +21,40 @@ import io.ktor.server.testing.testApplication
  * - GET /ready returns 200 when the readiness check returns true.
  * - GET /ready returns 503 when the readiness check throws an exception.
  */
-class ReadinessTest : FunSpec({
+class ReadinessTest :
+    FunSpec({
 
-    test("health endpoint returns 200") {
-        testApplication {
-            application { configureHealthCheck() }
-            val response = client.get("/health")
-            response.status shouldBe HttpStatusCode.OK
-        }
-    }
-
-    test("ready endpoint returns 503 when check returns false") {
-        testApplication {
-            application { configureHealthCheck(ReadinessCheck { false }) }
-            val response = client.get("/ready")
-            response.status shouldBe HttpStatusCode.ServiceUnavailable
-        }
-    }
-
-    test("ready endpoint returns 200 when check passes") {
-        testApplication {
-            application { configureHealthCheck(ReadinessCheck { true }) }
-            val response = client.get("/ready")
-            response.status shouldBe HttpStatusCode.OK
-        }
-    }
-
-    test("ready endpoint returns 503 when check throws") {
-        testApplication {
-            application {
-                configureHealthCheck(ReadinessCheck { error("DB connection refused") })
+        test("health endpoint returns 200") {
+            testApplication {
+                application { configureHealthCheck() }
+                val response = client.get("/health")
+                response.status shouldBe HttpStatusCode.OK
             }
-            val response = client.get("/ready")
-            response.status shouldBe HttpStatusCode.ServiceUnavailable
         }
-    }
-})
+
+        test("ready endpoint returns 503 when check returns false") {
+            testApplication {
+                application { configureHealthCheck(ReadinessCheck { false }) }
+                val response = client.get("/ready")
+                response.status shouldBe HttpStatusCode.ServiceUnavailable
+            }
+        }
+
+        test("ready endpoint returns 200 when check passes") {
+            testApplication {
+                application { configureHealthCheck(ReadinessCheck { true }) }
+                val response = client.get("/ready")
+                response.status shouldBe HttpStatusCode.OK
+            }
+        }
+
+        test("ready endpoint returns 503 when check throws") {
+            testApplication {
+                application {
+                    configureHealthCheck(ReadinessCheck { error("DB connection refused") })
+                }
+                val response = client.get("/ready")
+                response.status shouldBe HttpStatusCode.ServiceUnavailable
+            }
+        }
+    })

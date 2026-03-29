@@ -17,31 +17,32 @@ import io.kotest.matchers.shouldBe
  * - The draw-service base path constant matches the route registration.
  * - Error response shapes match the contract DTOs.
  */
-class CoreApiContractTest : FunSpec({
+class CoreApiContractTest :
+    FunSpec({
 
-    test("draw-service kuji endpoint base path matches api-contracts constant") {
-        // This is a contract guard: if DrawEndpoints.BASE or DRAW_KUJI changes in
-        // api-contracts, the Routing.kt registration must change accordingly.
-        // Failing this test means a breaking change to the published API surface.
-        val expectedBase = "/api/v1/draws"
-        val expectedKujiPath = "$expectedBase/kuji"
+        test("draw-service kuji endpoint base path matches api-contracts constant") {
+            // This is a contract guard: if DrawEndpoints.BASE or DRAW_KUJI changes in
+            // api-contracts, the Routing.kt registration must change accordingly.
+            // Failing this test means a breaking change to the published API surface.
+            val expectedBase = "/api/v1/draws"
+            val expectedKujiPath = "$expectedBase/kuji"
 
-        com.prizedraw.contracts.endpoints.DrawEndpoints.BASE shouldBe expectedBase
-        com.prizedraw.contracts.endpoints.DrawEndpoints.DRAW_KUJI shouldBe expectedKujiPath
-    }
+            com.prizedraw.contracts.endpoints.DrawEndpoints.BASE shouldBe expectedBase
+            com.prizedraw.contracts.endpoints.DrawEndpoints.DRAW_KUJI shouldBe expectedKujiPath
+        }
 
-    test("draw-service unlimited endpoint path matches api-contracts constant") {
-        val expected = "/api/v1/draws/unlimited"
-        com.prizedraw.contracts.endpoints.DrawEndpoints.DRAW_UNLIMITED shouldBe expected
-    }
+        test("draw-service unlimited endpoint path matches api-contracts constant") {
+            val expected = "/api/v1/draws/unlimited"
+            com.prizedraw.contracts.endpoints.DrawEndpoints.DRAW_UNLIMITED shouldBe expected
+        }
 
-    test("draw-service queue join endpoint path matches api-contracts constant") {
-        val expected = "/api/v1/draws/kuji/queue/join"
-        com.prizedraw.contracts.endpoints.DrawEndpoints.QUEUE_JOIN shouldBe expected
-    }
+        test("draw-service queue join endpoint path matches api-contracts constant") {
+            val expected = "/api/v1/draws/kuji/queue/join"
+            com.prizedraw.contracts.endpoints.DrawEndpoints.QUEUE_JOIN shouldBe expected
+        }
 
-    test("draw-service sync progress endpoint path matches api-contracts constant") {
-        val expected = "/api/v1/draws/sync/progress"
-        com.prizedraw.contracts.endpoints.DrawEndpoints.SYNC_PROGRESS shouldBe expected
-    }
-})
+        test("draw-service sync progress endpoint path matches api-contracts constant") {
+            val expected = "/api/v1/draws/sync/progress"
+            com.prizedraw.contracts.endpoints.DrawEndpoints.SYNC_PROGRESS shouldBe expected
+        }
+    })

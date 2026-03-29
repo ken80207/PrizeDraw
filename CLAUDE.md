@@ -209,6 +209,15 @@ k6 run --env BASE_URL=http://localhost:9092 infra/k6/load-test.js
 | Rate limiting | disabled | relaxed | strict |
 | PDB | none | none | minAvailable: 2 |
 
+## gstack
+
+This repo vendors gstack for Codex in `.agents/skills/gstack`.
+
+- Use the `gstack-browse` skill for gstack-driven web browsing workflows when browser automation or screenshots are needed.
+- Never use `mcp__claude-in-chrome__*` tools in this project.
+- Available gstack skills: `gstack-office-hours`, `gstack-plan-ceo-review`, `gstack-plan-eng-review`, `gstack-plan-design-review`, `gstack-design-consultation`, `gstack-design-shotgun`, `gstack-review`, `gstack-ship`, `gstack-land-and-deploy`, `gstack-canary`, `gstack-benchmark`, `gstack-browse`, `gstack-connect-chrome`, `gstack-qa`, `gstack-qa-only`, `gstack-design-review`, `gstack-setup-browser-cookies`, `gstack-setup-deploy`, `gstack-retro`, `gstack-investigate`, `gstack-document-release`, `gstack-cso`, `gstack-autoplan`, `gstack-careful`, `gstack-freeze`, `gstack-guard`, `gstack-unfreeze`, `gstack-upgrade`.
+- If gstack skills are missing or stale, run `cd .agents/skills/gstack && ./setup --host codex`.
+
 ## Microservice 開發與部署注意事項
 
 ### 本地開發
