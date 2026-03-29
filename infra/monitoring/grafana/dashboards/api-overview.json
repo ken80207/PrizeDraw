@@ -39,6 +39,12 @@
       "id": "stat",
       "name": "Stat",
       "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "state-timeline",
+      "name": "State timeline",
+      "version": ""
     }
   ],
   "annotations": {
@@ -54,7 +60,7 @@
       }
     ]
   },
-  "description": "PrizeDraw API Overview — request rate, latency, errors, WebSocket connections, DB pool",
+  "description": "PrizeDraw Services Overview — per-service request rate, latency, errors, inter-service communication, WebSocket connections, outbox, DB pool",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -84,7 +90,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[1m])) by (uri)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[1m])) by (uri)",
           "legendFormat": "{{ uri }}",
           "refId": "A"
         }
@@ -107,7 +113,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[1m])) by (status)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[1m])) by (status)",
           "legendFormat": "HTTP {{ status }}",
           "refId": "A"
         }
@@ -145,19 +151,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -194,7 +200,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", status=~\"5[0-9]{2}\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", uri!~\"/metrics|/health|/ready\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", status=~\"5[0-9]{2}\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[5m]))",
           "legendFormat": "5xx Error Rate",
           "refId": "A"
         }
@@ -224,7 +230,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", uri=~\"/api/v1/payments/webhook.*\", status=~\"4[0-9]{2}|5[0-9]{2}\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"prizeDraw-server\", uri=~\"/api/v1/payments/webhook.*\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"core-api\", uri=~\"/api/v1/payments/webhook.*\", status=~\"4[0-9]{2}|5[0-9]{2}\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"core-api\", uri=~\"/api/v1/payments/webhook.*\"}[5m]))",
           "legendFormat": "Payment Failure Rate",
           "refId": "A"
         }
@@ -233,10 +239,113 @@
       "type": "stat"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.005 },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 19 },
+      "id": 30,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", status=~\"5[0-9]{2}\"}[5m])) by (job) / sum(rate(http_server_requests_seconds_count{job=~\"$service\", uri!~\"/metrics|/health|/ready\"}[5m])) by (job)",
+          "legendFormat": "{{ job }}",
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Error Rate by Service",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 106,
+      "title": "Inter-Service Communication",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "id": 20,
+      "options": { "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "histogram_quantile(0.95, sum by (le, source_service, target_service) (rate(prizeDraw_interservice_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{ source_service }} -> {{ target_service }} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Inter-Service Request Latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "fillOpacity": 70, "lineWidth": 0 },
+          "mappings": [
+            { "options": { "0": { "color": "green", "text": "CLOSED" } }, "type": "value" },
+            { "options": { "0.5": { "color": "yellow", "text": "HALF-OPEN" } }, "type": "value" },
+            { "options": { "1": { "color": "red", "text": "OPEN" } }, "type": "value" }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "id": 21,
+      "options": { "mergeValues": true, "showValue": "always", "alignValue": "center", "rowHeight": 0.8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "prizeDraw_circuit_breaker_state{state=\"open\"} * 1 + prizeDraw_circuit_breaker_state{state=\"half_open\"} * 0.5",
+          "legendFormat": "{{ source_service }} -> {{ target_service }}",
+          "refId": "A"
+        }
+      ],
+      "title": "Circuit Breaker State per Service Pair",
+      "type": "state-timeline"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
       "id": 103,
-      "title": "WebSocket Connections",
+      "title": "WebSocket Connections (Realtime Gateway)",
       "type": "row"
     },
     {
@@ -257,13 +366,13 @@
           "max": 10000
         }
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 35 },
       "id": 6,
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": true, "showThresholdMarkers": true },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(prizeDraw_websocket_active_connections)",
+          "expr": "sum(prizeDraw_websocket_active_connections{job=\"realtime-gateway\"})",
           "legendFormat": "Active WS Connections",
           "refId": "A"
         }
@@ -276,23 +385,46 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 10, "x": 6, "y": 35 },
+      "id": 22,
+      "options": { "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum by (type) (prizeDraw_websocket_active_connections{job=\"realtime-gateway\"})",
+          "legendFormat": "{{ type }}",
+          "refId": "A"
+        }
+      ],
+      "title": "WebSocket Connections by Type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
           "custom": { "lineWidth": 2 },
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 26 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 35 },
       "id": 7,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(prizeDraw_websocket_connections_total[1m]))",
+          "expr": "sum(rate(prizeDraw_websocket_connections_total{job=\"realtime-gateway\"}[1m]))",
           "legendFormat": "New Connections/s",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(prizeDraw_websocket_disconnections_total[1m]))",
+          "expr": "sum(rate(prizeDraw_websocket_disconnections_total{job=\"realtime-gateway\"}[1m]))",
           "legendFormat": "Disconnections/s",
           "refId": "B"
         }
@@ -302,7 +434,103 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+      "id": 107,
+      "title": "Notification Worker (Outbox)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 44 },
+      "id": 23,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "prizeDraw_outbox_pending_count{job=\"notification-worker\"}",
+          "legendFormat": "Pending Events",
+          "refId": "A"
+        }
+      ],
+      "title": "Outbox Queue Depth",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "epm"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 44 },
+      "id": 24,
+      "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum(rate(prizeDraw_outbox_events_total{job=\"notification-worker\", status=\"processed\"}[5m])) * 60",
+          "legendFormat": "Processed/min",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum(rate(prizeDraw_outbox_events_total{job=\"notification-worker\", status=\"failed\"}[5m])) * 60",
+          "legendFormat": "Failed/min",
+          "refId": "B"
+        }
+      ],
+      "title": "Outbox Events Processed / min",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.10 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 44 },
+      "id": 25,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum(rate(prizeDraw_outbox_events_total{job=\"notification-worker\", status=\"failed\"}[5m])) / sum(rate(prizeDraw_outbox_events_total{job=\"notification-worker\"}[5m]))",
+          "legendFormat": "Failure Rate",
+          "refId": "A"
+        }
+      ],
+      "title": "Outbox Failure Rate",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
       "id": 104,
       "title": "Database Pool Utilization",
       "type": "row"
@@ -316,32 +544,32 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
       "id": 8,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "hikaricp_connections_active",
-          "legendFormat": "Active Connections",
+          "expr": "hikaricp_connections_active{job=~\"$service\"}",
+          "legendFormat": "{{ job }} Active",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "hikaricp_connections_idle",
-          "legendFormat": "Idle Connections",
+          "expr": "hikaricp_connections_idle{job=~\"$service\"}",
+          "legendFormat": "{{ job }} Idle",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "hikaricp_connections_pending",
-          "legendFormat": "Pending (waiting)",
+          "expr": "hikaricp_connections_pending{job=~\"$service\"}",
+          "legendFormat": "{{ job }} Pending",
           "refId": "C"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "hikaricp_connections_max",
-          "legendFormat": "Max Pool Size",
+          "expr": "hikaricp_connections_max{job=~\"$service\"}",
+          "legendFormat": "{{ job }} Max",
           "refId": "D"
         }
       ],
@@ -357,20 +585,20 @@
           "unit": "s"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 53 },
       "id": 9,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.95, rate(hikaricp_connection_acquisition_seconds_bucket[5m]))",
-          "legendFormat": "Connection Acquisition p95",
+          "expr": "histogram_quantile(0.95, rate(hikaricp_connection_acquisition_seconds_bucket{job=~\"$service\"}[5m]))",
+          "legendFormat": "{{ job }} Acquisition p95",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.95, rate(hikaricp_connection_usage_seconds_bucket[5m]))",
-          "legendFormat": "Connection Usage p95",
+          "expr": "histogram_quantile(0.95, rate(hikaricp_connection_usage_seconds_bucket{job=~\"$service\"}[5m]))",
+          "legendFormat": "{{ job }} Usage p95",
           "refId": "B"
         }
       ],
@@ -379,7 +607,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 61 },
       "id": 105,
       "title": "JVM Health",
       "type": "row"
@@ -393,20 +621,20 @@
           "unit": "bytes"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 62 },
       "id": 10,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "jvm_memory_used_bytes{area=\"heap\"}",
-          "legendFormat": "Heap Used",
+          "expr": "jvm_memory_used_bytes{area=\"heap\", job=~\"$service\"}",
+          "legendFormat": "{{ job }} Heap Used",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "jvm_memory_max_bytes{area=\"heap\"}",
-          "legendFormat": "Heap Max",
+          "expr": "jvm_memory_max_bytes{area=\"heap\", job=~\"$service\"}",
+          "legendFormat": "{{ job }} Heap Max",
           "refId": "B"
         }
       ],
@@ -422,20 +650,20 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 62 },
       "id": 11,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "jvm_threads_live_threads",
-          "legendFormat": "Live Threads",
+          "expr": "jvm_threads_live_threads{job=~\"$service\"}",
+          "legendFormat": "{{ job }} Live Threads",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "rate(jvm_gc_pause_seconds_count[5m])",
-          "legendFormat": "GC Pause Rate",
+          "expr": "rate(jvm_gc_pause_seconds_count{job=~\"$service\"}[5m])",
+          "legendFormat": "{{ job }} GC Pause Rate",
           "refId": "B"
         }
       ],
@@ -445,20 +673,39 @@
   ],
   "refresh": "30s",
   "schemaVersion": 38,
-  "tags": ["prizeDraw", "api", "ktor"],
+  "tags": ["prizeDraw", "microservices", "ktor"],
   "templating": {
     "list": [
       {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "description": "Filter by service",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "core-api|draw-service|realtime-gateway|notification-worker",
+        "multi": false,
+        "name": "service",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "core-api", "value": "core-api" },
+          { "selected": false, "text": "draw-service", "value": "draw-service" },
+          { "selected": false, "text": "realtime-gateway", "value": "realtime-gateway" },
+          { "selected": false, "text": "notification-worker", "value": "notification-worker" }
+        ],
+        "query": "core-api,draw-service,realtime-gateway,notification-worker",
+        "type": "custom",
+        "label": "Service"
+      },
+      {
         "current": {},
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-        "definition": "label_values(http_server_requests_seconds_count{job=\"prizeDraw-server\"}, instance)",
+        "definition": "label_values(http_server_requests_seconds_count{job=~\"core-api|draw-service|realtime-gateway|notification-worker\"}, instance)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(http_server_requests_seconds_count{job=\"prizeDraw-server\"}, instance)",
+          "query": "label_values(http_server_requests_seconds_count{job=~\"core-api|draw-service|realtime-gateway|notification-worker\"}, instance)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -472,7 +719,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "Asia/Taipei",
-  "title": "PrizeDraw API Overview",
+  "title": "PrizeDraw Services Overview",
   "uid": "prizedraw-api-overview",
-  "version": 1
+  "version": 2
 }

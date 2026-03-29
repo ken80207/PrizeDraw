@@ -10,11 +10,13 @@ groups:
         expr: |
           (
             sum(rate(http_server_requests_seconds_count{
+              job="core-api",
               uri=~"/api/v1/payments/webhook.*",
               status=~"4[0-9]{2}|5[0-9]{2}"
             }[5m]))
             /
             sum(rate(http_server_requests_seconds_count{
+              job="core-api",
               uri=~"/api/v1/payments/webhook.*"
             }[5m]))
           ) > 0.05
@@ -52,12 +54,13 @@ groups:
   - name: api_performance
     interval: 30s
     rules:
-      # API p95 latency exceeds 500ms
+      # API p95 latency exceeds 500ms (per service)
       - alert: ApiHighLatencyP95
         expr: |
           histogram_quantile(0.95,
-            sum by (le, uri) (
+            sum by (le, uri, job) (
               rate(http_server_requests_seconds_bucket{
+                job=~"core-api|draw-service|realtime-gateway",
                 uri!~"/metrics|/health|/ready"
               }[5m])
             )
@@ -67,21 +70,24 @@ groups:
           severity: warning
           team: backend
         annotations:
-          summary: "API p95 latency above 500ms on {{ $labels.uri }}"
+          summary: "API p95 latency above 500ms on {{ $labels.job }} {{ $labels.uri }}"
           description: >
-            Endpoint {{ $labels.uri }} p95 response time is {{ $value | humanizeDuration }}.
+            Endpoint {{ $labels.uri }} on service {{ $labels.job }} p95 response time
+            is {{ $value | humanizeDuration }}.
             Investigate slow queries, connection pool exhaustion, or downstream service latency.
 
-      # Overall HTTP 5xx error rate exceeds 1%
-      - alert: HighErrorRate5xx
+      # Per-service HTTP 5xx error rate exceeds 1%
+      - alert: HighErrorRate5xx_CoreApi
         expr: |
           (
             sum(rate(http_server_requests_seconds_count{
+              job="core-api",
               status=~"5[0-9]{2}",
               uri!~"/metrics|/health|/ready"
             }[5m]))
             /
             sum(rate(http_server_requests_seconds_count{
+              job="core-api",
               uri!~"/metrics|/health|/ready"
             }[5m]))
           ) > 0.01
@@ -89,19 +95,125 @@ groups:
         labels:
           severity: critical
           team: backend
+          service: core-api
         annotations:
-          summary: "HTTP 5xx error rate above 1%"
+          summary: "core-api HTTP 5xx error rate above 1%"
           description: >
-            Server error rate is {{ $value | humanizePercentage }} over last 5 minutes.
+            core-api error rate is {{ $value | humanizePercentage }} over last 5 minutes.
             Threshold: 1%. Check application logs in Loki for stack traces.
           runbook: "https://wiki.prizedraw.internal/runbooks/high-error-rate"
 
-      # API p99 latency on draw endpoints (tighter SLO)
+      - alert: HighErrorRate5xx_DrawService
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              job="draw-service",
+              status=~"5[0-9]{2}",
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{
+              job="draw-service",
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+          ) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          service: draw-service
+        annotations:
+          summary: "draw-service HTTP 5xx error rate above 1%"
+          description: >
+            draw-service error rate is {{ $value | humanizePercentage }} over last 5 minutes.
+            Threshold: 1%. Check application logs in Loki for stack traces.
+          runbook: "https://wiki.prizedraw.internal/runbooks/high-error-rate"
+
+      - alert: HighErrorRate5xx_RealtimeGateway
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              job="realtime-gateway",
+              status=~"5[0-9]{2}",
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{
+              job="realtime-gateway",
+              uri!~"/metrics|/health|/ready"
+            }[5m]))
+          ) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          service: realtime-gateway
+        annotations:
+          summary: "realtime-gateway HTTP 5xx error rate above 1%"
+          description: >
+            realtime-gateway error rate is {{ $value | humanizePercentage }} over last 5 minutes.
+            Threshold: 1%. Check application logs in Loki for stack traces.
+          runbook: "https://wiki.prizedraw.internal/runbooks/high-error-rate"
+
+  # ===========================================================================
+  # Inter-Service Communication Alerts
+  # ===========================================================================
+  - name: inter_service_communication
+    interval: 30s
+    rules:
+      # Circuit breaker in open state for any service pair
+      - alert: CircuitBreakerOpen
+        expr: |
+          prizeDraw_circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Circuit breaker OPEN: {{ $labels.source_service }} -> {{ $labels.target_service }}"
+          description: >
+            Circuit breaker between {{ $labels.source_service }} and
+            {{ $labels.target_service }} has been in OPEN state for over 1 minute.
+            Downstream service may be degraded or unreachable. Check target service
+            health and network connectivity.
+          runbook: "https://wiki.prizedraw.internal/runbooks/circuit-breaker-open"
+
+      # Inter-service request error rate above 5%
+      - alert: InterServiceHighErrorRate
+        expr: |
+          (
+            sum by (source_service, target_service) (
+              rate(prizeDraw_interservice_requests_total{status="error"}[5m])
+            )
+            /
+            sum by (source_service, target_service) (
+              rate(prizeDraw_interservice_requests_total[5m])
+            )
+          ) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Inter-service error rate above 5%: {{ $labels.source_service }} -> {{ $labels.target_service }}"
+          description: >
+            Error rate between {{ $labels.source_service }} and
+            {{ $labels.target_service }} is {{ $value | humanizePercentage }}.
+            Check target service logs and circuit breaker state.
+
+  # ===========================================================================
+  # Draw Service Specific Alerts
+  # ===========================================================================
+  - name: draw_service
+    interval: 30s
+    rules:
+      # Draw endpoint p99 latency exceeds 1 second
       - alert: DrawEndpointHighLatencyP99
         expr: |
           histogram_quantile(0.99,
             sum by (le) (
               rate(http_server_requests_seconds_bucket{
+                job="draw-service",
                 uri=~"/api/v1/draw.*"
               }[5m])
             )
@@ -110,26 +222,58 @@ groups:
         labels:
           severity: warning
           team: backend
+          service: draw-service
         annotations:
           summary: "Draw endpoint p99 latency above 1 second"
           description: >
             Draw endpoint p99 is {{ $value | humanizeDuration }}.
             Queue system or DB transactions may be bottlenecked.
 
+      # Draw burst queue depth too high
+      - alert: DrawBurstQueueDepthHigh
+        expr: |
+          prizeDraw_draw_burst_queue_depth > 500
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+          service: draw-service
+        annotations:
+          summary: "Draw burst queue depth above 500"
+          description: >
+            Draw burst queue has {{ $value }} pending items. Draw processing may
+            be falling behind demand. Consider scaling draw-service replicas.
+
+      # Draw burst queue critically backed up
+      - alert: DrawBurstQueueCritical
+        expr: |
+          prizeDraw_draw_burst_queue_depth > 2000
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          service: draw-service
+        annotations:
+          summary: "Draw burst queue depth critical (above 2000)"
+          description: >
+            Draw burst queue has {{ $value }} pending items. Players are likely
+            experiencing significant delays. Immediate scale-out required.
+
   # ===========================================================================
-  # WebSocket / Realtime Alerts
+  # Realtime Gateway Specific Alerts
   # ===========================================================================
-  - name: websocket
+  - name: realtime_gateway
     interval: 30s
     rules:
       # Active WebSocket connections approaching capacity (8000 / 10000 limit)
       - alert: WebSocketConnectionsHigh
         expr: |
-          prizeDraw_websocket_active_connections > 8000
+          prizeDraw_websocket_active_connections{job="realtime-gateway"} > 8000
         for: 5m
         labels:
           severity: warning
           team: backend
+          service: realtime-gateway
         annotations:
           summary: "WebSocket connection count above 8,000"
           description: >
@@ -137,16 +281,33 @@ groups:
             Approaching per-pod limit of 10,000. Scale horizontally via HPA or trigger
             manual scale-out.
 
+      # WebSocket connections critical — approaching hard limit
+      - alert: WebSocketConnectionsCritical
+        expr: |
+          prizeDraw_websocket_active_connections{job="realtime-gateway"} > 9500
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          service: realtime-gateway
+        annotations:
+          summary: "WebSocket connections critical (above 9,500)"
+          description: >
+            Active WebSocket connections: {{ $value }}.
+            At 95% of the 10,000 per-pod limit. New connections will be rejected imminently.
+            Immediate scale-out required.
+
       # WebSocket broadcast latency p95 exceeds 2 seconds
       - alert: WebSocketBroadcastLatencyHigh
         expr: |
           histogram_quantile(0.95,
-            rate(prizeDraw_ws_broadcast_latency_seconds_bucket[5m])
+            rate(prizeDraw_ws_broadcast_latency_seconds_bucket{job="realtime-gateway"}[5m])
           ) > 2.0
         for: 3m
         labels:
           severity: warning
           team: backend
+          service: realtime-gateway
         annotations:
           summary: "WebSocket broadcast p95 latency above 2 seconds"
           description: >
@@ -154,23 +315,80 @@ groups:
             Redis pub/sub or connection fanout may be overloaded.
 
   # ===========================================================================
+  # Notification Worker Specific Alerts
+  # ===========================================================================
+  - name: notification_worker
+    interval: 60s
+    rules:
+      # Outbox processing lag — PENDING events older than 5 minutes
+      - alert: OutboxProcessingLag
+        expr: |
+          prizeDraw_outbox_oldest_pending_age_seconds{job="notification-worker"} > 300
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          service: notification-worker
+        annotations:
+          summary: "Outbox processing lag exceeds 5 minutes"
+          description: >
+            The oldest PENDING outbox event is {{ $value | humanizeDuration }} old.
+            Notification worker may be stuck, crashed, or overwhelmed. Check worker
+            logs and database connectivity.
+          runbook: "https://wiki.prizedraw.internal/runbooks/outbox-lag"
+
+      # Outbox failure rate — more than 10% of dispatched events failing
+      - alert: OutboxHighFailureRate
+        expr: |
+          (
+            sum(rate(prizeDraw_outbox_events_total{job="notification-worker", status="failed"}[5m]))
+            /
+            sum(rate(prizeDraw_outbox_events_total{job="notification-worker"}[5m]))
+          ) > 0.10
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+          service: notification-worker
+        annotations:
+          summary: "Outbox event failure rate above 10%"
+          description: >
+            Outbox dispatch failure rate is {{ $value | humanizePercentage }}.
+            Check push notification provider (FCM/APNs) and LINE messaging API availability.
+
+      # Outbox queue depth growing — events accumulating
+      - alert: OutboxQueueDepthHigh
+        expr: |
+          prizeDraw_outbox_pending_count{job="notification-worker"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          service: notification-worker
+        annotations:
+          summary: "Outbox pending event count above 1,000"
+          description: >
+            There are {{ $value }} pending outbox events. The notification worker
+            may not be keeping up with event volume. Consider scaling workers.
+
+  # ===========================================================================
   # Database Alerts
   # ===========================================================================
   - name: database
     interval: 30s
     rules:
-      # HikariCP connection pool exhaustion
+      # HikariCP connection pool exhaustion (any service)
       - alert: DbConnectionPoolExhausted
         expr: |
-          hikaricp_connections_pending > 0
+          hikaricp_connections_pending{job=~"core-api|draw-service|notification-worker"} > 0
         for: 2m
         labels:
           severity: critical
           team: backend
         annotations:
-          summary: "HikariCP connection pool has pending waiters"
+          summary: "HikariCP connection pool has pending waiters on {{ $labels.job }}"
           description: >
-            {{ $value }} threads are waiting for a DB connection.
+            {{ $value }} threads are waiting for a DB connection on {{ $labels.job }}.
             Pool may be exhausted. Check max pool size and long-running transactions.
 
       # PostgreSQL replication lag (if replicas are configured)
@@ -226,23 +444,23 @@ groups:
             Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted
             more than 3 times in 15 minutes. Check pod logs for root cause.
 
-      # Memory usage high
+      # Memory usage high (any service)
       - alert: HighMemoryUsage
         expr: |
           (
-            jvm_memory_used_bytes{area="heap"}
-            / jvm_memory_max_bytes{area="heap"}
+            jvm_memory_used_bytes{area="heap", job=~"core-api|draw-service|realtime-gateway|notification-worker"}
+            / jvm_memory_max_bytes{area="heap", job=~"core-api|draw-service|realtime-gateway|notification-worker"}
           ) > 0.85
         for: 5m
         labels:
           severity: warning
           team: backend
         annotations:
-          summary: "JVM heap usage above 85% on {{ $labels.instance }}"
+          summary: "JVM heap usage above 85% on {{ $labels.job }} {{ $labels.instance }}"
           description: >
-            JVM heap is {{ $value | humanizePercentage }} full on {{ $labels.instance }}.
-            GC pressure may degrade response times. Consider increasing heap or
-            investigating memory leaks.
+            JVM heap is {{ $value | humanizePercentage }} full on {{ $labels.job }}
+            ({{ $labels.instance }}). GC pressure may degrade response times. Consider
+            increasing heap or investigating memory leaks.
 
   # ===========================================================================
   # Redis Alerts

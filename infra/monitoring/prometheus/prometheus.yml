@@ -19,18 +19,65 @@ alerting:
 
 scrape_configs:
   # -----------------------------------------------------------------------
-  # PrizeDraw Ktor server — Micrometer Prometheus metrics
+  # Core API — main REST gateway (campaigns, payments, players, etc.)
   # -----------------------------------------------------------------------
-  - job_name: prizeDraw-server
+  - job_name: core-api
     metrics_path: /metrics
     scrape_interval: 10s
     static_configs:
       - targets:
-          - server:8080
+          - prizedraw-core-api:9092
         labels:
-          service: server
+          service: core-api
           component: ktor
-    # Re-label to normalize k8s pod names when running in cluster
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # -----------------------------------------------------------------------
+  # Draw Service — draw execution, queue management, prize distribution
+  # -----------------------------------------------------------------------
+  - job_name: draw-service
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - prizedraw-draw-service:9093
+        labels:
+          service: draw-service
+          component: ktor
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # -----------------------------------------------------------------------
+  # Realtime Gateway — WebSocket connections, Redis pub/sub fanout
+  # -----------------------------------------------------------------------
+  - job_name: realtime-gateway
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - prizedraw-realtime-gateway:9094
+        labels:
+          service: realtime-gateway
+          component: ktor
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # -----------------------------------------------------------------------
+  # Notification Worker — outbox polling, push notifications, LINE messaging
+  # -----------------------------------------------------------------------
+  - job_name: notification-worker
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - prizedraw-notification-worker:9095
+        labels:
+          service: notification-worker
+          component: ktor
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
