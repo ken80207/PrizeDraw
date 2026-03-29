@@ -52,7 +52,7 @@ jobs:
 
           # Shared modules → all services need rebuild
           SHARED_CHANGED=false
-          if echo "$CHANGED" | grep -qE '^(shared/|db-schema/|api-contracts/|kmp-shared-js/|gradle/|.*\.gradle\.kts|gradle\.properties|settings\.gradle\.kts|infra/docker/Dockerfile\.)'; then
+          if echo "$CHANGED" | grep -qE '^(shared/|db-schema/|api-contracts/|kmp-shared-js/|gradle/|.*\.gradle\.kts|gradle\.properties|settings\.gradle\.kts|infra/docker/Dockerfile\.|\.forgejo/workflows/server|deployment/)'; then
             SHARED_CHANGED=true
           fi
           echo "shared_changed=${SHARED_CHANGED}" >> $GITHUB_OUTPUT
