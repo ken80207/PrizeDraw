@@ -271,6 +271,69 @@ docker compose up postgres redis minio core-api realtime-gateway notification-wo
 4. **跨服務的 HTTP 呼叫**一律要有 circuit breaker（用 `shared/resilience/CircuitBreakers`）
 5. **Domain entities 在各服務是 COPY**（不是共用引用），改了一個服務的 entity 不影響其他服務
 
+## Table Ownership
+
+Every table has exactly one **owner** service that may write (INSERT/UPDATE/DELETE) to it. Other services may hold **read-only** access when documented below.
+
+| Table | Owner | Read-Only Access | Notes |
+|-------|-------|-----------------|-------|
+| `players` | Core API | Draw Service (balance via PointsLedgerService) | Draw Service writes balance within transaction |
+| `kuji_campaigns` | Core API | Draw Service, Notification Worker | Notification Worker reads for low-stock check |
+| `unlimited_campaigns` | Core API | Draw Service, Notification Worker | Notification Worker reads for low-stock check |
+| `draw_tickets` | Draw Service | Core API | |
+| `ticket_boxes` | Draw Service | Core API | |
+| `prize_definitions` | Core API | Draw Service | |
+| `prize_instances` | Draw Service | Core API | |
+| `queues` | Draw Service | Core API, Realtime Gateway | |
+| `queue_entries` | Draw Service | Core API, Realtime Gateway | |
+| `pity_rules` | Draw Service | | |
+| `pity_prize_pool` | Draw Service | | |
+| `pity_trackers` | Draw Service | | |
+| `draw_sync_sessions` | Draw Service | Realtime Gateway | |
+| `draw_point_transactions` | Draw Service | Core API | Written during draw transaction |
+| `revenue_point_transactions` | Draw Service | Core API | Written during draw transaction |
+| `outbox_events` | Draw Service | Notification Worker (claim + mark processed) | Notification Worker writes status via `FOR UPDATE SKIP LOCKED` |
+| `trade_orders` | Core API | | |
+| `exchange_requests` | Core API | | |
+| `exchange_request_items` | Core API | | |
+| `buyback_records` | Core API | | |
+| `shipping_orders` | Core API | | |
+| `payment_orders` | Core API | | |
+| `withdrawal_requests` | Core API | | |
+| `coupons` | Core API | | |
+| `discount_codes` | Core API | | |
+| `player_coupons` | Core API | | |
+| `support_tickets` | Core API | | |
+| `support_ticket_messages` | Core API | | |
+| `audit_logs` | Core API | | |
+| `refresh_token_families` | Core API | | |
+| `feature_flags` | Core API | Draw Service, Realtime Gateway, Notification Worker | All services read flags |
+| `staff` | Core API | | |
+| `banners` | Core API | | |
+| `server_announcements` | Core API | | |
+| `follows` | Core API | Notification Worker | Notification Worker reads for fan-out |
+| `campaign_favorites` | Core API | Notification Worker | Notification Worker reads for low-stock check |
+| `player_devices` | Core API | Notification Worker | Notification Worker reads for push tokens |
+| `xp_transactions` | Core API | | |
+| `tier_configs` | Core API | | |
+| `grade_templates` | Core API | | |
+| `grade_template_items` | Core API | | |
+| `campaign_grades` | Core API | | |
+| `system_settings` | Core API | Draw Service, Realtime Gateway, Notification Worker | All services read settings |
+| `notifications` | Notification Worker | Core API | |
+| `room_instances` | Realtime Gateway | | |
+| `campaign_viewer_stats` | Realtime Gateway | | |
+| `chat_messages` | Realtime Gateway | Core API | |
+| `broadcast_sessions` | Realtime Gateway | | |
+| `feed_events` | Realtime Gateway | Core API | |
+
+**Ownership Rules:**
+
+1. Only the owner service may run DDL/migration on owned tables (all migrations executed by Core API Flyway)
+2. Read-only services must not INSERT/UPDATE/DELETE on non-owned tables
+3. Cross-service writes (like Draw Service writing to `players` balance, or Notification Worker claiming `outbox_events`) must be documented and reviewed
+4. Future: migrate cross-service reads to HTTP API calls to enforce boundaries at the network level
+
 ## Code Style
 
 - **Kotlin**: ktlint + detekt enforced in CI. Explicit API mode enabled on all KMP modules. KDoc required on all `public` declarations.

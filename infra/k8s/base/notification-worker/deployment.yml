@@ -15,10 +15,7 @@ spec:
     matchLabels:
       app: notification-worker
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0       # zero-downtime deployments
+    type: Recreate
   template:
     metadata:
       labels:
