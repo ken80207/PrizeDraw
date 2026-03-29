@@ -1,0 +1,252 @@
+name: Server Production Deploy
+
+on:
+  push:
+    tags:
+      - 'server-v*'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g. sha-abc1234)'
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: kennily/prizedraw
+
+jobs:
+  test:
+    name: Test
+    runs-on: linux
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: prizedraw_test
+          POSTGRES_USER: prizedraw
+          POSTGRES_PASSWORD: prizedraw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prizedraw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-
+
+      - name: Run tests
+        run: |
+          ./gradlew \
+            :server:test \
+            :draw-service:test \
+            :realtime-gateway:test \
+            :notification-worker:test \
+            :api-contracts:allTests \
+            --no-daemon
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/prizedraw_test
+          DATABASE_USER: prizedraw
+          DATABASE_PASSWORD: prizedraw
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-for-ci-only
+
+  build-and-push:
+    name: Build & Push Images
+    runs-on: linux
+    needs: test
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-
+
+      - name: Build shadow JARs
+        run: |
+          ./gradlew \
+            :server:shadowJar \
+            :draw-service:shadowJar \
+            :realtime-gateway:shadowJar \
+            :notification-worker:shadowJar \
+            --no-daemon -x test
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+
+      - name: Build and push Docker images
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION_TAG=""
+          if [[ "${{ github.ref }}" == refs/tags/server-v* ]]; then
+            VERSION_TAG=$(echo "${{ github.ref }}" | sed 's|refs/tags/server-||')
+          fi
+
+          SERVICES="core-api draw-service realtime-gateway notification-worker"
+          for SERVICE in $SERVICES; do
+            DOCKERFILE="infra/docker/Dockerfile.${SERVICE}"
+            IMAGE="${REGISTRY}/${IMAGE_PREFIX}_${SERVICE}"
+
+            TAGS="-t ${IMAGE}:latest -t ${IMAGE}:sha-${SHORT_SHA}"
+            if [ -n "$VERSION_TAG" ]; then
+              TAGS="$TAGS -t ${IMAGE}:${VERSION_TAG}"
+            fi
+
+            docker build -f "$DOCKERFILE" $TAGS .
+            docker push "${IMAGE}:latest"
+            docker push "${IMAGE}:sha-${SHORT_SHA}"
+            if [ -n "$VERSION_TAG" ]; then
+              docker push "${IMAGE}:${VERSION_TAG}"
+            fi
+
+            echo "✅ Pushed ${IMAGE}"
+          done
+
+  deploy:
+    name: Deploy to Production
+    runs-on: linux
+    needs: build-and-push
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_TAILSCALE_IP }}
+          username: ken
+          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/prizedraw
+
+            # Backup database
+            echo "📦 Backing up database..."
+            docker compose exec -T postgres pg_dump -U prizedraw prizedraw | gzip > backups/prizedraw_$(date +%Y%m%d_%H%M%S).sql.gz
+            find backups/ -name "*.sql.gz" -mtime +7 -delete
+
+            # Save current version for rollback
+            SERVICES="core-api draw-service realtime-gateway notification-worker"
+            for SERVICE in $SERVICES; do
+              CURRENT=$(docker inspect --format='{{.Config.Image}}' prizedraw-${SERVICE} 2>/dev/null || echo "none")
+              echo "$CURRENT" > .rollback-${SERVICE}
+            done
+
+            # Login and pull
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+
+            # Update image tag
+            export IMAGE_TAG="${{ steps.tag.outputs.TAG }}"
+
+            # Deploy: core-api first (runs Flyway migrations)
+            echo "🚀 Deploying core-api first (Flyway migrations)..."
+            docker compose pull core-api
+            docker compose up -d --no-deps core-api
+
+            # Wait for core-api to be healthy before deploying others
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:9092/health > /dev/null 2>&1; then
+                echo "✅ core-api is healthy"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "❌ core-api failed health check, rolling back..."
+                docker pull $(cat .rollback-core-api)
+                docker compose up -d --no-deps core-api
+                exit 1
+              fi
+              sleep 5
+            done
+
+            # Deploy remaining services
+            echo "🚀 Deploying remaining services..."
+            REMAINING="draw-service realtime-gateway notification-worker"
+            for SERVICE in $REMAINING; do
+              docker compose pull $SERVICE
+            done
+            for SERVICE in $REMAINING; do
+              docker compose up -d --no-deps $SERVICE
+            done
+
+            # Health check all services
+            CHECKS="core-api:9092 draw-service:9093 realtime-gateway:9094 notification-worker:9095"
+            FAILED=false
+            for ENTRY in $CHECKS; do
+              NAME=$(echo $ENTRY | cut -d: -f1)
+              PORT=$(echo $ENTRY | cut -d: -f2)
+              echo "Checking $NAME..."
+              for i in $(seq 1 12); do
+                if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
+                  echo "✅ $NAME is healthy"
+                  break
+                fi
+                if [ $i -eq 12 ]; then
+                  echo "❌ $NAME failed health check"
+                  FAILED=true
+                fi
+                sleep 5
+              done
+            done
+
+            if [ "$FAILED" = true ]; then
+              echo "⚠️ Rolling back all services..."
+              for SERVICE in $SERVICES; do
+                ROLLBACK_IMAGE=$(cat .rollback-${SERVICE} 2>/dev/null)
+                if [ -n "$ROLLBACK_IMAGE" ] && [ "$ROLLBACK_IMAGE" != "none" ]; then
+                  docker pull "$ROLLBACK_IMAGE"
+                fi
+              done
+              docker compose up -d --no-deps $SERVICES
+              exit 1
+            fi
+
+            echo "🎉 Production deployment complete"

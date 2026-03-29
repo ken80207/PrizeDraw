@@ -1,0 +1,200 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prizedraw-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-prizedraw_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-prizedraw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prizedraw}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: prizedraw-staging-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: prizedraw-staging-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ---- Backend Microservices ----
+
+  core-api:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_core-api:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-core-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      APP_ENV: staging
+      PORT: 9092
+      LOG_LEVEL: INFO
+      RATE_LIMIT_ENABLED: true
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw_staging}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: prizedraw
+      JWT_AUDIENCE: prizedraw-api
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
+      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-prizedraw-staging}
+      CORS_ALLOWED_HOSTS: ${CORS_ALLOWED_HOSTS:-localhost:3000,localhost:3001,localhost:3002}
+      DRAW_SERVICE_URL: http://draw-service:9093
+      REALTIME_GATEWAY_URL: http://realtime-gateway:9094
+      NOTIFICATION_WORKER_URL: http://notification-worker:9095
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9092/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  draw-service:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_draw-service:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-draw-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: staging
+      PORT: 9093
+      LOG_LEVEL: INFO
+      RATE_LIMIT_ENABLED: true
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw_staging}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORE_API_URL: http://core-api:9092
+      REALTIME_GATEWAY_URL: http://realtime-gateway:9094
+    ports:
+      - "9093:9093"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9093/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  realtime-gateway:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_realtime-gateway:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-realtime-gateway
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: staging
+      PORT: 9094
+      LOG_LEVEL: INFO
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORE_API_URL: http://core-api:9092
+    ports:
+      - "9094:9094"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9094/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-worker:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_notification-worker:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-notification-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: staging
+      PORT: 9095
+      LOG_LEVEL: INFO
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw_staging}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORE_API_URL: http://core-api:9092
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9095/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---- Frontend Services ----
+
+  web:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_web:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-web
+    restart: unless-stopped
+    depends_on:
+      - core-api
+    ports:
+      - "3000:3000"
+
+  admin:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_admin:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-admin
+    restart: unless-stopped
+    depends_on:
+      - core-api
+    ports:
+      - "3001:3000"
+
+  cs:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_cs:${IMAGE_TAG:-staging}
+    container_name: prizedraw-staging-cs
+    restart: unless-stopped
+    depends_on:
+      - core-api
+    ports:
+      - "3002:3000"
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

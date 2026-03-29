@@ -1,0 +1,218 @@
+name: Server Staging Deploy
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'server/**'
+      - 'draw-service/**'
+      - 'realtime-gateway/**'
+      - 'notification-worker/**'
+      - 'api-contracts/**'
+      - 'db-schema/**'
+      - 'shared/**'
+      - 'kmp-shared-js/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'settings.gradle.kts'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: kennily/prizedraw
+
+jobs:
+  test:
+    name: Test
+    runs-on: linux
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: prizedraw_test
+          POSTGRES_USER: prizedraw
+          POSTGRES_PASSWORD: prizedraw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prizedraw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-
+
+      - name: Run tests
+        run: |
+          ./gradlew \
+            :server:test \
+            :draw-service:test \
+            :realtime-gateway:test \
+            :notification-worker:test \
+            :api-contracts:allTests \
+            --no-daemon
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/prizedraw_test
+          DATABASE_USER: prizedraw
+          DATABASE_PASSWORD: prizedraw
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-for-ci-only
+
+  build-and-deploy:
+    name: Build & Deploy to Staging
+    runs-on: linux
+    needs: test
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-
+
+      - name: Build shadow JARs
+        run: |
+          ./gradlew \
+            :server:shadowJar \
+            :draw-service:shadowJar \
+            :realtime-gateway:shadowJar \
+            :notification-worker:shadowJar \
+            --no-daemon -x test
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+
+      - name: Build and push Docker images
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          SERVICES="core-api draw-service realtime-gateway notification-worker"
+          for SERVICE in $SERVICES; do
+            DOCKERFILE="infra/docker/Dockerfile.${SERVICE}"
+            IMAGE="${REGISTRY}/${IMAGE_PREFIX}_${SERVICE}"
+
+            docker build -f "$DOCKERFILE" -t "${IMAGE}:staging" -t "${IMAGE}:sha-${SHORT_SHA}" .
+            docker push "${IMAGE}:staging"
+            docker push "${IMAGE}:sha-${SHORT_SHA}"
+
+            echo "✅ Pushed ${IMAGE}:staging"
+          done
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 22 ${{ secrets.NAS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload deployment files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
+          key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
+          source: "deployment/nas-staging/docker-compose.yml"
+          target: "~/prizedraw-staging"
+          strip_components: 2
+
+      - name: Deploy to NAS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
+          key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/prizedraw-staging
+
+            # Create .env
+            cat > .env << 'ENVEOF'
+            APP_ENV=staging
+            LOG_LEVEL=INFO
+            RATE_LIMIT_ENABLED=true
+
+            POSTGRES_DB=prizedraw_staging
+            POSTGRES_USER=prizedraw
+            POSTGRES_PASSWORD=${{ secrets.PRIZEDRAW_DB_PASSWORD }}
+            POSTGRES_PORT=5433
+
+            REDIS_PASSWORD=${{ secrets.PRIZEDRAW_REDIS_PASSWORD }}
+
+            MINIO_ROOT_USER=${{ secrets.PRIZEDRAW_MINIO_USER }}
+            MINIO_ROOT_PASSWORD=${{ secrets.PRIZEDRAW_MINIO_PASSWORD }}
+            STORAGE_BUCKET=prizedraw-staging
+
+            JWT_SECRET=${{ secrets.PRIZEDRAW_JWT_SECRET }}
+            JWT_ISSUER=prizedraw
+            JWT_AUDIENCE=prizedraw-api
+
+            REGISTRY=ghcr.io
+            IMAGE_PREFIX=kennily/prizedraw
+            IMAGE_TAG=staging
+            ENVEOF
+
+            # Login to GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+
+            # Pull and restart
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            # Health checks
+            echo "Waiting for services to start..."
+            SERVICES="core-api:9092 draw-service:9093 realtime-gateway:9094 notification-worker:9095"
+            for ENTRY in $SERVICES; do
+              NAME=$(echo $ENTRY | cut -d: -f1)
+              PORT=$(echo $ENTRY | cut -d: -f2)
+              echo "Checking $NAME on port $PORT..."
+              for i in $(seq 1 10); do
+                if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
+                  echo "✅ $NAME is healthy"
+                  break
+                fi
+                if [ $i -eq 10 ]; then
+                  echo "❌ $NAME failed health check"
+                  exit 1
+                fi
+                sleep 5
+              done
+            done
+
+            echo "🚀 All services deployed to staging"

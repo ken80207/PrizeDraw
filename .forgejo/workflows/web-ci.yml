@@ -1,0 +1,122 @@
+name: Web CI
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'admin/**'
+      - 'cs/**'
+      - 'pnpm-workspace.yaml'
+
+jobs:
+  lint-and-format:
+    name: Lint (${{ matrix.app }})
+    runs-on: linux
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        app: [web, admin, cs]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        run: |
+          npm install -g pnpm@10
+          pnpm --version
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ matrix.app }}-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.app }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        working-directory: ${{ matrix.app }}
+        run: pnpm type-check
+
+      - name: ESLint
+        working-directory: ${{ matrix.app }}
+        run: pnpm lint
+
+      - name: Prettier format check
+        working-directory: ${{ matrix.app }}
+        run: pnpm format:check
+
+  test:
+    name: Test (${{ matrix.app }})
+    runs-on: linux
+    needs: lint-and-format
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        app: [web, admin]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        run: npm install -g pnpm@10
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.app }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Vitest
+        working-directory: ${{ matrix.app }}
+        run: pnpm test
+
+  build:
+    name: Build (${{ matrix.app }})
+    runs-on: linux
+    needs: test
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        app: [web, admin, cs]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        run: npm install -g pnpm@10
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.app }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: ${{ matrix.app }}
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Bundle size check
+        working-directory: ${{ matrix.app }}
+        run: |
+          OVERSIZED=$(find .next/static/chunks -name "*.js" -size +1000k 2>/dev/null | wc -l)
+          if [ "$OVERSIZED" -gt "0" ]; then
+            echo "ERROR: Found JS chunks exceeding 1MB limit"
+            find .next/static/chunks -name "*.js" -size +1000k
+            exit 1
+          fi

@@ -28,8 +28,10 @@ kmp-game-shared/       # KMP game shared logic
 web/                   # Next.js player-facing web app
 admin/                 # Next.js admin dashboard
 cs/                    # Next.js customer service app (cs.prizedraw.tw)
+.forgejo/workflows/    # Forgejo CI/CD (server-ci, server-staging, server-production, web-ci, web-staging, web-production)
+deployment/
+  nas-staging/         # NAS staging docker-compose (pulled images from GHCR)
 infra/
-  ci/                  # GitHub Actions workflows (build-server.yml, build-web.yml, deploy.yml)
   docker/              # Dockerfiles + docker-compose.yml + per-environment env files
   k8s/
     base/              # Kustomize base manifests (4 services + postgres + redis + ingress)
@@ -171,24 +173,27 @@ pnpm --filter cs dev           # http://localhost:3002
   -Dflyway.user=prizedraw -Dflyway.password=prizedraw
 ```
 
-### CI / Deploy
+### CI / Deploy (Forgejo)
 
 ```bash
-# Build Docker images
+# CI 自動觸發：
+#   PR → server-ci.yml / web-ci.yml (lint + test + build)
+#   Push staging → server-staging.yml / web-staging.yml (build + deploy to NAS)
+#   Tag server-v* → server-production.yml (build + deploy to GCP with rollback)
+#   Tag web-v* → web-production.yml (build + deploy to GCP)
+
+# Build Docker images locally
 docker build -f infra/docker/Dockerfile.core-api -t prizedraw/core-api .
 docker build -f infra/docker/Dockerfile.draw-service -t prizedraw/draw-service .
 docker build -f infra/docker/Dockerfile.realtime-gateway -t prizedraw/realtime-gateway .
 docker build -f infra/docker/Dockerfile.notification-worker -t prizedraw/notification-worker .
 
-# Deploy to environment (Kustomize)
-kubectl apply -k infra/k8s/overlays/dev/
-kubectl apply -k infra/k8s/overlays/staging/
-kubectl apply -k infra/k8s/overlays/prod/
+# Deploy staging (push to staging branch triggers auto-deploy to NAS)
+git push origin staging
 
-# Deploy via GitHub Actions (recommended)
-gh workflow run deploy.yml -f environment=dev
-gh workflow run deploy.yml -f environment=staging
-gh workflow run deploy.yml -f environment=prod    # Requires reviewer approval
+# Deploy production (tag triggers auto-deploy to GCP with rollback)
+git tag server-v1.0.0 && git push origin server-v1.0.0  # Backend
+git tag web-v1.0.0 && git push origin web-v1.0.0        # Frontend
 
 # Run load tests (requires k6)
 k6 run --env BASE_URL=http://localhost:9092 infra/k6/load-test.js

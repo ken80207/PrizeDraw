@@ -1,0 +1,151 @@
+name: Server CI
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'draw-service/**'
+      - 'realtime-gateway/**'
+      - 'notification-worker/**'
+      - 'api-contracts/**'
+      - 'db-schema/**'
+      - 'shared/**'
+      - 'kmp-shared-js/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'settings.gradle.kts'
+
+jobs:
+  lint:
+    name: Lint (ktlint + detekt)
+    runs-on: linux
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-lint-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-lint-
+
+      - name: Run ktlint
+        run: ./gradlew ktlintCheck --no-daemon
+
+      - name: Run detekt
+        run: ./gradlew detekt --no-daemon
+
+  test:
+    name: Unit Tests
+    runs-on: linux
+    needs: lint
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: prizedraw_test
+          POSTGRES_USER: prizedraw
+          POSTGRES_PASSWORD: prizedraw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prizedraw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-test-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-test-
+
+      - name: Run tests
+        run: |
+          ./gradlew \
+            :server:test \
+            :draw-service:test \
+            :realtime-gateway:test \
+            :notification-worker:test \
+            :api-contracts:allTests \
+            --no-daemon
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/prizedraw_test
+          DATABASE_USER: prizedraw
+          DATABASE_PASSWORD: prizedraw
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-for-ci-only
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/test-results/**/*.xml'
+          retention-days: 7
+
+  build:
+    name: Build All Services
+    runs-on: linux
+    needs: test
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-build-
+
+      - name: Build shadow JARs
+        run: |
+          ./gradlew \
+            :server:shadowJar \
+            :draw-service:shadowJar \
+            :realtime-gateway:shadowJar \
+            :notification-worker:shadowJar \
+            --no-daemon -x test
