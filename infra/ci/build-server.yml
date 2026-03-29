@@ -10,10 +10,14 @@ on:
       - 'notification-worker/**'
       - 'api-contracts/**'
       - 'kmp-shared-js/**'
+      - 'shared/**'
+      - 'db-schema/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'settings.gradle.kts'
-      - '.github/workflows/build-server.yml'
+      - 'infra/docker/**'
+      - 'infra/k8s/**'
+      - 'infra/ci/**'
   pull_request:
     branches: [main, develop]
     paths:
@@ -23,9 +27,14 @@ on:
       - 'notification-worker/**'
       - 'api-contracts/**'
       - 'kmp-shared-js/**'
+      - 'shared/**'
+      - 'db-schema/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'settings.gradle.kts'
+      - 'infra/docker/**'
+      - 'infra/k8s/**'
+      - 'infra/ci/**'
 
 permissions:
   contents: read

@@ -15,6 +15,17 @@ on:
         description: 'Image tag to deploy (defaults to latest main SHA)'
         required: false
         type: string
+      service:
+        description: 'Service to deploy (or all)'
+        required: false
+        type: choice
+        options:
+          - all
+          - core-api
+          - draw-service
+          - realtime-gateway
+          - notification-worker
+        default: all
 
 concurrency:
   group: deploy-${{ inputs.environment }}
@@ -23,17 +34,18 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/prizedraw
-  SERVICES: core-api draw-service realtime-gateway notification-worker
+  ALL_SERVICES: core-api draw-service realtime-gateway notification-worker
 
 jobs:
   # ===========================================================================
-  # 1. Validate — ensure the build workflow succeeded for this tag
+  # 1. Validate -- ensure the build workflow succeeded for this tag
   # ===========================================================================
   validate:
     name: Validate Build Artifacts
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.resolve-tag.outputs.tag }}
+      deploy-services: ${{ steps.resolve-services.outputs.services }}
     steps:
       - name: Resolve image tag
         id: resolve-tag
@@ -45,10 +57,20 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Deploying image tag: $TAG"
 
+      - name: Resolve target services
+        id: resolve-services
+        run: |
+          if [ "${{ inputs.service }}" = "all" ]; then
+            echo "services=core-api draw-service realtime-gateway notification-worker" >> "$GITHUB_OUTPUT"
+          else
+            echo "services=${{ inputs.service }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify images exist in GHCR
         run: |
           TAG="${{ steps.resolve-tag.outputs.tag }}"
-          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+          SERVICES="${{ steps.resolve-services.outputs.services }}"
+          for SERVICE in $SERVICES; do
             echo "Checking $IMAGE_PREFIX/$SERVICE:$TAG ..."
             docker manifest inspect "$IMAGE_PREFIX/$SERVICE:$TAG" > /dev/null 2>&1 || {
               echo "ERROR: Image $IMAGE_PREFIX/$SERVICE:$TAG not found in registry"
@@ -93,21 +115,23 @@ jobs:
         working-directory: infra/k8s/overlays/${{ inputs.environment }}
         run: |
           TAG="${{ needs.validate.outputs.image-tag }}"
-          kustomize edit set image \
-            ghcr.io/prizedraw/core-api=${{ env.IMAGE_PREFIX }}/core-api:${TAG} \
-            ghcr.io/prizedraw/draw-service=${{ env.IMAGE_PREFIX }}/draw-service:${TAG} \
-            ghcr.io/prizedraw/realtime-gateway=${{ env.IMAGE_PREFIX }}/realtime-gateway:${TAG} \
-            ghcr.io/prizedraw/notification-worker=${{ env.IMAGE_PREFIX }}/notification-worker:${TAG}
+          SERVICES="${{ needs.validate.outputs.deploy-services }}"
+          ARGS=""
+          for SERVICE in $SERVICES; do
+            ARGS="$ARGS ghcr.io/prizedraw/${SERVICE}=${{ env.IMAGE_PREFIX }}/${SERVICE}:${TAG}"
+          done
+          kustomize edit set image $ARGS
 
       - name: Apply Kustomize overlay
         run: |
           kubectl apply -k infra/k8s/overlays/${{ inputs.environment }}/
 
-      - name: Verify rollout — all services
+      - name: Verify rollout
         run: |
           NAMESPACE="prizedraw-${{ inputs.environment }}"
+          SERVICES="${{ needs.validate.outputs.deploy-services }}"
           FAILED=0
-          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+          for SERVICE in $SERVICES; do
             echo "Waiting for prizedraw-${SERVICE} rollout..."
             if ! kubectl rollout status deployment/prizedraw-${SERVICE} \
               --namespace="${NAMESPACE}" \
@@ -127,92 +151,124 @@ jobs:
   smoke-test:
     name: Smoke Test (${{ inputs.environment }})
     runs-on: ubuntu-latest
-    needs: [deploy]
+    needs: [validate, deploy]
 
     steps:
-      - name: Determine base URL
-        id: urls
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.29.0'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Determine base URL and namespace
+        id: env
         run: |
           case "${{ inputs.environment }}" in
             prod)    echo "base_url=https://api.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
             staging) echo "base_url=https://api.staging.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
             dev)     echo "base_url=https://api.dev.prizedraw.tw" >> "$GITHUB_OUTPUT" ;;
           esac
+          echo "namespace=prizedraw-${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
 
       - name: Wait for ingress propagation
         run: sleep 10
 
-      - name: Health check — core-api
+      # -- core-api: external health check via ingress --
+      - name: Smoke test -- core-api (external)
+        if: contains(needs.validate.outputs.deploy-services, 'core-api') || inputs.service == 'all'
         run: |
-          BASE="${{ steps.urls.outputs.base_url }}"
+          BASE="${{ steps.env.outputs.base_url }}"
+          echo "=== Health check: GET ${BASE}/health ==="
           for i in $(seq 1 5); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/health")
             if [ "$STATUS" = "200" ]; then
               echo "core-api health check passed (attempt $i)"
-              exit 0
+              break
             fi
-            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            echo "Attempt $i failed (status $STATUS) -- retrying in 10s"
             sleep 10
+            if [ "$i" -eq 5 ]; then echo "core-api health check failed after 5 attempts"; exit 1; fi
           done
-          echo "core-api health check failed after 5 attempts"
-          exit 1
 
-      - name: Health check — draw-service
+          echo "=== Boundary test: GET ${BASE}/api/v1/campaigns/kuji ==="
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -H "Accept: application/json" \
+            "${BASE}/api/v1/campaigns/kuji")
+          if [ "$STATUS" != "200" ]; then
+            echo "core-api campaign list smoke test failed with status $STATUS"
+            exit 1
+          fi
+          echo "core-api campaign list smoke test passed"
+
+      # -- draw-service: external via ingress + internal health --
+      - name: Smoke test -- draw-service (external + internal)
+        if: contains(needs.validate.outputs.deploy-services, 'draw-service') || inputs.service == 'all'
         run: |
-          BASE="${{ steps.urls.outputs.base_url }}"
+          BASE="${{ steps.env.outputs.base_url }}"
+          NS="${{ steps.env.outputs.namespace }}"
+
+          echo "=== Boundary test: GET ${BASE}/api/v1/live-draws ==="
           for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/draw/health")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+              -H "Accept: application/json" \
+              "${BASE}/api/v1/live-draws")
             if [ "$STATUS" = "200" ]; then
-              echo "draw-service health check passed (attempt $i)"
-              exit 0
+              echo "draw-service live-draws endpoint passed (attempt $i)"
+              break
             fi
-            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            echo "Attempt $i failed (status $STATUS) -- retrying in 10s"
             sleep 10
+            if [ "$i" -eq 5 ]; then echo "draw-service smoke test failed after 5 attempts"; exit 1; fi
           done
-          echo "draw-service health check failed after 5 attempts"
-          exit 1
 
-      - name: Health check — realtime-gateway
+          echo "=== Internal health: draw-service /health via kubectl exec ==="
+          kubectl -n "$NS" exec deploy/prizedraw-core-api -- \
+            curl -sf --max-time 5 http://prizedraw-draw-service:9093/health \
+            && echo "draw-service internal health check passed" \
+            || { echo "draw-service internal health check failed"; exit 1; }
+
+      # -- realtime-gateway: internal health check (no external HTTP endpoint) --
+      - name: Smoke test -- realtime-gateway (internal)
+        if: contains(needs.validate.outputs.deploy-services, 'realtime-gateway') || inputs.service == 'all'
         run: |
-          BASE="${{ steps.urls.outputs.base_url }}"
+          NS="${{ steps.env.outputs.namespace }}"
+
+          echo "=== Internal health: realtime-gateway /health via kubectl exec ==="
           for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/realtime/health")
-            if [ "$STATUS" = "200" ]; then
-              echo "realtime-gateway health check passed (attempt $i)"
+            if kubectl -n "$NS" exec deploy/prizedraw-core-api -- \
+              curl -sf --max-time 5 http://prizedraw-realtime-gateway:9094/health; then
+              echo "realtime-gateway internal health check passed (attempt $i)"
               exit 0
             fi
-            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            echo "Attempt $i failed -- retrying in 10s"
             sleep 10
           done
           echo "realtime-gateway health check failed after 5 attempts"
           exit 1
 
-      - name: Health check — notification-worker
+      # -- notification-worker: internal health check (no external ingress) --
+      - name: Smoke test -- notification-worker (internal)
+        if: contains(needs.validate.outputs.deploy-services, 'notification-worker') || inputs.service == 'all'
         run: |
-          BASE="${{ steps.urls.outputs.base_url }}"
+          NS="${{ steps.env.outputs.namespace }}"
+
+          echo "=== Internal health: notification-worker /health via kubectl exec ==="
           for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${BASE}/notifications/health")
-            if [ "$STATUS" = "200" ]; then
-              echo "notification-worker health check passed (attempt $i)"
+            if kubectl -n "$NS" exec deploy/prizedraw-core-api -- \
+              curl -sf --max-time 5 http://prizedraw-notification-worker:9095/health; then
+              echo "notification-worker internal health check passed (attempt $i)"
               exit 0
             fi
-            echo "Attempt $i failed (status $STATUS) — retrying in 10s"
+            echo "Attempt $i failed -- retrying in 10s"
             sleep 10
           done
           echo "notification-worker health check failed after 5 attempts"
           exit 1
-
-      - name: Smoke test — campaign list endpoint
-        run: |
-          BASE="${{ steps.urls.outputs.base_url }}"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-            -H "Accept: application/json" \
-            "${BASE}/api/v1/campaigns/kuji")
-          if [ "$STATUS" != "200" ]; then
-            echo "Campaign list smoke test failed with status $STATUS"
-            exit 1
-          fi
-          echo "Campaign list smoke test passed"
 
   # ===========================================================================
   # 4. Rollback on failure
@@ -220,7 +276,7 @@ jobs:
   rollback:
     name: Rollback on Failure
     runs-on: ubuntu-latest
-    needs: [deploy, smoke-test]
+    needs: [validate, deploy, smoke-test]
     if: failure() && (needs.deploy.result == 'failure' || needs.smoke-test.result == 'failure')
 
     steps:
@@ -235,10 +291,11 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Rollback all deployments
+      - name: Rollback deployments
         run: |
           NAMESPACE="prizedraw-${{ inputs.environment }}"
-          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+          SERVICES="${{ needs.validate.outputs.deploy-services }}"
+          for SERVICE in $SERVICES; do
             echo "Rolling back prizedraw-${SERVICE}..."
             kubectl rollout undo deployment/prizedraw-${SERVICE} \
               --namespace="${NAMESPACE}"
@@ -247,7 +304,8 @@ jobs:
       - name: Wait for rollback to complete
         run: |
           NAMESPACE="prizedraw-${{ inputs.environment }}"
-          for SERVICE in core-api draw-service realtime-gateway notification-worker; do
+          SERVICES="${{ needs.validate.outputs.deploy-services }}"
+          for SERVICE in $SERVICES; do
             echo "Waiting for prizedraw-${SERVICE} rollback..."
             kubectl rollout status deployment/prizedraw-${SERVICE} \
               --namespace="${NAMESPACE}" \
@@ -260,10 +318,12 @@ jobs:
           script: |
             const env = '${{ inputs.environment }}';
             const tag = '${{ needs.validate.outputs.image-tag }}';
+            const service = '${{ inputs.service }}';
             const body = [
               '## Deployment Rolled Back',
               '',
               `Environment: **${env}**`,
+              `Service(s): **${service}**`,
               `Image tag: \`${tag}\``,
               '',
               'The deployment failed and has been automatically rolled back to the previous version.',
