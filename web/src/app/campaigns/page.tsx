@@ -66,25 +66,25 @@ function CampaignsContent() {
 
         if (activeTab === "all") {
           // Fetch both lists and merge
-          const [kujiData, unlimitedData] = await Promise.all([
-            apiClient.get<{ items: CampaignCardData[] }>(
+          const [kujiItems, unlimitedItems] = await Promise.all([
+            apiClient.get<CampaignCardData[]>(
               `/api/v1/campaigns/kuji?${params.toString()}`,
-            ).catch(() => ({ items: [] as CampaignCardData[] })),
-            apiClient.get<{ items: CampaignCardData[] }>(
+            ).catch(() => [] as CampaignCardData[]),
+            apiClient.get<CampaignCardData[]>(
               `/api/v1/campaigns/unlimited?${params.toString()}`,
-            ).catch(() => ({ items: [] as CampaignCardData[] })),
+            ).catch(() => [] as CampaignCardData[]),
           ]);
-          items = [...(kujiData.items ?? []), ...(unlimitedData.items ?? [])];
+          items = [...(kujiItems ?? []), ...(unlimitedItems ?? [])];
         } else if (activeTab === "ichiban") {
-          const data = await apiClient.get<{ items: CampaignCardData[] }>(
+          const data = await apiClient.get<CampaignCardData[]>(
             `/api/v1/campaigns/kuji?${params.toString()}`,
           );
-          items = data.items ?? [];
+          items = data ?? [];
         } else {
-          const data = await apiClient.get<{ items: CampaignCardData[] }>(
+          const data = await apiClient.get<CampaignCardData[]>(
             `/api/v1/campaigns/unlimited?${params.toString()}`,
           );
-          items = data.items ?? [];
+          items = data ?? [];
         }
 
         if (reset) {
