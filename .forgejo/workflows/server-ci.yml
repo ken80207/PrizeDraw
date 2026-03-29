@@ -52,11 +52,11 @@ jobs:
             -e POSTGRES_DB=prizedraw_test \
             -e POSTGRES_USER=prizedraw \
             -e POSTGRES_PASSWORD=prizedraw \
-            -p 5432:5432 \
+            -p 5434:5432 \
             postgres:16-alpine
 
           docker run -d --name test-redis \
-            -p 6379:6379 \
+            -p 6381:6379 \
             redis:7-alpine
 
           # Wait for healthy
@@ -92,10 +92,10 @@ jobs:
             :api-contracts:allTests \
             --no-daemon
         env:
-          DATABASE_URL: jdbc:postgresql://localhost:5432/prizedraw_test
+          DATABASE_URL: jdbc:postgresql://localhost:5434/prizedraw_test
           DATABASE_USER: prizedraw
           DATABASE_PASSWORD: prizedraw
-          REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://localhost:6381
           JWT_SECRET: test-secret-for-ci-only
 
       - name: Build shadow JARs
