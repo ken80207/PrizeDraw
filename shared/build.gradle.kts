@@ -42,4 +42,14 @@ dependencies {
     // Logback — runtime logging backend; implementation scope is sufficient as consumers
     // interact with SLF4J API only.
     implementation(libs.logback.classic)
+
+    // Testing
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.ktor.server.test.host)
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
 }

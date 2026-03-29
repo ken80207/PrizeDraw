@@ -64,6 +64,8 @@ dependencies {
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.mockk)
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.mock)
 }
 
 tasks.withType<Test>().configureEach {
