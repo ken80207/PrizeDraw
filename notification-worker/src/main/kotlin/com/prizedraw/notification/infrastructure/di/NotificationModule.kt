@@ -41,7 +41,7 @@ public val notificationModule: org.koin.core.module.Module =
         // ── Database ──────────────────────────────────────────────────────────────
 
         single<DataSource> {
-            val jdbcUrl = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/prizedraw"
+            val jdbcUrl = System.getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5434/prizedraw"
             val username = System.getenv("DATABASE_USER") ?: "prizedraw"
             val password = System.getenv("DATABASE_PASSWORD") ?: "prizedraw"
             val poolSize = System.getenv("DATABASE_POOL_SIZE")?.toIntOrNull() ?: 10
@@ -75,7 +75,7 @@ public val notificationModule: org.koin.core.module.Module =
             RedisClient(
                 RedisClient.RedisConfig(
                     host = System.getenv("REDIS_HOST") ?: "localhost",
-                    port = System.getenv("REDIS_PORT")?.toIntOrNull() ?: 6379,
+                    port = System.getenv("REDIS_PORT")?.toIntOrNull() ?: 6380,
                     password = System.getenv("REDIS_PASSWORD"),
                     database = System.getenv("REDIS_DATABASE")?.toIntOrNull() ?: 0,
                     maxPoolSize = System.getenv("REDIS_POOL_SIZE")?.toIntOrNull() ?: 10,
