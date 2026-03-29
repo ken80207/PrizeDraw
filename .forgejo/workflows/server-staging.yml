@@ -2,7 +2,7 @@ name: Server Staging Deploy
 
 on:
   push:
-    branches: [staging]
+    branches: [staging, main]
     paths:
       - 'server/**'
       - 'draw-service/**'
@@ -19,15 +19,92 @@ on:
       - '.forgejo/workflows/server-staging.yml'
       - 'deployment/nas-staging/**'
       - 'infra/docker/Dockerfile.*'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: kennily/prizedraw
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: linux
+    outputs:
+      core-api: ${{ steps.changes.outputs.core_api }}
+      draw-service: ${{ steps.changes.outputs.draw_service }}
+      realtime-gateway: ${{ steps.changes.outputs.realtime_gateway }}
+      notification-worker: ${{ steps.changes.outputs.notification_worker }}
+      shared-changed: ${{ steps.changes.outputs.shared_changed }}
+      services-to-build: ${{ steps.changes.outputs.services_to_build }}
+      services-to-deploy: ${{ steps.changes.outputs.services_to_deploy }}
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Shared modules → all services need rebuild
+          SHARED_CHANGED=false
+          if echo "$CHANGED" | grep -qE '^(shared/|db-schema/|api-contracts/|kmp-shared-js/|gradle/|.*\.gradle\.kts|gradle\.properties|settings\.gradle\.kts|infra/docker/Dockerfile\.)'; then
+            SHARED_CHANGED=true
+          fi
+          echo "shared_changed=${SHARED_CHANGED}" >> $GITHUB_OUTPUT
+
+          # Per-service detection
+          CORE_API=false
+          DRAW=false
+          REALTIME=false
+          NOTIFICATION=false
+
+          if [ "$SHARED_CHANGED" = "true" ]; then
+            CORE_API=true; DRAW=true; REALTIME=true; NOTIFICATION=true
+          else
+            if echo "$CHANGED" | grep -q '^server/'; then CORE_API=true; fi
+            if echo "$CHANGED" | grep -q '^draw-service/'; then DRAW=true; fi
+            if echo "$CHANGED" | grep -q '^realtime-gateway/'; then REALTIME=true; fi
+            if echo "$CHANGED" | grep -q '^notification-worker/'; then NOTIFICATION=true; fi
+          fi
+
+          echo "core_api=${CORE_API}" >> $GITHUB_OUTPUT
+          echo "draw_service=${DRAW}" >> $GITHUB_OUTPUT
+          echo "realtime_gateway=${REALTIME}" >> $GITHUB_OUTPUT
+          echo "notification_worker=${NOTIFICATION}" >> $GITHUB_OUTPUT
+
+          # Build comma-separated lists for downstream jobs
+          BUILD_LIST=""
+          DEPLOY_LIST=""
+          if [ "$CORE_API" = "true" ]; then BUILD_LIST="core-api"; DEPLOY_LIST="core-api:9092"; fi
+          if [ "$DRAW" = "true" ]; then
+            BUILD_LIST="${BUILD_LIST:+$BUILD_LIST,}draw-service"
+            DEPLOY_LIST="${DEPLOY_LIST:+$DEPLOY_LIST,}draw-service:9093"
+          fi
+          if [ "$REALTIME" = "true" ]; then
+            BUILD_LIST="${BUILD_LIST:+$BUILD_LIST,}realtime-gateway"
+            DEPLOY_LIST="${DEPLOY_LIST:+$DEPLOY_LIST,}realtime-gateway:9094"
+          fi
+          if [ "$NOTIFICATION" = "true" ]; then
+            BUILD_LIST="${BUILD_LIST:+$BUILD_LIST,}notification-worker"
+            DEPLOY_LIST="${DEPLOY_LIST:+$DEPLOY_LIST,}notification-worker:9095"
+          fi
+
+          echo "services_to_build=${BUILD_LIST}" >> $GITHUB_OUTPUT
+          echo "services_to_deploy=${DEPLOY_LIST}" >> $GITHUB_OUTPUT
+          echo ""
+          echo "📋 Services to build: ${BUILD_LIST:-none}"
+          echo "📋 Services to deploy: ${DEPLOY_LIST:-none}"
+
   test:
     name: Test
     runs-on: linux
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services-to-build != ''
     timeout-minutes: 30
     steps:
       - name: Install Docker
@@ -71,22 +148,31 @@ jobs:
             sleep 1
           done
 
-          # Get container IPs (no port mapping needed)
           PG_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-postgres)
           REDIS_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' test-redis)
           echo "PG_IP=${PG_IP}" >> $GITHUB_ENV
           echo "REDIS_IP=${REDIS_IP}" >> $GITHUB_ENV
-          echo "PostgreSQL at ${PG_IP}:5432, Redis at ${REDIS_IP}:6379"
 
-      - name: Run tests
+      - name: Run tests (changed services only)
         run: |
-          ./gradlew \
-            :server:test \
-            :draw-service:test \
-            :realtime-gateway:test \
-            :notification-worker:test \
-            :api-contracts:jvmTest \
-            --no-daemon
+          TASKS=""
+          SERVICES="${{ needs.detect-changes.outputs.services-to-build }}"
+
+          # Map service names to Gradle module names
+          for SERVICE in $(echo "$SERVICES" | tr ',' ' '); do
+            case "$SERVICE" in
+              core-api) TASKS="$TASKS :server:test" ;;
+              *) TASKS="$TASKS :${SERVICE}:test" ;;
+            esac
+          done
+
+          # Always test api-contracts if shared modules changed
+          if [ "${{ needs.detect-changes.outputs.shared-changed }}" = "true" ]; then
+            TASKS="$TASKS :api-contracts:jvmTest"
+          fi
+
+          echo "Running: ./gradlew $TASKS"
+          ./gradlew $TASKS --no-daemon
         env:
           DATABASE_URL: jdbc:postgresql://${{ env.PG_IP }}:5432/prizedraw_test
           DATABASE_USER: prizedraw
@@ -99,9 +185,10 @@ jobs:
         run: docker rm -f test-postgres test-redis 2>/dev/null || true
 
   build-and-deploy:
-    name: Build & Deploy to Staging
+    name: Build & Deploy
     runs-on: linux
-    needs: test
+    needs: [detect-changes, test]
+    if: needs.detect-changes.outputs.services-to-build != ''
     timeout-minutes: 30
     steps:
       - name: Install Docker
@@ -125,24 +212,28 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
           restore-keys: gradle-
 
-      - name: Build shadow JARs
+      - name: Build shadow JARs (changed services only)
         run: |
-          ./gradlew \
-            :server:shadowJar \
-            :draw-service:shadowJar \
-            :realtime-gateway:shadowJar \
-            :notification-worker:shadowJar \
-            --no-daemon -x test
+          TASKS=""
+          SERVICES="${{ needs.detect-changes.outputs.services-to-build }}"
+          for SERVICE in $(echo "$SERVICES" | tr ',' ' '); do
+            case "$SERVICE" in
+              core-api) TASKS="$TASKS :server:shadowJar" ;;
+              *) TASKS="$TASKS :${SERVICE}:shadowJar" ;;
+            esac
+          done
+          echo "Building: $TASKS"
+          ./gradlew $TASKS --no-daemon -x test
 
       - name: Login to GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ${{ env.REGISTRY }} -u kennily --password-stdin
 
-      - name: Build and push Docker images
+      - name: Build and push Docker images (changed services only)
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
+          SERVICES="${{ needs.detect-changes.outputs.services-to-build }}"
 
-          SERVICES="core-api draw-service realtime-gateway notification-worker"
-          for SERVICE in $SERVICES; do
+          for SERVICE in $(echo "$SERVICES" | tr ',' ' '); do
             DOCKERFILE="infra/docker/Dockerfile.${SERVICE}"
             IMAGE="${REGISTRY}/${IMAGE_PREFIX}_${SERVICE}"
 
@@ -174,6 +265,7 @@ jobs:
         run: |
           NAS_HOST="${{ secrets.NAS_HOST }}"
           NAS_USER="${{ secrets.NAS_USER }}"
+          SERVICES="${{ needs.detect-changes.outputs.services-to-build }}"
 
           ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << ENDSSH
             cd /home/${{ secrets.NAS_USER }}/prizedraw-staging
@@ -200,35 +292,72 @@ jobs:
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
 
-            docker compose pull
-            docker compose up -d --remove-orphans
+            # Deploy core-api first if it's in the list (runs Flyway migrations)
+            if echo "${SERVICES}" | grep -q "core-api"; then
+              echo "🚀 Deploying core-api first (Flyway migrations)..."
+              docker compose pull core-api
+              docker compose up -d --no-deps core-api
+              for i in \$(seq 1 12); do
+                if curl -sf http://localhost:9092/health > /dev/null 2>&1; then
+                  echo "✅ core-api is healthy"
+                  break
+                fi
+                if [ \$i -eq 12 ]; then
+                  echo "❌ core-api failed health check"
+                  docker logs prizedraw-staging-core-api --tail 30
+                  exit 1
+                fi
+                sleep 5
+              done
+            fi
+
+            # Deploy remaining changed services
+            REMAINING=""
+            for SERVICE in $(echo "${SERVICES}" | tr ',' ' '); do
+              if [ "\$SERVICE" != "core-api" ]; then
+                REMAINING="\$REMAINING \$SERVICE"
+              fi
+            done
+
+            if [ -n "\$REMAINING" ]; then
+              echo "🚀 Deploying:\$REMAINING"
+              for SERVICE in \$REMAINING; do
+                docker compose pull \$SERVICE
+              done
+              for SERVICE in \$REMAINING; do
+                docker compose up -d --no-deps \$SERVICE
+              done
+            fi
+
+            # Start infra services if not running
+            docker compose up -d postgres redis minio
           ENDSSH
 
       - name: Health check
         run: |
           NAS_HOST="${{ secrets.NAS_HOST }}"
           NAS_USER="${{ secrets.NAS_USER }}"
+          DEPLOY_LIST="${{ needs.detect-changes.outputs.services-to-deploy }}"
           echo "Waiting for services to start..."
           sleep 15
 
-          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << 'ENDSSH'
-            SERVICES="core-api:9092 draw-service:9093 realtime-gateway:9094 notification-worker:9095"
-            for ENTRY in $SERVICES; do
-              NAME=$(echo $ENTRY | cut -d: -f1)
-              PORT=$(echo $ENTRY | cut -d: -f2)
-              echo "Checking $NAME on port $PORT..."
-              for i in $(seq 1 10); do
-                if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
-                  echo "✅ $NAME is healthy"
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << ENDSSH
+            for ENTRY in $(echo "${DEPLOY_LIST}" | tr ',' ' '); do
+              NAME=\$(echo \$ENTRY | cut -d: -f1)
+              PORT=\$(echo \$ENTRY | cut -d: -f2)
+              echo "Checking \$NAME on port \$PORT..."
+              for i in \$(seq 1 10); do
+                if curl -sf http://localhost:\$PORT/health > /dev/null 2>&1; then
+                  echo "✅ \$NAME is healthy"
                   break
                 fi
-                if [ $i -eq 10 ]; then
-                  echo "❌ $NAME failed health check"
-                  docker logs prizedraw-staging-${NAME} --tail 30
+                if [ \$i -eq 10 ]; then
+                  echo "❌ \$NAME failed health check"
+                  docker logs prizedraw-staging-\${NAME} --tail 30
                   exit 1
                 fi
                 sleep 5
               done
             done
-            echo "🚀 All services deployed to staging"
+            echo "🚀 Deployment complete"
           ENDSSH
