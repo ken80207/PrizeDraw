@@ -249,7 +249,10 @@ private fun UnlimitedMainColumn(
                         name = def.name,
                         description = def.name,
                         probability = def.probabilityBps?.let { bps ->
-                            "${"%.1f".format(bps / 100.0)}%"
+                            val pct = bps / 100.0
+                            val intPart = pct.toInt()
+                            val fracPart = ((pct - intPart) * 10).toInt()
+                            "$intPart.${fracPart}%"
                         } ?: "--",
                         quantity = "--",
                     )

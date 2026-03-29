@@ -380,7 +380,7 @@ private fun LeaderboardListRow(
     ) {
         // Rank number
         Text(
-            text = String.format("%02d", entry.rank),
+            text = entry.rank.toString().padStart(2, '0'),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
