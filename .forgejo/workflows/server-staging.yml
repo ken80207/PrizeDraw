@@ -15,6 +15,7 @@ on:
       - 'gradle/**'
       - '*.gradle.kts'
       - 'settings.gradle.kts'
+      - 'gradle.properties'
 
 env:
   REGISTRY: ghcr.io
@@ -25,48 +26,49 @@ jobs:
     name: Test
     runs-on: linux
     timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: prizedraw_test
-          POSTGRES_USER: prizedraw
-          POSTGRES_PASSWORD: prizedraw
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U prizedraw"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
+      - name: Install Docker
+        run: apt-get update && apt-get install -y docker.io
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: https://github.com/actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: https://github.com/actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
           restore-keys: gradle-
+
+      - name: Start test containers
+        run: |
+          docker run -d --name test-postgres \
+            -e POSTGRES_DB=prizedraw_test \
+            -e POSTGRES_USER=prizedraw \
+            -e POSTGRES_PASSWORD=prizedraw \
+            -p 5432:5432 \
+            postgres:16-alpine
+
+          docker run -d --name test-redis \
+            -p 6379:6379 \
+            redis:7-alpine
+
+          for i in $(seq 1 15); do
+            if docker exec test-postgres pg_isready -U prizedraw 2>/dev/null; then break; fi
+            sleep 2
+          done
+          for i in $(seq 1 10); do
+            if docker exec test-redis redis-cli ping 2>/dev/null | grep -q PONG; then break; fi
+            sleep 1
+          done
 
       - name: Run tests
         run: |
@@ -84,23 +86,30 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci-only
 
+      - name: Cleanup
+        if: always()
+        run: docker rm -f test-postgres test-redis 2>/dev/null || true
+
   build-and-deploy:
     name: Build & Deploy to Staging
     runs-on: linux
     needs: test
     timeout-minutes: 30
     steps:
+      - name: Install Docker
+        run: apt-get update && apt-get install -y docker.io
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: https://github.com/actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: https://github.com/actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -118,11 +127,11 @@ jobs:
             --no-daemon -x test
 
       - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ${{ env.REGISTRY }} -u kennily --password-stdin
 
       - name: Build and push Docker images
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHORT_SHA=$(git rev-parse --short HEAD)
 
           SERVICES="core-api draw-service realtime-gateway notification-worker"
           for SERVICE in $SERVICES; do
@@ -139,64 +148,62 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p 22 ${{ secrets.NAS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/nas_key
+          chmod 600 ~/.ssh/nas_key
 
       - name: Upload deployment files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.NAS_HOST }}
-          username: ${{ secrets.NAS_USER }}
-          key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
-          source: "deployment/nas-staging/docker-compose.yml"
-          target: "~/prizedraw-staging"
-          strip_components: 2
+        run: |
+          NAS_HOST="${{ secrets.NAS_HOST }}"
+          NAS_USER="${{ secrets.NAS_USER }}"
 
-      - name: Deploy to NAS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.NAS_HOST }}
-          username: ${{ secrets.NAS_USER }}
-          key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
-          script: |
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} \
+            "mkdir -p ~/prizedraw-staging"
+
+          scp -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new \
+            deployment/nas-staging/docker-compose.yml ${NAS_USER}@${NAS_HOST}:~/prizedraw-staging/
+
+      - name: Create .env and deploy
+        run: |
+          NAS_HOST="${{ secrets.NAS_HOST }}"
+          NAS_USER="${{ secrets.NAS_USER }}"
+
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << ENDSSH
             cd ~/prizedraw-staging
 
-            # Create .env
             cat > .env << 'ENVEOF'
-            APP_ENV=staging
-            LOG_LEVEL=INFO
-            RATE_LIMIT_ENABLED=true
+          APP_ENV=staging
+          LOG_LEVEL=INFO
+          RATE_LIMIT_ENABLED=true
+          POSTGRES_DB=prizedraw_staging
+          POSTGRES_USER=prizedraw
+          POSTGRES_PASSWORD=${{ secrets.PRIZEDRAW_DB_PASSWORD }}
+          POSTGRES_PORT=5433
+          REDIS_PASSWORD=${{ secrets.PRIZEDRAW_REDIS_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.PRIZEDRAW_MINIO_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.PRIZEDRAW_MINIO_PASSWORD }}
+          STORAGE_BUCKET=prizedraw-staging
+          JWT_SECRET=${{ secrets.PRIZEDRAW_JWT_SECRET }}
+          JWT_ISSUER=prizedraw
+          JWT_AUDIENCE=prizedraw-api
+          REGISTRY=ghcr.io
+          IMAGE_PREFIX=kennily/prizedraw
+          IMAGE_TAG=staging
+          ENVEOF
 
-            POSTGRES_DB=prizedraw_staging
-            POSTGRES_USER=prizedraw
-            POSTGRES_PASSWORD=${{ secrets.PRIZEDRAW_DB_PASSWORD }}
-            POSTGRES_PORT=5433
-
-            REDIS_PASSWORD=${{ secrets.PRIZEDRAW_REDIS_PASSWORD }}
-
-            MINIO_ROOT_USER=${{ secrets.PRIZEDRAW_MINIO_USER }}
-            MINIO_ROOT_PASSWORD=${{ secrets.PRIZEDRAW_MINIO_PASSWORD }}
-            STORAGE_BUCKET=prizedraw-staging
-
-            JWT_SECRET=${{ secrets.PRIZEDRAW_JWT_SECRET }}
-            JWT_ISSUER=prizedraw
-            JWT_AUDIENCE=prizedraw-api
-
-            REGISTRY=ghcr.io
-            IMAGE_PREFIX=kennily/prizedraw
-            IMAGE_TAG=staging
-            ENVEOF
-
-            # Login to GHCR
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
 
-            # Pull and restart
             docker compose pull
             docker compose up -d --remove-orphans
+          ENDSSH
 
-            # Health checks
-            echo "Waiting for services to start..."
+      - name: Health check
+        run: |
+          NAS_HOST="${{ secrets.NAS_HOST }}"
+          NAS_USER="${{ secrets.NAS_USER }}"
+          echo "Waiting for services to start..."
+          sleep 15
+
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << 'ENDSSH'
             SERVICES="core-api:9092 draw-service:9093 realtime-gateway:9094 notification-worker:9095"
             for ENTRY in $SERVICES; do
               NAME=$(echo $ENTRY | cut -d: -f1)
@@ -209,10 +216,11 @@ jobs:
                 fi
                 if [ $i -eq 10 ]; then
                   echo "❌ $NAME failed health check"
+                  docker logs prizedraw-staging-${NAME} --tail 30
                   exit 1
                 fi
                 sleep 5
               done
             done
-
             echo "🚀 All services deployed to staging"
+          ENDSSH

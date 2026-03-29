@@ -19,15 +19,18 @@ jobs:
     runs-on: linux
     timeout-minutes: 20
     steps:
+      - name: Install Docker
+        run: apt-get update && apt-get install -y docker.io
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
 
       - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ${{ env.REGISTRY }} -u kennily --password-stdin
 
       - name: Build and push Docker images
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHORT_SHA=$(git rev-parse --short HEAD)
 
           APPS="web admin cs"
           for APP in $APPS; do
@@ -47,19 +50,21 @@ jobs:
             echo "✅ Pushed ${IMAGE}:staging"
           done
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NAS_SSH_PRIVATE_KEY }}" > ~/.ssh/nas_key
+          chmod 600 ~/.ssh/nas_key
+
       - name: Deploy to NAS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.NAS_HOST }}
-          username: ${{ secrets.NAS_USER }}
-          key: ${{ secrets.NAS_SSH_PRIVATE_KEY }}
-          script: |
+        run: |
+          NAS_HOST="${{ secrets.NAS_HOST }}"
+          NAS_USER="${{ secrets.NAS_USER }}"
+
+          ssh -i ~/.ssh/nas_key -o StrictHostKeyChecking=accept-new ${NAS_USER}@${NAS_HOST} << 'ENDSSH'
             cd ~/prizedraw-staging
-
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
-
-            # Pull and restart frontend services
             docker compose pull web admin cs
             docker compose up -d --no-deps web admin cs
-
             echo "🚀 Frontend deployed to staging"
+          ENDSSH

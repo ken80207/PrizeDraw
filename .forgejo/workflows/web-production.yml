@@ -20,15 +20,18 @@ jobs:
     runs-on: linux
     timeout-minutes: 20
     steps:
+      - name: Install Docker
+        run: apt-get update && apt-get install -y docker.io
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
 
       - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ${{ env.REGISTRY }} -u kennily --password-stdin
 
       - name: Build and push Docker images
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHORT_SHA=$(git rev-parse --short HEAD)
           VERSION_TAG=""
           if [[ "${{ github.ref }}" == refs/tags/web-v* ]]; then
             VERSION_TAG=$(echo "${{ github.ref }}" | sed 's|refs/tags/web-||')
@@ -65,29 +68,30 @@ jobs:
     needs: build-and-push
     timeout-minutes: 10
     steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GCP_SSH_PRIVATE_KEY }}" > ~/.ssh/gcp_key
+          chmod 600 ~/.ssh/gcp_key
+
       - name: Determine image tag
         id: tag
         run: |
           if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            echo "TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+            echo "TAG=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "TAG=latest" >> $GITHUB_OUTPUT
+            echo "TAG=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Deploy to Production
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.GCP_VM_TAILSCALE_IP }}
-          username: ken
-          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-          script: |
+        run: |
+          GCP_HOST="${{ secrets.GCP_VM_TAILSCALE_IP }}"
+
+          ssh -i ~/.ssh/gcp_key -o StrictHostKeyChecking=accept-new ken@${GCP_HOST} << 'ENDSSH'
             cd ~/prizedraw
-
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u kennily --password-stdin
-
             export IMAGE_TAG="${{ steps.tag.outputs.TAG }}"
-
             docker compose pull web admin cs
             docker compose up -d --no-deps web admin cs
-
             echo "🎉 Frontend production deployment complete"
+          ENDSSH

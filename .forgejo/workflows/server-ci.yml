@@ -14,84 +14,71 @@ on:
       - 'gradle/**'
       - '*.gradle.kts'
       - 'settings.gradle.kts'
+      - 'gradle.properties'
+  workflow_dispatch:
 
 jobs:
-  lint:
-    name: Lint (ktlint + detekt)
+  test:
+    name: Lint & Test & Build
     runs-on: linux
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
+      - name: Install Docker
+        run: apt-get update && apt-get install -y docker.io
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: https://github.com/actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: https://github.com/actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: https://github.com/actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-lint-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
-          restore-keys: gradle-lint-
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
+          restore-keys: gradle-
+
+      - name: Start test containers
+        run: |
+          docker run -d --name test-postgres \
+            -e POSTGRES_DB=prizedraw_test \
+            -e POSTGRES_USER=prizedraw \
+            -e POSTGRES_PASSWORD=prizedraw \
+            -p 5432:5432 \
+            postgres:16-alpine
+
+          docker run -d --name test-redis \
+            -p 6379:6379 \
+            redis:7-alpine
+
+          # Wait for healthy
+          for i in $(seq 1 15); do
+            if docker exec test-postgres pg_isready -U prizedraw 2>/dev/null; then
+              echo "PostgreSQL ready"
+              break
+            fi
+            sleep 2
+          done
+
+          for i in $(seq 1 10); do
+            if docker exec test-redis redis-cli ping 2>/dev/null | grep -q PONG; then
+              echo "Redis ready"
+              break
+            fi
+            sleep 1
+          done
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck --no-daemon
 
       - name: Run detekt
         run: ./gradlew detekt --no-daemon
-
-  test:
-    name: Unit Tests
-    runs-on: linux
-    needs: lint
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: prizedraw_test
-          POSTGRES_USER: prizedraw
-          POSTGRES_PASSWORD: prizedraw
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U prizedraw"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-test-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
-          restore-keys: gradle-test-
 
       - name: Run tests
         run: |
@@ -109,38 +96,6 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci-only
 
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: '**/build/test-results/**/*.xml'
-          retention-days: 7
-
-  build:
-    name: Build All Services
-    runs-on: linux
-    needs: test
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-build-${{ hashFiles('**/*.gradle.kts', 'gradle.properties') }}
-          restore-keys: gradle-build-
-
       - name: Build shadow JARs
         run: |
           ./gradlew \
@@ -149,3 +104,16 @@ jobs:
             :realtime-gateway:shadowJar \
             :notification-worker:shadowJar \
             --no-daemon -x test
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: https://github.com/actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/test-results/**/*.xml'
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f test-postgres test-redis 2>/dev/null || true
