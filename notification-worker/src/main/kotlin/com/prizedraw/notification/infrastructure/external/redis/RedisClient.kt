@@ -4,6 +4,7 @@ import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.async.RedisAsyncCommands
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
 import io.lettuce.core.RedisClient as LettuceRedisClient
@@ -104,6 +105,21 @@ public class RedisClient(
             returnConnection(connection)
         }
     }
+
+    /**
+     * Sends a `PING` command to Redis and returns `true` when a `PONG` response is received.
+     *
+     * Used by the Kubernetes readiness probe to verify that the Redis dependency is reachable
+     * before the pod accepts traffic.
+     *
+     * @return `true` if the server replied with `PONG`, `false` on any error.
+     */
+    public suspend fun ping(): Boolean =
+        runCatching {
+            withConnection { cmds ->
+                cmds.ping().await() == "PONG"
+            }
+        }.getOrDefault(false)
 
     /** Closes all pooled connections and shuts down the underlying Lettuce client. */
     public fun close() {

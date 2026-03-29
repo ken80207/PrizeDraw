@@ -13,9 +13,22 @@ public interface IRoomInstanceRepository {
     /**
      * Returns all active shards for [campaignId], ordered by [RoomInstance.instanceNumber].
      *
+     * Opens its own transaction. Use [findActiveByCampaignTx] when already inside a transaction.
+     *
      * @param campaignId The campaign whose shards are queried.
      */
     public suspend fun findActiveByCampaign(campaignId: UUID): List<RoomInstance>
+
+    /**
+     * Returns all active shards for [campaignId] within the **caller's existing transaction**.
+     *
+     * Must be called from within a [org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction]
+     * block. Used by [com.prizedraw.realtime.services.RoomScalingService.assignRoom] to avoid
+     * opening a nested transaction after the advisory lock has been acquired.
+     *
+     * @param campaignId The campaign whose shards are queried.
+     */
+    public suspend fun findActiveByCampaignTx(campaignId: UUID): List<RoomInstance>
 
     /**
      * Finds a shard by its primary key, or `null` if not found.
@@ -27,20 +40,36 @@ public interface IRoomInstanceRepository {
     /**
      * Persists a new shard (insert only — shards are never updated wholesale).
      *
+     * Opens its own transaction. Use [saveTx] when already inside a transaction.
+     *
      * @param instance The shard to insert.
      * @return The persisted shard, identical to the input for newly inserted rows.
      */
     public suspend fun save(instance: RoomInstance): RoomInstance
 
     /**
+     * Persists a new shard within the **caller's existing transaction**.
+     *
+     * @param instance The shard to insert.
+     * @return The persisted shard, identical to the input for newly inserted rows.
+     */
+    public suspend fun saveTx(instance: RoomInstance): RoomInstance
+
+    /**
      * Atomically increments the player count for the given shard by 1.
      *
-     * Uses a database-level `UPDATE … SET player_count = player_count + 1` to avoid
-     * lost-update races under concurrent connection storms.
+     * Opens its own transaction. Use [incrementPlayerCountTx] when already inside a transaction.
      *
      * @param instanceId The shard whose player count is incremented.
      */
     public suspend fun incrementPlayerCount(instanceId: UUID)
+
+    /**
+     * Atomically increments the player count within the **caller's existing transaction**.
+     *
+     * @param instanceId The shard whose player count is incremented.
+     */
+    public suspend fun incrementPlayerCountTx(instanceId: UUID)
 
     /**
      * Atomically decrements the player count for the given shard by 1, floor at 0.

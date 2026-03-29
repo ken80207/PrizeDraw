@@ -29,14 +29,20 @@ import java.util.UUID
 public class RoomInstanceRepositoryImpl : IRoomInstanceRepository {
     override suspend fun findActiveByCampaign(campaignId: UUID): List<RoomInstance> =
         newSuspendedTransaction {
-            RoomInstancesTable
-                .selectAll()
-                .where {
-                    (RoomInstancesTable.campaignId eq campaignId) and
-                        (RoomInstancesTable.isActive eq true)
-                }.orderBy(RoomInstancesTable.instanceNumber)
-                .map { it.toRoomInstance() }
+            queryActiveByCampaign(campaignId)
         }
+
+    override suspend fun findActiveByCampaignTx(campaignId: UUID): List<RoomInstance> =
+        queryActiveByCampaign(campaignId)
+
+    private fun queryActiveByCampaign(campaignId: UUID): List<RoomInstance> =
+        RoomInstancesTable
+            .selectAll()
+            .where {
+                (RoomInstancesTable.campaignId eq campaignId) and
+                    (RoomInstancesTable.isActive eq true)
+            }.orderBy(RoomInstancesTable.instanceNumber)
+            .map { it.toRoomInstance() }
 
     override suspend fun findById(id: UUID): RoomInstance? =
         newSuspendedTransaction {
@@ -49,26 +55,38 @@ public class RoomInstanceRepositoryImpl : IRoomInstanceRepository {
 
     override suspend fun save(instance: RoomInstance): RoomInstance =
         newSuspendedTransaction {
-            RoomInstancesTable.insert {
-                it[id] = instance.id
-                it[campaignId] = instance.campaignId
-                it[instanceNumber] = instance.instanceNumber
-                it[playerCount] = instance.playerCount
-                it[maxPlayers] = instance.maxPlayers
-                it[isActive] = instance.isActive
-                it[createdAt] = OffsetDateTime.ofInstant(instance.createdAt.toJavaInstant(), ZoneOffset.UTC)
-                it[updatedAt] = OffsetDateTime.ofInstant(instance.updatedAt.toJavaInstant(), ZoneOffset.UTC)
-            }
-            instance
+            insertRoomInstance(instance)
         }
+
+    override suspend fun saveTx(instance: RoomInstance): RoomInstance = insertRoomInstance(instance)
+
+    private fun insertRoomInstance(instance: RoomInstance): RoomInstance {
+        RoomInstancesTable.insert {
+            it[id] = instance.id
+            it[campaignId] = instance.campaignId
+            it[instanceNumber] = instance.instanceNumber
+            it[playerCount] = instance.playerCount
+            it[maxPlayers] = instance.maxPlayers
+            it[isActive] = instance.isActive
+            it[createdAt] = OffsetDateTime.ofInstant(instance.createdAt.toJavaInstant(), ZoneOffset.UTC)
+            it[updatedAt] = OffsetDateTime.ofInstant(instance.updatedAt.toJavaInstant(), ZoneOffset.UTC)
+        }
+        return instance
+    }
 
     override suspend fun incrementPlayerCount(instanceId: UUID): Unit =
         newSuspendedTransaction {
-            RoomInstancesTable.update({ RoomInstancesTable.id eq instanceId }) {
-                it[playerCount] = playerCount + 1
-                it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
-            }
+            updatePlayerCount(instanceId)
         }
+
+    override suspend fun incrementPlayerCountTx(instanceId: UUID): Unit = updatePlayerCount(instanceId)
+
+    private fun updatePlayerCount(instanceId: UUID) {
+        RoomInstancesTable.update({ RoomInstancesTable.id eq instanceId }) {
+            it[playerCount] = playerCount + 1
+            it[updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
+        }
+    }
 
     override suspend fun decrementPlayerCount(instanceId: UUID): Unit =
         newSuspendedTransaction {

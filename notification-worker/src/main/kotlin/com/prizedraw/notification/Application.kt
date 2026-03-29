@@ -5,9 +5,11 @@ import com.prizedraw.notification.infrastructure.external.redis.RedisClient
 import com.prizedraw.notification.infrastructure.external.redis.RedisPubSub
 import com.prizedraw.notification.worker.LowStockNotificationJob
 import com.prizedraw.notification.worker.OutboxWorker
+import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.slf4j.LoggerFactory
@@ -60,10 +62,16 @@ public fun main() {
     )
 
     // Minimal HTTP server for health/metrics probes — no business logic served here.
+    // Readiness probe verifies both DB and Redis connectivity before accepting traffic.
     val port = System.getenv("PORT")?.toIntOrNull() ?: DEFAULT_PORT
     log.info("Starting health-check server on port {}", port)
     embeddedServer(CIO, port = port) {
-        configureHealthCheck()
+        configureHealthCheck(
+            ReadinessCheck {
+                newSuspendedTransaction { exec("SELECT 1") { rs -> rs.next() } }
+                redisClient.ping()
+            },
+        )
     }.start(wait = true)
 }
 

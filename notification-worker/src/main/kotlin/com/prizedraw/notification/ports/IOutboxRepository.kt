@@ -23,9 +23,9 @@ public interface DomainEvent {
  * Output port for the transactional outbox pattern.
  *
  * Events are enqueued within the same database transaction as the business operation that
- * produces them ([enqueue]). A separate background worker polls for PENDING events
- * ([fetchPending]) and publishes them to the message bus, then marks them processed
- * ([markProcessed]).
+ * produces them ([enqueue]). A separate background worker atomically claims PENDING events
+ * ([claimPending]), publishes them to the message bus, then marks them processed
+ * ([markProcessed]) or resets them for retry ([markFailedOrRetry]).
  */
 public interface IOutboxRepository {
     /**
@@ -36,12 +36,18 @@ public interface IOutboxRepository {
     public fun enqueue(event: DomainEvent)
 
     /**
-     * Returns up to [limit] PENDING [OutboxEvent]s ordered by creation time ascending.
+     * Atomically claims up to [limit] PENDING events by transitioning them to IN_PROGRESS
+     * in a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` statement.
      *
-     * @param limit Maximum number of pending events to fetch per cycle.
-     * @return List of pending outbox events.
+     * Using `FOR UPDATE SKIP LOCKED` ensures that concurrent worker pods running a rolling
+     * update each claim a disjoint batch, preventing duplicate event delivery.
+     *
+     * Also increments the `attempts` counter on each claimed row.
+     *
+     * @param limit Maximum number of events to claim per polling cycle.
+     * @return The list of events now owned by this worker pod.
      */
-    public suspend fun fetchPending(limit: Int): List<OutboxEvent>
+    public suspend fun claimPending(limit: Int): List<OutboxEvent>
 
     /**
      * Marks the outbox event with the given [id] as PROCESSED.
@@ -51,13 +57,24 @@ public interface IOutboxRepository {
     public suspend fun markProcessed(id: UUID)
 
     /**
-     * Marks the outbox event with the given [id] as FAILED.
+     * Handles a processing failure.
      *
-     * @param id The event id to mark as failed.
+     * If [currentAttempts] is less than [MAX_ATTEMPTS], resets the event to PENDING so the
+     * next polling cycle can re-claim it. Once [MAX_ATTEMPTS] is reached the event is
+     * permanently marked FAILED.
+     *
+     * @param id The event id that failed.
      * @param reason Human-readable failure reason for debugging.
+     * @param currentAttempts The `attempts` value recorded on the event when it was claimed.
      */
-    public suspend fun markFailed(
+    public suspend fun markFailedOrRetry(
         id: UUID,
         reason: String,
+        currentAttempts: Int,
     )
+
+    public companion object {
+        /** Maximum delivery attempts before an event is permanently marked FAILED. */
+        public const val MAX_ATTEMPTS: Int = 5
+    }
 }

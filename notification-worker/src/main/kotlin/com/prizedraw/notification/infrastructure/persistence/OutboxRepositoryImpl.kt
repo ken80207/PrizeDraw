@@ -22,12 +22,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
+import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -54,14 +53,40 @@ public class OutboxRepositoryImpl : IOutboxRepository {
         }
     }
 
-    override suspend fun fetchPending(limit: Int): List<OutboxEvent> =
+    /**
+     * Atomically claims up to [limit] PENDING events using a single
+     * `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` statement.
+     *
+     * `FOR UPDATE SKIP LOCKED` ensures concurrent pods each receive a disjoint
+     * batch, preventing duplicate delivery during rolling updates. The `attempts`
+     * counter is incremented in the same statement so it is always in sync with
+     * the current delivery attempt when the worker processes the event.
+     */
+    override suspend fun claimPending(limit: Int): List<OutboxEvent> =
         newSuspendedTransaction {
-            OutboxEventsTable
-                .selectAll()
-                .where { OutboxEventsTable.status eq OutboxEventStatus.PENDING.name }
-                .orderBy(OutboxEventsTable.createdAt, SortOrder.ASC)
-                .limit(limit)
-                .map { it.toOutboxEvent() }
+            @Suppress("MultilineRawStringIndentation")
+            val sql =
+                """
+                UPDATE outbox_events
+                SET status = '${OutboxEventStatus.IN_PROGRESS.name}', attempts = attempts + 1
+                WHERE id IN (
+                    SELECT id FROM outbox_events
+                    WHERE status = '${OutboxEventStatus.PENDING.name}'
+                    ORDER BY created_at ASC
+                    LIMIT $limit
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING id, event_type, aggregate_id, payload, status, attempts,
+                          last_error, created_at, processed_at
+                """.trimIndent()
+
+            val result = mutableListOf<OutboxEvent>()
+            exec(sql) { rs ->
+                while (rs.next()) {
+                    result.add(rs.toOutboxEvent())
+                }
+            }
+            result
         }
 
     override suspend fun markProcessed(id: UUID): Unit =
@@ -72,14 +97,29 @@ public class OutboxRepositoryImpl : IOutboxRepository {
             }
         }
 
-    override suspend fun markFailed(
+    /**
+     * On failure, resets the event to PENDING if further retries remain, or permanently
+     * marks it FAILED once [IOutboxRepository.MAX_ATTEMPTS] has been exhausted.
+     *
+     * Resetting to PENDING (rather than leaving it IN_PROGRESS) means the event will be
+     * re-claimed on the next polling cycle by whichever pod picks it up next.
+     */
+    override suspend fun markFailedOrRetry(
         id: UUID,
         reason: String,
+        currentAttempts: Int,
     ): Unit =
         inTransaction {
-            OutboxEventsTable.update({ OutboxEventsTable.id eq id }) {
-                it[status] = OutboxEventStatus.FAILED.name
-                it[lastError] = reason
+            if (currentAttempts >= IOutboxRepository.MAX_ATTEMPTS) {
+                OutboxEventsTable.update({ OutboxEventsTable.id eq id }) {
+                    it[status] = OutboxEventStatus.FAILED.name
+                    it[lastError] = reason
+                }
+            } else {
+                OutboxEventsTable.update({ OutboxEventsTable.id eq id }) {
+                    it[status] = OutboxEventStatus.PENDING.name
+                    it[lastError] = reason
+                }
             }
         }
 
@@ -165,8 +205,30 @@ public class OutboxRepositoryImpl : IOutboxRepository {
             aggregateId = this[OutboxEventsTable.aggregateId],
             payload = json.parseToJsonElement(this[OutboxEventsTable.payload]) as JsonObject,
             status = OutboxEventStatus.valueOf(this[OutboxEventsTable.status]),
+            attempts = this[OutboxEventsTable.attempts],
             processedAt = this[OutboxEventsTable.processedAt]?.toInstant()?.toKotlinInstant(),
             failureReason = this[OutboxEventsTable.lastError],
             createdAt = this[OutboxEventsTable.createdAt].toInstant().toKotlinInstant(),
         )
+
+    /**
+     * Maps a raw JDBC [ResultSet] row from the `RETURNING *` clause back to an [OutboxEvent].
+     *
+     * Column names match those defined in [OutboxEventsTable] and the underlying DB schema.
+     */
+    private fun ResultSet.toOutboxEvent(): OutboxEvent {
+        val eventType = getString("event_type")
+        return OutboxEvent(
+            id = getObject("id", java.util.UUID::class.java),
+            eventType = eventType,
+            aggregateType = eventType.substringBefore("."),
+            aggregateId = getObject("aggregate_id", java.util.UUID::class.java),
+            payload = json.parseToJsonElement(getString("payload")) as JsonObject,
+            status = OutboxEventStatus.valueOf(getString("status")),
+            attempts = getInt("attempts"),
+            processedAt = getTimestamp("processed_at")?.toInstant()?.toKotlinInstant(),
+            failureReason = getString("last_error"),
+            createdAt = getTimestamp("created_at").toInstant().toKotlinInstant(),
+        )
+    }
 }

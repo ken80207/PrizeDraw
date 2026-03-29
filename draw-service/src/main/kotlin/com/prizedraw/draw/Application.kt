@@ -5,6 +5,7 @@ import com.prizedraw.draw.infrastructure.redis.RedisClient
 import com.prizedraw.draw.infrastructure.redis.RedisPubSub
 import com.prizedraw.draw.plugins.configureDrawRouting
 import com.prizedraw.draw.plugins.configureSecurity
+import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -18,6 +19,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
@@ -96,7 +98,14 @@ public fun Application.module() {
     configureSecurity()
 
     // --- Shared health/readiness endpoints ---
-    configureHealthCheck()
+    // Readiness probes verify DB and Redis connectivity before the pod accepts traffic.
+    configureHealthCheck(
+        ReadinessCheck {
+            newSuspendedTransaction { exec("SELECT 1") { rs -> rs.next() } }
+            val redis: RedisClient by inject()
+            redis.ping()
+        },
+    )
 
     // --- Draw Routes ---
     configureDrawRouting()

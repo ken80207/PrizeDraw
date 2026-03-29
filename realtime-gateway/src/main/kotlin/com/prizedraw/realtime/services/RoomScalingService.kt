@@ -5,6 +5,7 @@ import com.prizedraw.realtime.infrastructure.redis.RedisClient
 import com.prizedraw.realtime.infrastructure.redis.RedisPubSub
 import com.prizedraw.realtime.ports.IRoomInstanceRepository
 import kotlinx.datetime.Clock
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
@@ -44,12 +45,18 @@ public class RoomScalingService(
     /**
      * Assigns a connecting player to the best available shard for [campaignId].
      *
-     * Strategy:
-     * 1. Load all active shards for the campaign.
+     * The entire assign logic is wrapped in a single database transaction protected by a
+     * PostgreSQL advisory lock (`pg_advisory_xact_lock`). This prevents duplicate shard
+     * creation under concurrent WebSocket connection storms: only one pod at a time can
+     * execute the read-check-create sequence for a given campaign. The lock is released
+     * automatically when the transaction commits or rolls back.
+     *
+     * Strategy inside the lock:
+     * 1. Load all active shards for the campaign (within the transaction).
      * 2. Among shards below [SCALE_UP_THRESHOLD] capacity, pick the one with the fewest players.
-     * 3. If no shard has headroom, create a new shard.
-     * 4. Atomically increment the chosen shard's player count.
-     * 5. Notify all pods via Redis pub/sub when a new shard is created.
+     * 3. If no shard has headroom, create a new shard within the same transaction.
+     * 4. Atomically increment the chosen shard's player count (within the transaction).
+     * 5. Notify all pods via Redis pub/sub when a new shard is created (after commit).
      *
      * @param campaignId The campaign the player is joining.
      * @param playerId The player being assigned (used for logging).
@@ -59,54 +66,74 @@ public class RoomScalingService(
         campaignId: UUID,
         playerId: UUID,
     ): RoomInstance {
-        val rooms = roomInstanceRepository.findActiveByCampaign(campaignId)
+        // Track whether a new shard was provisioned so we can publish after commit.
+        var newlyCreated: RoomInstance? = null
 
-        val availableRoom =
-            rooms
-                .filter { it.playerCount < it.maxPlayers * SCALE_UP_THRESHOLD }
-                .minByOrNull { it.playerCount }
+        val assigned =
+            newSuspendedTransaction {
+                // Acquire a transaction-scoped advisory lock keyed to this campaign.
+                // hashtext() converts the campaign UUID string to a 32-bit int that fits
+                // pg_advisory_xact_lock's bigint parameter. The lock is released automatically
+                // when this transaction ends, so it never blocks longer than necessary.
+                exec("SELECT pg_advisory_xact_lock(hashtext('room_assign_$campaignId'))")
 
-        if (availableRoom != null) {
-            roomInstanceRepository.incrementPlayerCount(availableRoom.id)
-            log.debug(
-                "Player {} assigned to existing shard {} (instance #{}) for campaign {}",
-                playerId,
-                availableRoom.id,
-                availableRoom.instanceNumber,
-                campaignId,
-            )
-            return availableRoom
+                val rooms = roomInstanceRepository.findActiveByCampaignTx(campaignId)
+
+                val availableRoom =
+                    rooms
+                        .filter { it.playerCount < it.maxPlayers * SCALE_UP_THRESHOLD }
+                        .minByOrNull { it.playerCount }
+
+                if (availableRoom != null) {
+                    roomInstanceRepository.incrementPlayerCountTx(availableRoom.id)
+                    log.debug(
+                        "Player {} assigned to existing shard {} (instance #{}) for campaign {}",
+                        playerId,
+                        availableRoom.id,
+                        availableRoom.instanceNumber,
+                        campaignId,
+                    )
+                    return@newSuspendedTransaction availableRoom
+                }
+
+                // All shards are at or above threshold — provision a new shard within the
+                // same transaction so the advisory lock prevents concurrent duplicate inserts.
+                val nextInstanceNumber = (rooms.maxOfOrNull { it.instanceNumber } ?: 0) + 1
+                val now = Clock.System.now()
+                val newInstance =
+                    RoomInstance(
+                        id = UUID.randomUUID(),
+                        campaignId = campaignId,
+                        instanceNumber = nextInstanceNumber,
+                        playerCount = 1,
+                        maxPlayers = DEFAULT_MAX_PLAYERS,
+                        isActive = true,
+                        createdAt = now,
+                        updatedAt = now,
+                    )
+                roomInstanceRepository.saveTx(newInstance)
+
+                log.info(
+                    "Created new shard #{} ({}) for campaign {} — previous shard count: {}",
+                    nextInstanceNumber,
+                    newInstance.id,
+                    campaignId,
+                    rooms.size,
+                )
+                newlyCreated = newInstance
+                newInstance
+            }
+
+        // Publish the room-created event after the transaction commits so subscribers
+        // see a fully consistent database state when they react to the notification.
+        newlyCreated?.let { created ->
+            val num = created.instanceNumber
+            val rid = created.id
+            val roomEvent = """{"event":"ROOM_CREATED","instanceNumber":$num,"roomInstanceId":"$rid"}"""
+            redisPubSub.publish("campaign:$campaignId:rooms", roomEvent)
         }
 
-        // All shards are at or above threshold — provision a new shard.
-        val nextInstanceNumber = (rooms.maxOfOrNull { it.instanceNumber } ?: 0) + 1
-        val now = Clock.System.now()
-        val newInstance =
-            RoomInstance(
-                id = UUID.randomUUID(),
-                campaignId = campaignId,
-                instanceNumber = nextInstanceNumber,
-                playerCount = 1,
-                maxPlayers = DEFAULT_MAX_PLAYERS,
-                isActive = true,
-                createdAt = now,
-                updatedAt = now,
-            )
-        roomInstanceRepository.save(newInstance)
-
-        redisPubSub.publish(
-            "campaign:$campaignId:rooms",
-            """{"event":"ROOM_CREATED","instanceNumber":$nextInstanceNumber,"roomInstanceId":"${newInstance.id}"}""",
-        )
-
-        log.info(
-            "Created new shard #{} ({}) for campaign {} — previous shard count: {}",
-            nextInstanceNumber,
-            newInstance.id,
-            campaignId,
-            rooms.size,
-        )
-        return newInstance
+        return assigned
     }
 
     /**

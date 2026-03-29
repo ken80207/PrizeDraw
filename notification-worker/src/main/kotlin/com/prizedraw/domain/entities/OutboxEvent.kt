@@ -18,6 +18,7 @@ import java.util.UUID
  * @property aggregateId The primary key of the aggregate root instance.
  * @property payload Serialised event payload as a JSON object.
  * @property status Current processing state.
+ * @property attempts Number of delivery attempts made so far (incremented on each claim).
  * @property processedAt When this event was successfully published.
  * @property failureReason Error message if processing failed.
  * @property createdAt Creation timestamp (within the originating business transaction).
@@ -29,6 +30,7 @@ public data class OutboxEvent(
     val aggregateId: UUID,
     val payload: JsonObject,
     val status: OutboxEventStatus,
+    val attempts: Int = 0,
     val processedAt: Instant?,
     val failureReason: String?,
     val createdAt: Instant,
@@ -40,6 +42,16 @@ public data class OutboxEvent(
 public enum class OutboxEventStatus {
     /** Event has been persisted but not yet published. */
     PENDING,
+
+    /**
+     * Event has been claimed by a worker pod and is currently being processed.
+     *
+     * Prevents duplicate delivery under rolling updates: a second pod will
+     * skip rows in this state when it queries for [PENDING] records.
+     * Rows are transitioned from [IN_PROGRESS] to either [PROCESSED] on success
+     * or back to [PENDING] for retry (or to [FAILED] after exhausting all attempts).
+     */
+    IN_PROGRESS,
 
     /** Event has been successfully published to the message bus. */
     PROCESSED,

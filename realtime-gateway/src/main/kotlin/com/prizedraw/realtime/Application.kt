@@ -5,6 +5,7 @@ import com.prizedraw.realtime.infrastructure.redis.RedisClient
 import com.prizedraw.realtime.infrastructure.redis.RedisPubSub
 import com.prizedraw.realtime.plugins.configureRouting
 import com.prizedraw.realtime.services.RoomScalingService
+import com.prizedraw.shared.plugins.ReadinessCheck
 import com.prizedraw.shared.plugins.configureHealthCheck
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -75,7 +76,13 @@ public fun Application.module() {
     }
 
     // --- Shared health/readiness endpoints ---
-    configureHealthCheck()
+    // Readiness probe verifies Redis connectivity — the gateway's primary real-time dependency.
+    configureHealthCheck(
+        ReadinessCheck {
+            val redis: RedisClient by inject()
+            redis.ping()
+        },
+    )
 
     // --- WebSocket Routes ---
     configureRouting()

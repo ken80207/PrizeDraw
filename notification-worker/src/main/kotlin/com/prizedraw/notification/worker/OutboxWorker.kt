@@ -72,12 +72,14 @@ public class OutboxWorker(
     }
 
     private suspend fun processBatch() {
-        val events = outboxRepository.fetchPending(BATCH_SIZE)
+        // claimPending atomically marks events IN_PROGRESS via SELECT FOR UPDATE SKIP LOCKED,
+        // so concurrent pods running a rolling update each receive a disjoint batch.
+        val events = outboxRepository.claimPending(BATCH_SIZE)
         if (events.isEmpty()) {
             return
         }
 
-        log.debug("OutboxWorker processing {} pending events", events.size)
+        log.debug("OutboxWorker claimed {} pending events", events.size)
 
         events.forEach { event ->
             processEvent(event)
@@ -91,8 +93,16 @@ public class OutboxWorker(
             outboxRepository.markProcessed(event.id)
             log.debug("OutboxEvent {} ({}) processed", event.id, event.eventType)
         } catch (e: Exception) {
-            log.warn("OutboxEvent {} ({}) delivery failed: {}", event.id, event.eventType, e.message)
-            outboxRepository.markFailed(event.id, e.message ?: "Unknown error")
+            val reason = e.message ?: "Unknown error"
+            log.warn(
+                "OutboxEvent {} ({}) delivery failed (attempt {}/{}): {}",
+                event.id,
+                event.eventType,
+                event.attempts,
+                IOutboxRepository.MAX_ATTEMPTS,
+                reason,
+            )
+            outboxRepository.markFailedOrRetry(event.id, reason, event.attempts)
         }
     }
 
