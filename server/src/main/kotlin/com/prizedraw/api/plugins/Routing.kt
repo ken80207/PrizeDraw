@@ -39,24 +39,7 @@ import com.prizedraw.api.routes.storageUploadRoute
 import com.prizedraw.api.routes.supportRoutes
 import com.prizedraw.api.routes.tradeRoutes
 import com.prizedraw.api.routes.withdrawalRoutes
-import com.prizedraw.application.ports.output.IDrawRepository
-import com.prizedraw.application.ports.output.INotificationRepository
-import com.prizedraw.application.ports.output.IPrizeRepository
-import com.prizedraw.application.ports.output.IPubSubService
-import com.prizedraw.application.ports.output.IQueueEntryRepository
-import com.prizedraw.application.ports.output.IQueueRepository
-import com.prizedraw.application.services.ChatService
-import com.prizedraw.application.services.DrawSyncService
-import com.prizedraw.application.services.RoomScalingService
-import com.prizedraw.application.services.TokenService
 import com.prizedraw.application.usecases.leaderboard.LeaderboardAggregationJob
-import com.prizedraw.infrastructure.websocket.ConnectionManager
-import com.prizedraw.infrastructure.websocket.PlayerNotificationManager
-import com.prizedraw.infrastructure.websocket.chatWebSocketHandler
-import com.prizedraw.infrastructure.websocket.feedWebSocketHandler
-import com.prizedraw.infrastructure.websocket.kujiWebSocketHandler
-import com.prizedraw.infrastructure.websocket.playerNotificationHandler
-import com.prizedraw.infrastructure.websocket.queueWebSocketHandler
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
@@ -88,19 +71,7 @@ import org.koin.ktor.ext.inject
 @Suppress("LongMethod")
 public fun Application.configureRouting() {
     val prometheusRegistry: PrometheusMeterRegistry by inject()
-    val feedPubSub: IPubSubService by inject()
-    val connectionManager: ConnectionManager by inject()
-    val drawRepository: IDrawRepository by inject()
-    val prizeRepository: IPrizeRepository by inject()
-    val queueRepository: IQueueRepository by inject()
-    val queueEntryRepository: IQueueEntryRepository by inject()
     val leaderboardAggregationJob: LeaderboardAggregationJob by inject()
-    val drawSyncService: DrawSyncService by inject()
-    val chatService: ChatService by inject()
-    val roomScalingService: RoomScalingService by inject()
-    val playerNotificationManager: PlayerNotificationManager by inject()
-    val notificationRepository: INotificationRepository by inject()
-    val tokenService: TokenService by inject()
 
     // Start the leaderboard background aggregation job once at startup
     leaderboardAggregationJob.start()
@@ -137,28 +108,18 @@ public fun Application.configureRouting() {
         // Phase 10: Notification history and read-status management
         notificationRoutes()
 
-        // Phase 4: Campaign, Draw, WebSocket
+        // Phase 4: Campaign, Draw
+        // Note: WebSocket routes (kuji, queue, chat, feed, player notifications) have been
+        // extracted to the realtime-gateway microservice (port 9094).
         campaignRoutes()
         drawRoutes()
-        kujiWebSocketHandler(
-            connectionManager,
-            drawRepository,
-            prizeRepository,
-            drawSyncService,
-            roomScalingService,
-        )
 
         // Phase 21: Room scaling REST endpoints
         roomRoutes()
-        queueWebSocketHandler(connectionManager, queueRepository, queueEntryRepository)
 
-        // Phase 19+: Gameification — Chat, Broadcast, Draw Sync
+        // Phase 19+: Gameification — Chat, Broadcast
         chatRoutes()
         broadcastRoutes()
-        chatWebSocketHandler(connectionManager, chatService)
-
-        // Player notification WebSocket
-        playerNotificationHandler(playerNotificationManager, tokenService, notificationRepository)
 
         // Phase 6: Prize Inventory & Shipping
         shippingRoutes()
@@ -181,9 +142,9 @@ public fun Application.configureRouting() {
         // Live draw marquee — public REST snapshot of active sessions
         liveDrawRoutes()
 
-        // Live draw feed — public REST endpoint + WebSocket fanout
+        // Live draw feed — public REST endpoint
+        // Note: /ws/feed WebSocket fanout is served by realtime-gateway.
         feedRoutes()
-        feedWebSocketHandler(feedPubSub, this@configureRouting)
 
         // Phase 22: Player level/tier system and XP leaderboard
         levelRoutes()

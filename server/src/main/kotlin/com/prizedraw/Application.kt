@@ -8,30 +8,22 @@ import com.prizedraw.api.plugins.configureRouting
 import com.prizedraw.api.plugins.configureSecurity
 import com.prizedraw.api.plugins.configureSerialization
 import com.prizedraw.api.plugins.configureStatusPages
-import com.prizedraw.api.plugins.configureWebSockets
 import com.prizedraw.application.ports.output.IFeatureFlagRepository
-import com.prizedraw.application.services.RoomScalingService
 import com.prizedraw.infrastructure.di.databaseModule
 import com.prizedraw.infrastructure.di.externalModule
 import com.prizedraw.infrastructure.di.repositoryModule
 import com.prizedraw.infrastructure.di.serviceModule
 import com.prizedraw.infrastructure.di.useCaseModule
-import com.prizedraw.infrastructure.di.webSocketModule
 import com.prizedraw.infrastructure.external.redis.RedisClient
 import com.prizedraw.infrastructure.external.redis.RedisPubSub
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.netty.EngineMain
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
-import kotlin.time.Duration.Companion.minutes
-
-private val roomCleanupInterval = 2.minutes
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -42,6 +34,9 @@ fun main(args: Array<String>) {
  *
  * Installs all Koin DI modules, configures all Ktor plugins, and starts the outbox worker.
  * Called by Ktor's engine via `application.modules` in `application.conf`.
+ *
+ * WebSocket handling has been extracted to the `realtime-gateway` microservice.
+ * This module no longer serves WebSocket routes.
  */
 fun Application.module() {
     val appConfig = environment.config
@@ -55,7 +50,6 @@ fun Application.module() {
             useCaseModule,
             serviceModule(appConfig),
             externalModule(appConfig),
-            webSocketModule,
         )
     }
 
@@ -71,7 +65,6 @@ fun Application.module() {
     configureRateLimit()
     configureRequestValidation()
     configureStatusPages()
-    configureWebSockets()
     configureMonitoring()
     configureSecurity()
     configureRouting()
@@ -80,24 +73,6 @@ fun Application.module() {
     val featureFlagRepository: IFeatureFlagRepository by inject()
     launch {
         featureFlagRepository.warmCache()
-    }
-
-    // --- Phase 21: Room Cleanup Job ---
-    // Deactivates empty room shards every 2 minutes, preserving at least 1 shard per campaign.
-    val roomScalingService: RoomScalingService by inject()
-    launch {
-        while (isActive) {
-            delay(roomCleanupInterval)
-            @Suppress("TooGenericExceptionCaught")
-            try {
-                roomScalingService.cleanupEmptyRooms()
-            } catch (e: Exception) {
-                // Log and continue — cleanup failures must never crash the application.
-                org.slf4j.LoggerFactory
-                    .getLogger("RoomCleanup")
-                    .warn("Room cleanup cycle failed: {}", e.message, e)
-            }
-        }
     }
 
     val redisPubSub: RedisPubSub by inject()

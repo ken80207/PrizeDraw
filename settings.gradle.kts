@@ -25,6 +25,7 @@ include(":db-schema")
 include(":shared")
 include(":server")
 include(":notification-worker")
+include(":realtime-gateway")
 include(":kmp-shared-js")
 
 // Mobile modules require Android SDK and Kotlin Multiplatform toolchain.
