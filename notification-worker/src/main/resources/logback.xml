@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- JSON structured logging for production log aggregation (Loki/ELK). -->
+    <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>{"timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSZ}","level":"%level","logger":"%logger{36}","thread":"%thread","message":"%replace(%msg){'\"','\\\"'}"%replace(%mdc){'(.+)',',"mdc":{$1}'}%n}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- Silence verbose Exposed SQL logging unless explicitly enabled. -->
+    <logger name="Exposed" level="WARN"/>
+    <!-- Silence Koin startup noise. -->
+    <logger name="org.koin" level="INFO"/>
+    <!-- Lettuce connection pool info is noisy at DEBUG. -->
+    <logger name="io.lettuce" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="JSON_STDOUT"/>
+    </root>
+
+</configuration>
