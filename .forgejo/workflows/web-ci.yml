@@ -7,6 +7,7 @@ on:
       - 'admin/**'
       - 'cs/**'
       - 'pnpm-workspace.yaml'
+      - '.forgejo/workflows/web-ci.yml'
   workflow_dispatch:
 
 jobs:

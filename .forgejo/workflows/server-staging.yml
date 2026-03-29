@@ -16,6 +16,9 @@ on:
       - '*.gradle.kts'
       - 'settings.gradle.kts'
       - 'gradle.properties'
+      - '.forgejo/workflows/server-staging.yml'
+      - 'deployment/nas-staging/**'
+      - 'infra/docker/Dockerfile.*'
 
 env:
   REGISTRY: ghcr.io

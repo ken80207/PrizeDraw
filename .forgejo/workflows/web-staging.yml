@@ -8,6 +8,10 @@ on:
       - 'admin/**'
       - 'cs/**'
       - 'pnpm-workspace.yaml'
+      - '.forgejo/workflows/web-staging.yml'
+      - 'infra/docker/Dockerfile.web'
+      - 'infra/docker/Dockerfile.admin'
+      - 'infra/docker/Dockerfile.cs'
 
 env:
   REGISTRY: ghcr.io
