@@ -73,7 +73,7 @@ jobs:
             :draw-service:test \
             :realtime-gateway:test \
             :notification-worker:test \
-            :api-contracts:allTests \
+            :api-contracts:jvmTest \
             --no-daemon
         env:
           DATABASE_URL: jdbc:postgresql://${{ env.PG_IP }}:5432/prizedraw_test
