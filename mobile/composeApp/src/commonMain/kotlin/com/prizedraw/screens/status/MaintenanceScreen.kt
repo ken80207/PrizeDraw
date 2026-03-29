@@ -114,7 +114,7 @@ public fun MaintenanceScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     val localTime = scheduledEnd.toLocalDateTime(TimeZone.currentSystemDefault())
                     val timeString =
-                        "%02d:%02d".format(localTime.hour, localTime.minute)
+                        "${localTime.hour.toString().padStart(2, '0')}:${localTime.minute.toString().padStart(2, '0')}"
                     Text(
                         text = "${S("status.scheduledRestorationAt")} $timeString",
                         style = MaterialTheme.typography.bodyMedium,
