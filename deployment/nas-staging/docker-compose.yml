@@ -166,33 +166,35 @@ services:
       retries: 3
 
   # ---- Frontend Services ----
-
-  web:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_web:${IMAGE_TAG:-staging}
-    container_name: prizedraw-staging-web
-    restart: unless-stopped
-    depends_on:
-      - core-api
-    ports:
-      - "3000:3000"
-
-  admin:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_admin:${IMAGE_TAG:-staging}
-    container_name: prizedraw-staging-admin
-    restart: unless-stopped
-    depends_on:
-      - core-api
-    ports:
-      - "3001:3000"
-
-  cs:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_cs:${IMAGE_TAG:-staging}
-    container_name: prizedraw-staging-cs
-    restart: unless-stopped
-    depends_on:
-      - core-api
-    ports:
-      - "3002:3000"
+  # Frontend images are built and deployed by web-staging.yml
+  # Uncomment after first successful web-staging build:
+  #
+  # web:
+  #   image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_web:${IMAGE_TAG:-staging}
+  #   container_name: prizedraw-staging-web
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - core-api
+  #   ports:
+  #     - "3000:3000"
+  #
+  # admin:
+  #   image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_admin:${IMAGE_TAG:-staging}
+  #   container_name: prizedraw-staging-admin
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - core-api
+  #   ports:
+  #     - "3001:3000"
+  #
+  # cs:
+  #   image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-kennily/prizedraw}_cs:${IMAGE_TAG:-staging}
+  #   container_name: prizedraw-staging-cs
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - core-api
+  #   ports:
+  #     - "3002:3000"
 
 volumes:
   postgres_data:
