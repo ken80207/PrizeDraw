@@ -69,7 +69,7 @@ export async function loginAsPlayer(
     ({ mockPlayer, mockToken, mockRefreshToken }) => {
       // Poll for the Zustand store to be available (modules may not have loaded yet)
       const inject = () => {
-        const store = (window as Record<string, unknown>).__AUTH_STORE__ as
+        const store = (window as unknown as Record<string, unknown>).__AUTH_STORE__ as
           | { getState: () => { setSession: (p: unknown, t: string, rt: string) => void; isAuthenticated: boolean } }
           | undefined;
         if (store?.getState && !store.getState().isAuthenticated) {
