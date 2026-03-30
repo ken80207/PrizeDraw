@@ -36,16 +36,19 @@ function gradeStyle(grade: string): string {
 export default function PrizesPage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const t = useTranslations("prizes");
   const tCommon = useTranslations("common");
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for localStorage rehydration before deciding to redirect, to avoid
+    // a false redirect on the initial render where isAuthenticated is still false.
+    if (hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 

@@ -196,7 +196,7 @@ export default function LeaderboardPage() {
               </div>
 
               <div className="divide-y divide-surface-container-highest">
-                {data.entries.slice(3).map((entry) => (
+                {data.entries.slice(data.entries.length >= 3 ? 3 : 0).map((entry) => (
                   <LeaderboardRow
                     key={entry.playerId}
                     entry={entry}

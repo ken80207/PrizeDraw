@@ -329,6 +329,14 @@ function DevLoginPanel() {
       if (!res.ok) throw new Error("Dev login failed");
       const { accessToken, refreshToken } = await res.json();
 
+      // Persist tokens in httpOnly cookies via the session route (same as the
+      // production OAuth flow) so the session survives across navigation.
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken, refreshToken }),
+      });
+
       const playerRes = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/players/me`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -336,6 +344,7 @@ function DevLoginPanel() {
       if (!playerRes.ok) throw new Error("Failed to fetch player");
       const player: PlayerDto = await playerRes.json();
 
+      // Update the Zustand store (also persisted to localStorage via persist middleware).
       useAuthStore.getState().setSession(player, accessToken, refreshToken);
       router.push("/");
     } catch (e) {

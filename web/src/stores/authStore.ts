@@ -1,12 +1,18 @@
 /**
- * Authentication state store backed by Zustand.
+ * Authentication state store backed by Zustand with localStorage persistence.
  *
  * Exposes the authenticated player profile, in-memory token pair, and session
- * lifecycle actions. The public interface is identical to the previous singleton
- * contract so all call sites are non-breaking.
+ * lifecycle actions. The store persists `player`, `accessToken`, `refreshToken`,
+ * and `isAuthenticated` to localStorage so that auth state survives client-side
+ * navigation (Next.js App Router does not unmount the React tree between routes,
+ * but a fresh tab or hard-refresh must also restore the session).
+ *
+ * The public interface is identical to the previous singleton contract so all
+ * call sites are non-breaking.
  */
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { PlayerDto } from "./authStore.types";
 export type { PlayerDto };
 import { useWalletStore } from "./walletStore";
@@ -20,6 +26,13 @@ export interface AuthStore {
   accessToken: string | null;
   /** Refresh token kept in memory for rotation. */
   refreshToken: string | null;
+  /**
+   * True once the persist middleware has finished reading from localStorage.
+   * Components that guard routes should wait for this before redirecting to
+   * avoid a flash redirect on the initial render where state is still the
+   * default (unauthenticated) value.
+   */
+  _hasHydrated: boolean;
 
   /**
    * Sets the session after a successful login or token refresh.
@@ -41,6 +54,9 @@ export interface AuthStore {
    * @returns `true` if a new token pair was obtained; `false` if the session has expired.
    */
   refreshToken_: () => Promise<boolean>;
+
+  /** Internal: called by the persist middleware once rehydration completes. */
+  _setHasHydrated: (value: boolean) => void;
 }
 
 interface TokenResponse {
@@ -49,51 +65,78 @@ interface TokenResponse {
   expiresIn: number;
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-  player: null,
-  isAuthenticated: false,
-  accessToken: null,
-  refreshToken: null,
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set, get) => ({
+      player: null,
+      isAuthenticated: false,
+      accessToken: null,
+      refreshToken: null,
+      _hasHydrated: false,
 
-  setSession(player, accessToken, refreshToken) {
-    set({ player, isAuthenticated: true, accessToken, refreshToken });
-    // Seed the wallet store with the server-authoritative balances from the player profile.
-    useWalletStore.getState().setBalances(player.drawPointsBalance, player.revenuePointsBalance);
-  },
+      _setHasHydrated(value) {
+        set({ _hasHydrated: value });
+      },
 
-  clearSession() {
-    set({ player: null, isAuthenticated: false, accessToken: null, refreshToken: null });
-  },
+      setSession(player, accessToken, refreshToken) {
+        set({ player, isAuthenticated: true, accessToken, refreshToken });
+        // Seed the wallet store with the server-authoritative balances from the player profile.
+        useWalletStore.getState().setBalances(player.drawPointsBalance, player.revenuePointsBalance);
+      },
 
-  async refreshToken_(): Promise<boolean> {
-    const currentRefreshToken = get().refreshToken;
-    if (!currentRefreshToken) return false;
+      clearSession() {
+        set({ player: null, isAuthenticated: false, accessToken: null, refreshToken: null });
+      },
 
-    try {
-      const res = await fetch("/api/v1/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      });
+      async refreshToken_(): Promise<boolean> {
+        const currentRefreshToken = get().refreshToken;
+        if (!currentRefreshToken) return false;
 
-      if (!res.ok) {
-        get().clearSession();
-        return false;
-      }
+        try {
+          const res = await fetch("/api/v1/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: currentRefreshToken }),
+          });
 
-      const data: TokenResponse = await res.json();
-      set((state) => ({
-        ...state,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      }));
-      return true;
-    } catch {
-      get().clearSession();
-      return false;
+          if (!res.ok) {
+            get().clearSession();
+            return false;
+          }
+
+          const data: TokenResponse = await res.json();
+          set((state) => ({
+            ...state,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+          }));
+          return true;
+        } catch {
+          get().clearSession();
+          return false;
+        }
+      },
+    }),
+    {
+      name: "prizedraw-auth",
+      storage: createJSONStorage(() =>
+        // Guard against SSR where window/localStorage is not available.
+        typeof window !== "undefined" ? window.localStorage : (undefined as never)
+      ),
+      // Only persist the token pair and player — _hasHydrated is always reset
+      // to false on a fresh page load and set to true after rehydration.
+      partialize: (state) => ({
+        player: state.player,
+        isAuthenticated: state.isAuthenticated,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?._setHasHydrated(true);
+      },
     }
-  },
-}));
+  )
+);
 
 /**
  * Legacy singleton-style accessor for code that has not migrated to the hook.
@@ -130,5 +173,6 @@ export function subscribeToAuthStore(listener: () => void): () => void {
 
 // Expose store on window in non-production for E2E testing (Playwright).
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-  (window as Record<string, unknown>).__AUTH_STORE__ = useAuthStore;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__AUTH_STORE__ = useAuthStore;
 }
