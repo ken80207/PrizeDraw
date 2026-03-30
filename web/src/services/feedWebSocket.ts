@@ -37,7 +37,7 @@ const BASE_WS_URL =
   process.env.NEXT_PUBLIC_WS_BASE_URL ??
   (typeof window !== "undefined"
     ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
-    : "ws://localhost:9092");
+    : "ws://localhost:3000");
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 3000;
 
@@ -65,12 +65,15 @@ function connect(): void {
 
   ws.onmessage = (event) => {
     try {
-      const msg = JSON.parse(event.data as string) as FeedWsMessage;
+      const msg = JSON.parse(event.data as string) as
+        | FeedWsMessage
+        | LiveDrawStartedMessage
+        | LiveDrawEndedMessage;
       if (msg.type === "feed_event" && msg.data) {
         eventListeners.forEach((cb) => cb(msg.data));
       }
       if (msg.type === "live_draw_started" || msg.type === "live_draw_ended") {
-        liveDrawListeners.forEach((cb) => cb(msg as LiveDrawStartedMessage | LiveDrawEndedMessage));
+        liveDrawListeners.forEach((cb) => cb(msg));
       }
     } catch {
       // Ignore malformed messages
