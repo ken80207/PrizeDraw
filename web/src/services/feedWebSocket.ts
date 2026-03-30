@@ -34,7 +34,10 @@ export type FeedConnectionListener = (connected: boolean) => void;
 export type LiveDrawListener = (msg: LiveDrawStartedMessage | LiveDrawEndedMessage) => void;
 
 const BASE_WS_URL =
-  process.env.NEXT_PUBLIC_WS_URL ?? `ws://${typeof window !== "undefined" ? window.location.host : "localhost:9092"}`;
+  process.env.NEXT_PUBLIC_WS_BASE_URL ??
+  (typeof window !== "undefined"
+    ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`
+    : "ws://localhost:9092");
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 3000;
 
