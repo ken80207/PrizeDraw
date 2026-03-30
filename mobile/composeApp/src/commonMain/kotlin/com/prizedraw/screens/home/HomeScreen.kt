@@ -33,6 +33,8 @@ import coil3.compose.AsyncImage
 import com.prizedraw.components.button.PrizeDrawOutlinedButton
 import com.prizedraw.components.layout.SectionHeader
 import com.prizedraw.components.user.PointsDisplay
+import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
+import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
 import com.prizedraw.navigation.WindowWidthSizeClass
 import com.prizedraw.navigation.rememberWindowWidthSizeClass
 import com.prizedraw.screens.campaign.BannerCarousel
@@ -167,7 +169,39 @@ public fun HomeScreen(
     onCampaignSelected: (campaignId: String) -> Unit,
     onViewAllKuji: () -> Unit,
     onViewAllInfinite: () -> Unit,
+    apiKujiCampaigns: List<KujiCampaignDto> = emptyList(),
+    apiUnlimitedCampaigns: List<UnlimitedCampaignDto> = emptyList(),
 ) {
+    // Map real API data to display model, fall back to sample data if API returned nothing
+    val kujiCards = if (apiKujiCampaigns.isNotEmpty()) {
+        apiKujiCampaigns.map { dto ->
+            KujiCampaignCard(
+                id = dto.id,
+                imageUrl = dto.coverImageUrl ?: "https://picsum.photos/seed/${dto.id.takeLast(4)}/300/300",
+                name = dto.title,
+                points = dto.pricePerDraw,
+                remainingTickets = 0,
+                totalTickets = 0,
+            )
+        }
+    } else {
+        sampleKujiCampaigns
+    }
+    val infiniteCards = if (apiUnlimitedCampaigns.isNotEmpty()) {
+        apiUnlimitedCampaigns.map { dto ->
+            InfiniteKujiCard(
+                id = dto.id,
+                imageUrl = dto.coverImageUrl ?: "https://picsum.photos/seed/${dto.id.takeLast(4)}/300/300",
+                badge = "LIMITED",
+                title = dto.title,
+                pricePerDraw = dto.pricePerDraw,
+                ssrRate = "",
+                srRate = "",
+            )
+        }
+    } else {
+        sampleInfiniteKuji
+    }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val windowSizeClass = rememberWindowWidthSizeClass(maxWidth)
         val kujiCardWidth: Dp = if (windowSizeClass == WindowWidthSizeClass.Medium) 200.dp else 160.dp
@@ -203,7 +237,7 @@ public fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(sampleKujiCampaigns, key = { it.id }) { campaign ->
+                    items(kujiCards, key = { it.id }) { campaign ->
                         KujiCampaignCard(
                             campaign = campaign,
                             cardWidth = kujiCardWidth,

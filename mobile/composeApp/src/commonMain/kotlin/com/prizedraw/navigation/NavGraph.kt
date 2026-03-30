@@ -176,6 +176,20 @@ public fun PrizeDrawNavGraph(
         val leaderboardViewModel = remember { LeaderboardViewModel(leaderboardDataSource) }
         val supportViewModel = remember { SupportViewModel() }
 
+        // ---- Campaign data for home screen ----
+        var kujiCampaigns by remember {
+            mutableStateOf<List<com.prizedraw.contracts.dto.campaign.KujiCampaignDto>>(emptyList())
+        }
+        var unlimitedCampaigns by remember {
+            mutableStateOf<List<com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto>>(emptyList())
+        }
+        LaunchedEffect(Unit) {
+            runCatching { campaignDataSource.fetchKujiCampaigns() }
+                .onSuccess { kujiCampaigns = it }
+            runCatching { campaignDataSource.fetchUnlimitedCampaigns() }
+                .onSuccess { unlimitedCampaigns = it }
+        }
+
         // ---- Server status state ----
         var serverStatus by remember { mutableStateOf<ServerStatusResponse?>(null) }
         var updateDismissed by remember { mutableStateOf(false) }
@@ -322,6 +336,8 @@ public fun PrizeDrawNavGraph(
                                         },
                                         onViewAllKuji = { /* TODO: kuji list route */ },
                                         onViewAllInfinite = { /* TODO: infinite list route */ },
+                                        apiKujiCampaigns = kujiCampaigns,
+                                        apiUnlimitedCampaigns = unlimitedCampaigns,
                                     )
 
                                 "trade" ->
@@ -364,7 +380,7 @@ public fun PrizeDrawNavGraph(
                         arguments = listOf(navArgument("campaignId") { type = NavType.StringType }),
                     ) { backStackEntry ->
                         val campaignId =
-                            backStackEntry.savedStateHandle.get<String>("campaignId") ?: return@composable
+                            backStackEntry.arguments?.getString("campaignId") ?: return@composable
                         KujiBoardScreen(
                             viewModel = campaignViewModel,
                             campaignId = campaignId,
