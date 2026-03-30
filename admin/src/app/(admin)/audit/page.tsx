@@ -58,7 +58,8 @@ export default function AuditPage() {
     if (dateFrom) url += `&from=${dateFrom}`;
     if (dateTo) url += `&to=${dateTo}`;
     try {
-      const data = await apiClient.get<AuditLog[]>(url);
+      const raw = await apiClient.get<{ items: AuditLog[] } | AuditLog[]>(url);
+      const data = Array.isArray(raw) ? raw : raw.items;
       const filtered = actionFilter
         ? data.filter((l) => l.action.toLowerCase().includes(actionFilter.toLowerCase()))
         : data;

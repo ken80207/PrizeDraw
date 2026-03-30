@@ -60,8 +60,9 @@ export default function PaymentsPage() {
           setOrders(data);
           setTotal(data.length);
         } else {
-          setOrders(data.orders);
-          setTotal(data.total);
+          const list = (data as Record<string, unknown>).items ?? (data as Record<string, unknown>).orders ?? [];
+          setOrders(list as PaymentOrder[]);
+          setTotal((data as Record<string, unknown>).total as number ?? (list as PaymentOrder[]).length);
         }
         setError(null);
         setIsLoading(false);

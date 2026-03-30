@@ -2,14 +2,18 @@ package com.prizedraw.api.plugins
 
 import com.prizedraw.api.routes.adminAnimationRoutes
 import com.prizedraw.api.routes.adminAnnouncementRoutes
+import com.prizedraw.api.routes.adminAuditRoutes
 import com.prizedraw.api.routes.adminBannerRoutes
 import com.prizedraw.api.routes.adminCampaignRoutes
 import com.prizedraw.api.routes.adminDashboardRoutes
+import com.prizedraw.api.routes.adminFeatureFlagRoutes
 import com.prizedraw.api.routes.adminGradeRoutes
 import com.prizedraw.api.routes.adminLeaderboardConfigRoutes
+import com.prizedraw.api.routes.adminPaymentRoutes
 import com.prizedraw.api.routes.adminPlayerRoutes
 import com.prizedraw.api.routes.adminPricingRoutes
 import com.prizedraw.api.routes.adminPrizesRoutes
+import com.prizedraw.api.routes.adminSettingsRoutes
 import com.prizedraw.api.routes.adminStaffRoutes
 import com.prizedraw.api.routes.adminTradeRoutes
 import com.prizedraw.api.routes.authRoutes
@@ -192,6 +196,18 @@ public fun Application.configureRouting() {
 
             // Admin leaderboard configuration
             adminLeaderboardConfigRoutes()
+
+            // Feature flags (ADMIN role enforced per handler)
+            adminFeatureFlagRoutes()
+
+            // System settings (ADMIN role enforced per handler)
+            adminSettingsRoutes()
+
+            // Payment orders (ADMIN role enforced per handler)
+            adminPaymentRoutes()
+
+            // Audit logs direct query endpoint (ADMIN role enforced per handler)
+            adminAuditRoutes()
         }
     }
 }
