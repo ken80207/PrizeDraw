@@ -1,7 +1,9 @@
 package com.prizedraw.viewmodels.trade
 
 import com.prizedraw.contracts.dto.trade.TradeListingDto
+import com.prizedraw.data.remote.TradeRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 /**
  * MVI state for the trade marketplace screen.
@@ -51,23 +53,78 @@ public sealed class MarketplaceIntent {
     public data object ClearFilters : MarketplaceIntent()
 }
 
+private const val PAGE_SIZE = 20
+
 /**
  * ViewModel driving the trade marketplace MVI flow.
  *
- * TODO(T135): Implement after TradeRemoteDataSource is wired.
- *
- * Implementation checklist:
- * - [MarketplaceIntent.LoadListings]: GET /api/v1/trade/listings?page=0, replace listings.
- * - [MarketplaceIntent.LoadMore]: GET /api/v1/trade/listings?page=n, append listings.
- * - [MarketplaceIntent.SetGradeFilter]: update gradeFilter, reload listings.
- * - [MarketplaceIntent.SetPriceRange]: update price bounds, reload listings.
- * - [MarketplaceIntent.ClearFilters]: reset all filters, reload listings.
+ * @param tradeDataSource Remote data source for trade listing HTTP calls.
  */
-public class MarketplaceViewModel : BaseViewModel<MarketplaceState, MarketplaceIntent>(MarketplaceState()) {
+public class MarketplaceViewModel(
+    private val tradeDataSource: TradeRemoteDataSource,
+) : BaseViewModel<MarketplaceState, MarketplaceIntent>(MarketplaceState()) {
+
     override fun onIntent(intent: MarketplaceIntent) {
-        TODO(
-            "T135: implement MVI dispatch — LoadListings, LoadMore, SetGradeFilter, " +
-                "SetPriceRange, ClearFilters",
-        )
+        when (intent) {
+            is MarketplaceIntent.LoadListings -> loadListings(resetPage = true)
+            is MarketplaceIntent.LoadMore -> loadListings(resetPage = false)
+            is MarketplaceIntent.SetGradeFilter -> {
+                setState(state.value.copy(gradeFilter = intent.grade))
+                loadListings(resetPage = true)
+            }
+            is MarketplaceIntent.SetPriceRange -> {
+                setState(state.value.copy(minPrice = intent.min, maxPrice = intent.max))
+                loadListings(resetPage = true)
+            }
+            is MarketplaceIntent.ClearFilters -> {
+                setState(
+                    state.value.copy(
+                        gradeFilter = null,
+                        minPrice = null,
+                        maxPrice = null,
+                    ),
+                )
+                loadListings(resetPage = true)
+            }
+        }
+    }
+
+    private fun loadListings(resetPage: Boolean) {
+        // Guard: do not stack another request while one is already in flight.
+        if (state.value.isLoading) return
+
+        val targetPage = if (resetPage) 0 else state.value.currentPage + 1
+
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching {
+                tradeDataSource.fetchTradeListings(
+                    page = targetPage,
+                    pageSize = PAGE_SIZE,
+                    grade = state.value.gradeFilter,
+                    minPrice = state.value.minPrice,
+                    maxPrice = state.value.maxPrice,
+                )
+            }.onSuccess { page ->
+                val updatedListings =
+                    if (resetPage) page.items else state.value.listings + page.items
+                val fetchedCount = if (resetPage) page.items.size else updatedListings.size
+                setState(
+                    state.value.copy(
+                        listings = updatedListings,
+                        currentPage = targetPage,
+                        hasMore = fetchedCount < page.totalCount,
+                        isLoading = false,
+                    ),
+                )
+            }.onFailure { error ->
+                setState(
+                    state.value.copy(
+                        isLoading = false,
+                        error = error.message ?: "Failed to load listings",
+                    ),
+                )
+            }
+        }
     }
 }

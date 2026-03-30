@@ -48,6 +48,8 @@ import com.prizedraw.screens.wallet.WithdrawalScreen
 import com.prizedraw.data.remote.CampaignRemoteDataSource
 import com.prizedraw.data.remote.HttpClientFactory
 import com.prizedraw.data.remote.LeaderboardRemoteDataSource
+import com.prizedraw.data.remote.PrizeRemoteDataSource
+import com.prizedraw.data.remote.TradeRemoteDataSource
 import com.prizedraw.theme.PrizeDrawTheme
 import com.prizedraw.viewmodels.auth.AuthViewModel
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
@@ -167,12 +169,14 @@ public fun PrizeDrawNavGraph(
         val httpClient = remember { HttpClientFactory.create() }
         val campaignDataSource = remember { CampaignRemoteDataSource(httpClient) }
         val leaderboardDataSource = remember { LeaderboardRemoteDataSource(httpClient) }
+        val tradeDataSource = remember { TradeRemoteDataSource(httpClient) }
+        val prizeDataSource = remember { PrizeRemoteDataSource(httpClient) }
 
         val authViewModel = remember { AuthViewModel() }
         val campaignViewModel = remember { KujiCampaignViewModel(campaignDataSource) }
         val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel(campaignDataSource) }
-        val prizeViewModel = remember { PrizeInventoryViewModel() }
-        val marketplaceViewModel = remember { MarketplaceViewModel() }
+        val prizeViewModel = remember { PrizeInventoryViewModel(prizeDataSource) }
+        val marketplaceViewModel = remember { MarketplaceViewModel(tradeDataSource) }
         val leaderboardViewModel = remember { LeaderboardViewModel(leaderboardDataSource) }
         val supportViewModel = remember { SupportViewModel() }
 

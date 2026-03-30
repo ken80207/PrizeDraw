@@ -2,7 +2,9 @@ package com.prizedraw.viewmodels.prize
 
 import com.prizedraw.contracts.dto.prize.PrizeInstanceDto
 import com.prizedraw.contracts.enums.PrizeState
+import com.prizedraw.data.remote.PrizeRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 /**
  * MVI state for the player's prize inventory screen.
@@ -40,18 +42,55 @@ public sealed class PrizeInventoryIntent {
 /**
  * ViewModel driving the prize inventory MVI flow.
  *
- * TODO(T125): Implement after PrizeRemoteDataSource is wired.
- *
- * Implementation checklist:
- * - [PrizeInventoryIntent.LoadInventory]: call GET /api/v1/players/me/prizes, update prizes.
- * - [PrizeInventoryIntent.SetFilter]: update filter and recompute filteredPrizes.
- * - [PrizeInventoryIntent.Refresh]: re-fetch inventory.
+ * @param prizeDataSource Remote data source for prize inventory HTTP calls.
  */
-public class PrizeInventoryViewModel :
-    BaseViewModel<PrizeInventoryState, PrizeInventoryIntent>(PrizeInventoryState()) {
+public class PrizeInventoryViewModel(
+    private val prizeDataSource: PrizeRemoteDataSource,
+) : BaseViewModel<PrizeInventoryState, PrizeInventoryIntent>(PrizeInventoryState()) {
+
     override fun onIntent(intent: PrizeInventoryIntent) {
-        TODO(
-            "T125: implement MVI intent dispatch — LoadInventory, SetFilter, Refresh",
+        when (intent) {
+            is PrizeInventoryIntent.LoadInventory -> loadInventory()
+            is PrizeInventoryIntent.Refresh -> loadInventory()
+            is PrizeInventoryIntent.SetFilter -> applyFilter(intent.state)
+        }
+    }
+
+    private fun loadInventory() {
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching { prizeDataSource.fetchMyPrizes() }
+                .onSuccess { prizes ->
+                    setState(
+                        state.value.copy(
+                            prizes = prizes,
+                            filteredPrizes = applyFilterToList(prizes, state.value.filter),
+                            isLoading = false,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to load prizes",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun applyFilter(filter: PrizeState?) {
+        setState(
+            state.value.copy(
+                filter = filter,
+                filteredPrizes = applyFilterToList(state.value.prizes, filter),
+            ),
         )
     }
+
+    private fun applyFilterToList(
+        prizes: List<PrizeInstanceDto>,
+        filter: PrizeState?,
+    ): List<PrizeInstanceDto> = if (filter == null) prizes else prizes.filter { it.state == filter }
 }
