@@ -163,12 +163,12 @@ export default function StaffPage() {
                       type="button"
                       onClick={() => handleToggleStatus(staff.id, staff.isActive ? "ACTIVE" : "INACTIVE")}
                       className={`rounded px-2.5 py-1 text-xs font-medium transition-colors border ${
-                        staff.isActive ? "ACTIVE" : "INACTIVE" === "ACTIVE"
+                        staff.isActive
                           ? "border-red-200 text-red-600 hover:bg-red-50"
                           : "border-green-200 text-green-600 hover:bg-green-50"
                       }`}
                     >
-                      {staff.isActive ? "ACTIVE" : "INACTIVE" === "ACTIVE" ? "停用" : "啟用"}
+                      {staff.isActive ? "停用" : "啟用"}
                     </button>
                   </td>
                 </tr>

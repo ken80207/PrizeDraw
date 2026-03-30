@@ -1,8 +1,8 @@
 .git
 .gradle
 build
-node_modules
-.next
+**/node_modules
+**/.next
 *.log
 .env*
 .idea
