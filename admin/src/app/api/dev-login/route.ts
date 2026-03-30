@@ -3,6 +3,8 @@ import crypto from "crypto";
 
 const DEV_STAFF = [
   { id: "00000000-0000-0000-0000-000000000901", name: "管理員", role: "ADMIN" },
+  { id: "00000000-0000-0000-0000-000000000902", name: "營運員工", role: "OPERATOR" },
+  { id: "00000000-0000-0000-0000-000000000903", name: "客服人員", role: "CUSTOMER_SERVICE" },
 ];
 
 function base64url(data: string): string {

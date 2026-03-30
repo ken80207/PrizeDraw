@@ -19,16 +19,16 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: '📊', label: '總覽', minRole: 'OPERATOR' },
+  { href: '/dashboard', icon: '📊', label: '總覽', minRole: 'CUSTOMER_SERVICE' },
   { href: '/campaigns', icon: '🎰', label: '活動管理', minRole: 'OPERATOR' },
   { href: '/grade-templates', icon: '🏷️', label: '等級模板', minRole: 'OPERATOR' },
-  { href: '/shipping', icon: '📦', label: '出貨管理', minRole: 'OPERATOR' },
+  { href: '/shipping', icon: '📦', label: '出貨管理', minRole: 'CUSTOMER_SERVICE' },
   { href: '/withdrawals', icon: '💰', label: '提領審核', minRole: 'ADMIN' },
-  { href: '/players', icon: '👥', label: '玩家管理', minRole: 'OPERATOR' },
+  { href: '/players', icon: '👥', label: '玩家管理', minRole: 'CUSTOMER_SERVICE' },
   { href: '/trade', icon: '💱', label: '交易監控', minRole: 'OPERATOR' },
   { href: '/prizes', icon: '🏆', label: '賞品管理', minRole: 'OPERATOR' },
   { href: '/coupons', icon: '🎟', label: '優惠券', minRole: 'OPERATOR' },
-  { href: '/leaderboard', icon: '🏅', label: '排行榜', minRole: 'OPERATOR' },
+  { href: '/leaderboard', icon: '🏅', label: '排行榜', minRole: 'CUSTOMER_SERVICE' },
   { href: '/banners', icon: '🖼', label: '輪播橫幅', minRole: 'OPERATOR' },
   { href: '/payments', icon: '💳', label: '金流紀錄', minRole: 'ADMIN' },
 ];
