@@ -96,6 +96,16 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // ------------------------------------------------------------------
+  // 2.5 Clean up existing data for test isolation
+  // ------------------------------------------------------------------
+  if (process.env.SKIP_CLEANUP !== 'true') {
+    console.log('[setup] Cleaning up test database...');
+    const { truncateAllTables } = await import('./helpers/cleanup');
+    await truncateAllTables();
+    console.log('[setup] Database cleaned.');
+  }
+
+  // ------------------------------------------------------------------
   // 4. Seed test data
   // ------------------------------------------------------------------
   if (process.env.SKIP_SEED !== 'true') {

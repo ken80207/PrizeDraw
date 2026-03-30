@@ -58,6 +58,20 @@ export const TEST_CAMPAIGNS = {
       },
     ],
   },
+  kujiSmall: {
+    title: '完售測試一番賞 — E2E',
+    pricePerDraw: 50,
+    drawSessionSeconds: 60,
+    ticketBoxes: [{
+      name: '完售籤盒',
+      totalTickets: 3,
+      prizes: [
+        { grade: 'A賞', name: '完售A', count: 1, buybackPrice: 100 },
+        { grade: 'B賞', name: '完售B', count: 1, buybackPrice: 50 },
+        { grade: 'C賞', name: '完售C', count: 1, buybackPrice: 20 },
+      ],
+    }],
+  },
   unlimited: {
     title: '測試無限賞 — E2E',
     pricePerDraw: 50,

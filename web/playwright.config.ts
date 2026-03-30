@@ -1,7 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  globalSetup: './tests/e2e/global-setup',
   testDir: './tests/e2e',
+  workers: 1,
   retries: 1,
   use: {
     headless: true,

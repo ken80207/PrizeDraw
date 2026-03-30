@@ -217,6 +217,74 @@ export async function createCoupon(
 }
 
 // ---------------------------------------------------------------------------
+// Draw
+// ---------------------------------------------------------------------------
+
+/**
+ * Create an unlimited campaign via the admin API.
+ */
+export async function createUnlimitedCampaign(
+  adminToken: string,
+  campaign: CampaignCreatePayload,
+): Promise<string> {
+  const res = await apiFetch('/api/v1/admin/campaigns/unlimited', {
+    method: 'POST',
+    token: adminToken,
+    body: campaign,
+  });
+  const data = (await res.json()) as { campaign?: { id: string }; id?: string };
+  return data.campaign?.id ?? data.id ?? '';
+}
+
+/**
+ * Get campaign status from admin API.
+ */
+export async function getCampaignStatus(
+  adminToken: string,
+  campaignId: string,
+): Promise<string> {
+  const res = await apiFetch(`/api/v1/admin/campaigns/${campaignId}`, {
+    method: 'GET',
+    token: adminToken,
+  });
+  const data = (await res.json()) as { status: string };
+  return data.status;
+}
+
+/**
+ * Draw a kuji ticket via the draw service API.
+ */
+export async function drawKujiTicket(
+  playerToken: string,
+  campaignId: string,
+  boxId: string,
+  ticketIds: string[] = [],
+): Promise<Record<string, unknown>> {
+  const res = await apiFetch('/api/v1/draw/kuji', {
+    method: 'POST',
+    token: playerToken,
+    body: { campaignId, boxId, ticketIds },
+  });
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+/**
+ * Join queue for a kuji campaign.
+ */
+export async function joinQueue(
+  playerToken: string,
+  campaignId: string,
+  boxId: string,
+): Promise<Record<string, unknown>> {
+  const res = await apiFetch('/api/v1/draw/queue/join', {
+    method: 'POST',
+    token: playerToken,
+    body: { campaignId, boxId },
+  });
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+// ---------------------------------------------------------------------------
 // Utility
 // ---------------------------------------------------------------------------
 
