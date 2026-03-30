@@ -256,14 +256,30 @@ export async function getCampaignStatus(
  */
 export async function drawKujiTicket(
   playerToken: string,
-  campaignId: string,
-  boxId: string,
+  ticketBoxId: string,
+  quantity: number = 1,
   ticketIds: string[] = [],
 ): Promise<Record<string, unknown>> {
-  const res = await apiFetch('/api/v1/draw/kuji', {
+  const res = await apiFetch('/api/v1/draws/kuji', {
     method: 'POST',
     token: playerToken,
-    body: { campaignId, boxId, ticketIds },
+    body: { ticketBoxId, quantity, ticketIds },
+  });
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+/**
+ * Draw unlimited prizes.
+ */
+export async function drawUnlimited(
+  playerToken: string,
+  campaignId: string,
+  count: number = 1,
+): Promise<Record<string, unknown>> {
+  const res = await apiFetch('/api/v1/draws/unlimited', {
+    method: 'POST',
+    token: playerToken,
+    body: { campaignId, count },
   });
   return res.json() as Promise<Record<string, unknown>>;
 }
@@ -273,15 +289,30 @@ export async function drawKujiTicket(
  */
 export async function joinQueue(
   playerToken: string,
-  campaignId: string,
-  boxId: string,
+  ticketBoxId: string,
 ): Promise<Record<string, unknown>> {
-  const res = await apiFetch('/api/v1/draw/queue/join', {
+  const res = await apiFetch('/api/v1/draws/kuji/queue/join', {
     method: 'POST',
     token: playerToken,
-    body: { campaignId, boxId },
+    body: { ticketBoxId },
   });
   return res.json() as Promise<Record<string, unknown>>;
+}
+
+/**
+ * Publish a campaign by changing status to ACTIVE.
+ * Handles the actual PATCH endpoint with confirmLowMargin.
+ */
+export async function activateCampaign(
+  adminToken: string,
+  campaignId: string,
+  type: 'kuji' | 'unlimited' = 'kuji',
+): Promise<void> {
+  await apiFetch(`/api/v1/admin/campaigns/${campaignId}/status?type=${type}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { status: 'ACTIVE', confirmLowMargin: true },
+  });
 }
 
 // ---------------------------------------------------------------------------
