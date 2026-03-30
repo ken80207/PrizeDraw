@@ -1,6 +1,6 @@
 # ============================================================
 # Multi-stage Dockerfile for the Next.js customer service app
-# Uses Next.js standalone output for minimal image size
+# Build context: project root (for pnpm workspace lockfile)
 # ============================================================
 
 FROM node:20-alpine AS base
@@ -10,20 +10,21 @@ RUN npm install -g pnpm
 FROM base AS deps
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY cs/package.json ./cs/
+RUN pnpm install --frozen-lockfile --filter cs
 
 # ---- Builder Stage ----
 FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/cs/node_modules ./cs/node_modules
+COPY cs/ ./cs/
 
-# Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm run build
+RUN cd cs && pnpm run build
 
 # ---- Runtime Stage ----
 FROM base AS runner
@@ -32,14 +33,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone build output
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/cs/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/cs/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/cs/.next/static ./.next/static
 
 USER nextjs
 

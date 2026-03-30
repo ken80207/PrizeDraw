@@ -46,7 +46,7 @@ jobs:
               --build-arg NEXT_PUBLIC_WS_URL=${{ secrets.PRIZEDRAW_STAGING_WS_URL }} \
               -t "${IMAGE}:staging" \
               -t "${IMAGE}:sha-${SHORT_SHA}" \
-              "${APP}/"
+              .
 
             docker push "${IMAGE}:staging"
             docker push "${IMAGE}:sha-${SHORT_SHA}"
