@@ -128,12 +128,17 @@ services:
     container_name: prizedraw-staging-realtime-gateway
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       APP_ENV: staging
       PORT: 9094
       LOG_LEVEL: INFO
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-prizedraw_staging}
+      DATABASE_USER: ${POSTGRES_USER:-prizedraw}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-prizedraw}
