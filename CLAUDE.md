@@ -412,6 +412,39 @@ Current migration history:
 | Inter-service HTTP p95 | < 100ms |
 | Outbox processing lag | < 30s |
 
+## E2E Testing
+
+E2E tests use Playwright, located at `web/tests/e2e/`. Full scope documented in `web/tests/e2e/TEST_SCOPE.md`.
+
+### Run
+
+```bash
+cd web && pnpm exec playwright test                    # 全部 E2E（含 cleanup + seed）
+pnpm exec playwright test tests/e2e/journeys/35-role   # 單一 journey
+SKIP_CLEANUP=true pnpm exec playwright test            # 跳過 DB 清除
+```
+
+### Data Isolation
+
+每次執行前 `global-setup.ts` 會 TRUNCATE 所有 DB 表再重新 seed，確保測試間互不影響。
+
+### Journey Tests (30-35: 活動生命週期)
+
+| # | 名稱 | 驗證項目 |
+|---|------|---------|
+| 30 | Admin 建立活動 | 一番賞 + 無限賞建立 → 發布 → Player 前端看到 |
+| 31 | 玩家遊玩 | 瀏覽 → 排隊 → 抽獎 → 點數扣除 |
+| 32 | 多人排隊 | 2 玩家排隊 → 位置不同 → 輪流抽獎 |
+| 33 | Admin 停售 | 停售 → Player 列表消失 → URL 直接訪問看到停售 |
+| 34 | 活動完售 | 3 張票抽完 → 售罄狀態 → 其他玩家無法抽 |
+| 35 | 角色權限 | CS=4 項 / Operator=10 項 / Admin=17 項 |
+
+### Backend Tests
+
+```bash
+./gradlew test    # 265+ Kotlin tests (unit + integration, H2 in-memory)
+```
+
 ## Recent Changes
 
 - 001-ichiban-kuji-platform: Full Kotlin stack (Ktor + KMP + Compose Multiplatform + Next.js web)
