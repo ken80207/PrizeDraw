@@ -4,7 +4,9 @@ import com.prizedraw.contracts.dto.leaderboard.LeaderboardEntryDto
 import com.prizedraw.contracts.dto.leaderboard.LeaderboardPeriod
 import com.prizedraw.contracts.dto.leaderboard.LeaderboardType
 import com.prizedraw.contracts.dto.leaderboard.SelfRankDto
+import com.prizedraw.data.remote.LeaderboardRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 /**
  * MVI state for the leaderboard screen.
@@ -44,20 +46,64 @@ public sealed class LeaderboardIntent {
 /**
  * ViewModel driving the leaderboard MVI flow.
  *
- * TODO: inject a leaderboard data source and implement coroutine-based fetching.
- * When [LeaderboardIntent.SelectType] or [LeaderboardIntent.SelectPeriod] fires,
- * update state immediately then trigger a data fetch in a coroutine.
+ * State is updated immediately on type/period selection, then a coroutine fetches
+ * fresh data from [LeaderboardRemoteDataSource] and updates [LeaderboardState.entries]
+ * and [LeaderboardState.selfRank].
+ *
+ * @param leaderboardDataSource Data source for leaderboard HTTP calls.
  */
-public class LeaderboardViewModel : BaseViewModel<LeaderboardState, LeaderboardIntent>(LeaderboardState()) {
+public class LeaderboardViewModel(
+    private val leaderboardDataSource: LeaderboardRemoteDataSource,
+) : BaseViewModel<LeaderboardState, LeaderboardIntent>(LeaderboardState()) {
+
+    init {
+        // Load initial data when the ViewModel is first created.
+        fetchLeaderboard()
+    }
+
     override fun onIntent(intent: LeaderboardIntent) {
         when (intent) {
-            is LeaderboardIntent.SelectType ->
-                setState(state.value.copy(selectedType = intent.type, isLoading = true))
-            is LeaderboardIntent.SelectPeriod ->
-                setState(state.value.copy(selectedPeriod = intent.period, isLoading = true))
-            is LeaderboardIntent.Refresh ->
-                setState(state.value.copy(isLoading = true))
+            is LeaderboardIntent.SelectType -> {
+                setState(state.value.copy(selectedType = intent.type, isLoading = true, error = null))
+                fetchLeaderboard()
+            }
+            is LeaderboardIntent.SelectPeriod -> {
+                setState(state.value.copy(selectedPeriod = intent.period, isLoading = true, error = null))
+                fetchLeaderboard()
+            }
+            is LeaderboardIntent.Refresh -> {
+                setState(state.value.copy(isLoading = true, error = null))
+                fetchLeaderboard()
+            }
         }
-        // TODO: launch coroutine to fetch leaderboard data
+    }
+
+    private fun fetchLeaderboard() {
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching {
+                leaderboardDataSource.fetchLeaderboard(
+                    type = state.value.selectedType,
+                    period = state.value.selectedPeriod,
+                )
+            }
+                .onSuccess { dto ->
+                    setState(
+                        state.value.copy(
+                            entries = dto.entries,
+                            selfRank = dto.selfRank,
+                            isLoading = false,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to load leaderboard",
+                        ),
+                    )
+                }
+        }
     }
 }

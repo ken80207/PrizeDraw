@@ -45,6 +45,9 @@ import com.prizedraw.screens.support.TicketDetailScreen
 import com.prizedraw.screens.trade.MarketplaceScreen
 import com.prizedraw.screens.wallet.WalletScreen
 import com.prizedraw.screens.wallet.WithdrawalScreen
+import com.prizedraw.data.remote.CampaignRemoteDataSource
+import com.prizedraw.data.remote.HttpClientFactory
+import com.prizedraw.data.remote.LeaderboardRemoteDataSource
 import com.prizedraw.theme.PrizeDrawTheme
 import com.prizedraw.viewmodels.auth.AuthViewModel
 import com.prizedraw.viewmodels.campaign.KujiCampaignViewModel
@@ -159,12 +162,18 @@ public fun PrizeDrawNavGraph(
         //  Flip to `true` to enable the onboarding flow for first-time users.
         val showOnboarding = false
 
+        // Shared HttpClient — one instance per NavGraph lifetime.
+        // TODO(T107): replace with Koin-provided singleton once DI module is wired.
+        val httpClient = remember { HttpClientFactory.create() }
+        val campaignDataSource = remember { CampaignRemoteDataSource(httpClient) }
+        val leaderboardDataSource = remember { LeaderboardRemoteDataSource(httpClient) }
+
         val authViewModel = remember { AuthViewModel() }
-        val campaignViewModel = remember { KujiCampaignViewModel() }
-        val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel() }
+        val campaignViewModel = remember { KujiCampaignViewModel(campaignDataSource) }
+        val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel(campaignDataSource) }
         val prizeViewModel = remember { PrizeInventoryViewModel() }
         val marketplaceViewModel = remember { MarketplaceViewModel() }
-        val leaderboardViewModel = remember { LeaderboardViewModel() }
+        val leaderboardViewModel = remember { LeaderboardViewModel(leaderboardDataSource) }
         val supportViewModel = remember { SupportViewModel() }
 
         // ---- Server status state ----

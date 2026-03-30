@@ -3,7 +3,9 @@ package com.prizedraw.viewmodels.draw
 import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
 import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
+import com.prizedraw.data.remote.CampaignRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 /**
  * MVI state for the unlimited draw flow.
@@ -63,25 +65,48 @@ public sealed class UnlimitedDrawIntent {
 /**
  * ViewModel driving the unlimited draw MVI flow.
  *
- * TODO(T117): Implement intent dispatch once [com.prizedraw.data.remote.CampaignRemoteDataSource]
- *   and [com.prizedraw.data.remote.DrawRemoteDataSource] are wired into the shared module.
+ * Handles campaign loading via [CampaignRemoteDataSource]. The [UnlimitedDrawIntent.Draw]
+ * intent is pending implementation of [com.prizedraw.data.remote.DrawRemoteDataSource] (T117).
  *
- * Implementation checklist:
- * - [UnlimitedDrawIntent.LoadCampaign]: fetch unlimited campaign detail from
- *   `GET /api/v1/campaigns/unlimited/{id}`, populate [UnlimitedDrawState.campaign],
- *   [UnlimitedDrawState.prizeDefinitions], and [UnlimitedDrawState.pointBalance].
- * - [UnlimitedDrawIntent.Draw]: set [UnlimitedDrawState.isDrawing] = true, call
- *   `POST /api/v1/draws/unlimited` [quantity] times (sequential for rapid-fire mode),
- *   accumulate results into [UnlimitedDrawState.drawHistory], update [lastResult] and
- *   decrement [pointBalance] locally, then set [isDrawing] = false.
- * - [UnlimitedDrawIntent.DismissError]: set [UnlimitedDrawState.error] = null.
- * - [UnlimitedDrawIntent.AcknowledgeResult]: set [UnlimitedDrawState.lastResult] = null.
+ * @param campaignDataSource Data source for unlimited campaign HTTP calls.
  */
-public class UnlimitedDrawViewModel : BaseViewModel<UnlimitedDrawState, UnlimitedDrawIntent>(UnlimitedDrawState()) {
+public class UnlimitedDrawViewModel(
+    private val campaignDataSource: CampaignRemoteDataSource,
+) : BaseViewModel<UnlimitedDrawState, UnlimitedDrawIntent>(UnlimitedDrawState()) {
+
     override fun onIntent(intent: UnlimitedDrawIntent) {
-        TODO(
-            "T117: implement MVI intent dispatch for $intent — " +
-                "LoadCampaign, Draw (single + rapid-fire), DismissError, AcknowledgeResult",
-        )
+        when (intent) {
+            is UnlimitedDrawIntent.LoadCampaign -> loadCampaign(intent.id)
+            is UnlimitedDrawIntent.Draw -> {
+                // TODO(T117): implement draw via DrawRemoteDataSource once wired.
+                setState(state.value.copy(error = "Draw not yet implemented (T117)."))
+            }
+            is UnlimitedDrawIntent.DismissError -> setState(state.value.copy(error = null))
+            is UnlimitedDrawIntent.AcknowledgeResult -> setState(state.value.copy(lastResult = null))
+        }
+    }
+
+    private fun loadCampaign(campaignId: String) {
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching { campaignDataSource.fetchUnlimitedCampaignDetail(campaignId) }
+                .onSuccess { detail ->
+                    setState(
+                        state.value.copy(
+                            campaign = detail.campaign,
+                            prizeDefinitions = detail.prizes,
+                            isLoading = false,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to load campaign",
+                        ),
+                    )
+                }
+        }
     }
 }

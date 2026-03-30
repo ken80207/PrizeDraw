@@ -298,8 +298,7 @@ private fun RechargePackageCard(
             Badge(
                 modifier =
                     Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = (-4).dp),
+                        .align(Alignment.TopCenter),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {

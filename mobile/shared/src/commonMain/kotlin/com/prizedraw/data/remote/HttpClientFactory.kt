@@ -32,6 +32,7 @@ public object HttpClientFactory {
                     Json {
                         ignoreUnknownKeys = true
                         isLenient = true
+                        explicitNulls = false
                     },
                 )
             }

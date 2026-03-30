@@ -6,6 +6,7 @@
     <application
         android:allowBackup="true"
         android:label="PrizeDraw"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 

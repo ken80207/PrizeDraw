@@ -5,7 +5,9 @@ import com.prizedraw.contracts.dto.campaign.TicketBoxDto
 import com.prizedraw.contracts.dto.draw.DrawResultDto
 import com.prizedraw.contracts.dto.draw.DrawTicketDto
 import com.prizedraw.contracts.dto.draw.QueueEntryDto
+import com.prizedraw.data.remote.CampaignRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 /**
  * MVI state for the kuji campaign flow.
@@ -109,25 +111,85 @@ public sealed class KujiCampaignIntent {
 /**
  * ViewModel driving the kuji campaign MVI flow.
  *
- * TODO(T108): Implement after [com.prizedraw.data.remote.CampaignRemoteDataSource],
- *   [com.prizedraw.data.remote.DrawRemoteDataSource], and WebSocket clients are wired.
+ * Handles campaign loading, ticket board fetching, and real-time state updates.
+ * Draw and queue operations (JoinQueue, LeaveQueue, SelectTicket, MultiDraw, SwitchBox)
+ * are pending implementation of [com.prizedraw.data.remote.DrawRemoteDataSource] (T107).
  *
- * Implementation checklist:
- * - [KujiCampaignIntent.LoadCampaign]: fetch campaign detail, board, and start WS connection.
- * - [KujiCampaignIntent.JoinQueue]: call DrawRemoteDataSource.joinQueue, update queueEntry.
- * - [KujiCampaignIntent.LeaveQueue]: call DrawRemoteDataSource.leaveQueue, clear queueEntry.
- * - [KujiCampaignIntent.SelectTicket]: call DrawRemoteDataSource.drawKuji with explicit IDs.
- * - [KujiCampaignIntent.MultiDraw]: call DrawRemoteDataSource.drawKuji with quantity.
- * - [KujiCampaignIntent.SwitchBox]: call DrawRemoteDataSource.switchBox, update selectedBox.
- * - [KujiCampaignIntent.WebSocketTicketDrawn]: reload ticket board.
- * - [KujiCampaignIntent.SessionExpired]: update isMyTurn, clear countdown.
+ * @param campaignDataSource Data source for campaign and ticket board HTTP calls.
  */
-public class KujiCampaignViewModel : BaseViewModel<KujiCampaignState, KujiCampaignIntent>(KujiCampaignState()) {
+public class KujiCampaignViewModel(
+    private val campaignDataSource: CampaignRemoteDataSource,
+) : BaseViewModel<KujiCampaignState, KujiCampaignIntent>(KujiCampaignState()) {
+
     override fun onIntent(intent: KujiCampaignIntent) {
-        TODO(
-            "T108: implement MVI intent dispatch for $intent — " +
-                "LoadCampaign, SelectBox, JoinQueue, LeaveQueue, SelectTicket, " +
-                "MultiDraw, SwitchBox, WebSocketTicketDrawn, SessionExpired",
-        )
+        when (intent) {
+            is KujiCampaignIntent.LoadCampaign -> loadCampaign(intent.campaignId)
+            is KujiCampaignIntent.SelectBox -> selectBox(intent.boxId)
+            is KujiCampaignIntent.WebSocketTicketDrawn -> reloadTicketBoard()
+            is KujiCampaignIntent.SessionExpired ->
+                setState(state.value.copy(isMyTurn = false, sessionCountdown = null))
+            is KujiCampaignIntent.SpectatorCountUpdated ->
+                setState(state.value.copy(spectatorCount = intent.count))
+            // Draw/queue intents require DrawRemoteDataSource — TODO(T107)
+            is KujiCampaignIntent.JoinQueue -> Unit
+            is KujiCampaignIntent.LeaveQueue -> Unit
+            is KujiCampaignIntent.SelectTicket -> Unit
+            is KujiCampaignIntent.MultiDraw -> Unit
+            is KujiCampaignIntent.SwitchBox -> Unit
+        }
+    }
+
+    private fun loadCampaign(campaignId: String) {
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching { campaignDataSource.fetchKujiCampaignDetail(campaignId) }
+                .onSuccess { detail ->
+                    val firstBox = detail.boxes.firstOrNull()
+                    setState(
+                        state.value.copy(
+                            campaign = detail.campaign,
+                            boxes = detail.boxes,
+                            selectedBox = firstBox,
+                            isLoading = false,
+                        ),
+                    )
+                    // Eagerly load the ticket board for the first box.
+                    firstBox?.let { loadTicketBoard(campaignId, it.id) }
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to load campaign",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun selectBox(boxId: String) {
+        val box = state.value.boxes.firstOrNull { it.id == boxId } ?: return
+        setState(state.value.copy(selectedBox = box, tickets = emptyList()))
+        val campaignId = state.value.campaign?.id ?: return
+        viewModelScope.launch { loadTicketBoard(campaignId, boxId) }
+    }
+
+    private fun reloadTicketBoard() {
+        val campaignId = state.value.campaign?.id ?: return
+        val boxId = state.value.selectedBox?.id ?: return
+        viewModelScope.launch { loadTicketBoard(campaignId, boxId) }
+    }
+
+    private suspend fun loadTicketBoard(
+        campaignId: String,
+        boxId: String,
+    ) {
+        runCatching { campaignDataSource.fetchTicketBoard(campaignId, boxId) }
+            .onSuccess { tickets ->
+                setState(state.value.copy(tickets = tickets))
+            }
+            .onFailure { error ->
+                setState(state.value.copy(error = error.message ?: "Failed to load ticket board"))
+            }
     }
 }
