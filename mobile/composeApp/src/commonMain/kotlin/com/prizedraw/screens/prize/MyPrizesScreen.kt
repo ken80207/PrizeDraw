@@ -47,8 +47,8 @@ private val FILTER_TABS: List<FilterTab> =
     listOf(
         FilterTab(labelKey = "prizes.filterAll", state = null),
         FilterTab(labelKey = "prizes.filterHolding", state = PrizeState.HOLDING),
-        FilterTab(labelKey = "prizes.filterInTransit", state = PrizeState.PENDING_SHIPMENT),
-        FilterTab(labelKey = "prizes.filterShipped", state = PrizeState.SHIPPED),
+        FilterTab(labelKey = "prizes.filterShipping", state = PrizeState.PENDING_SHIPMENT),
+        FilterTab(labelKey = "prizes.filterTrading", state = PrizeState.SHIPPED),
     )
 
 /**

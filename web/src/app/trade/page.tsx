@@ -72,8 +72,14 @@ export default function TradePage() {
       );
       setListings(data.items ?? []);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : tt("loadFailed");
-      setError(msg);
+      // Treat auth errors as empty list (user not logged in yet)
+      const status = (err as { status?: number })?.status;
+      if (status === 401 || status === 403) {
+        setListings([]);
+      } else {
+        const msg = err instanceof Error ? err.message : tt("loadFailed");
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
