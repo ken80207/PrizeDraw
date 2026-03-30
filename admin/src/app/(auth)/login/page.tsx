@@ -31,9 +31,6 @@ const DEV_ROLES = [
   },
 ] as const;
 
-const DEV_STAFF_ID = "00000000-0000-0000-0000-000000000002";
-const DEV_TOKEN = "dev-bypass-token";
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -41,12 +38,22 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleDevLogin(role: string, staffName: string) {
-    sessionStorage.setItem("adminRole", role);
-    sessionStorage.setItem("adminStaffName", staffName);
-    sessionStorage.setItem("adminAccessToken", DEV_TOKEN);
-    sessionStorage.setItem("adminStaffId", DEV_STAFF_ID);
-    router.push("/dashboard");
+  async function handleDevLogin(role: string, staffName: string) {
+    try {
+      const res = await fetch("/api/dev-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json();
+      sessionStorage.setItem("adminRole", data.role ?? role);
+      sessionStorage.setItem("adminStaffName", data.name ?? staffName);
+      sessionStorage.setItem("adminAccessToken", data.accessToken);
+      sessionStorage.setItem("adminStaffId", data.staffId);
+      router.push("/dashboard");
+    } catch {
+      setError("Dev login failed");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
