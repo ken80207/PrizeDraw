@@ -45,7 +45,9 @@ import com.prizedraw.screens.support.TicketDetailScreen
 import com.prizedraw.screens.trade.MarketplaceScreen
 import com.prizedraw.screens.wallet.WalletScreen
 import com.prizedraw.screens.wallet.WithdrawalScreen
+import com.prizedraw.data.local.AuthTokenStore
 import com.prizedraw.data.remote.CampaignRemoteDataSource
+import com.prizedraw.data.remote.DrawRemoteDataSource
 import com.prizedraw.data.remote.HttpClientFactory
 import com.prizedraw.data.remote.LeaderboardRemoteDataSource
 import com.prizedraw.data.remote.PrizeRemoteDataSource
@@ -164,17 +166,24 @@ public fun PrizeDrawNavGraph(
         //  Flip to `true` to enable the onboarding flow for first-time users.
         val showOnboarding = false
 
-        // Shared HttpClient — one instance per NavGraph lifetime.
-        // TODO(T107): replace with Koin-provided singleton once DI module is wired.
+        // Shared HttpClient instances — one per service, one NavGraph lifetime each.
+        // TODO(T107): replace with Koin-provided singletons once DI module is wired.
         val httpClient = remember { HttpClientFactory.create() }
+        // Draw Service runs on port 9093; use a dedicated client so requests route correctly.
+        val drawHttpClient = remember { HttpClientFactory.create(baseUrl = "http://10.0.2.2:9093") }
+
         val campaignDataSource = remember { CampaignRemoteDataSource(httpClient) }
         val leaderboardDataSource = remember { LeaderboardRemoteDataSource(httpClient) }
         val tradeDataSource = remember { TradeRemoteDataSource(httpClient) }
         val prizeDataSource = remember { PrizeRemoteDataSource(httpClient) }
 
+        // AuthTokenStore is shared between the auth flow and draw data source.
+        val authTokenStore = remember { AuthTokenStore() }
+        val drawDataSource = remember { DrawRemoteDataSource(drawHttpClient, authTokenStore) }
+
         val authViewModel = remember { AuthViewModel() }
-        val campaignViewModel = remember { KujiCampaignViewModel(campaignDataSource) }
-        val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel(campaignDataSource) }
+        val campaignViewModel = remember { KujiCampaignViewModel(campaignDataSource, drawDataSource) }
+        val unlimitedDrawViewModel = remember { UnlimitedDrawViewModel(campaignDataSource, drawDataSource) }
         val prizeViewModel = remember { PrizeInventoryViewModel(prizeDataSource) }
         val marketplaceViewModel = remember { MarketplaceViewModel(tradeDataSource) }
         val leaderboardViewModel = remember { LeaderboardViewModel(leaderboardDataSource) }

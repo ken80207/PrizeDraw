@@ -4,8 +4,12 @@ import com.prizedraw.contracts.dto.campaign.KujiCampaignDto
 import com.prizedraw.contracts.dto.campaign.TicketBoxDto
 import com.prizedraw.contracts.dto.draw.DrawResultDto
 import com.prizedraw.contracts.dto.draw.DrawTicketDto
+import com.prizedraw.contracts.dto.draw.JoinQueueRequest
+import com.prizedraw.contracts.dto.draw.LeaveQueueRequest
 import com.prizedraw.contracts.dto.draw.QueueEntryDto
+import com.prizedraw.contracts.dto.draw.SwitchBoxRequest
 import com.prizedraw.data.remote.CampaignRemoteDataSource
+import com.prizedraw.data.remote.DrawRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
 import kotlinx.coroutines.launch
 
@@ -111,14 +115,19 @@ public sealed class KujiCampaignIntent {
 /**
  * ViewModel driving the kuji campaign MVI flow.
  *
- * Handles campaign loading, ticket board fetching, and real-time state updates.
- * Draw and queue operations (JoinQueue, LeaveQueue, SelectTicket, MultiDraw, SwitchBox)
- * are pending implementation of [com.prizedraw.data.remote.DrawRemoteDataSource] (T107).
+ * Handles campaign loading, ticket board fetching, draw execution, and queue
+ * management. Draw and queue operations delegate to [drawDataSource].
+ *
+ * When the player is unauthenticated (no stored token) the draw/queue calls will
+ * receive HTTP 401 from the server; this is converted to an error state rather
+ * than a crash.
  *
  * @param campaignDataSource Data source for campaign and ticket board HTTP calls.
+ * @param drawDataSource Data source for draw execution and queue management.
  */
 public class KujiCampaignViewModel(
     private val campaignDataSource: CampaignRemoteDataSource,
+    private val drawDataSource: DrawRemoteDataSource,
 ) : BaseViewModel<KujiCampaignState, KujiCampaignIntent>(KujiCampaignState()) {
 
     override fun onIntent(intent: KujiCampaignIntent) {
@@ -130,12 +139,11 @@ public class KujiCampaignViewModel(
                 setState(state.value.copy(isMyTurn = false, sessionCountdown = null))
             is KujiCampaignIntent.SpectatorCountUpdated ->
                 setState(state.value.copy(spectatorCount = intent.count))
-            // Draw/queue intents require DrawRemoteDataSource — TODO(T107)
-            is KujiCampaignIntent.JoinQueue -> Unit
-            is KujiCampaignIntent.LeaveQueue -> Unit
-            is KujiCampaignIntent.SelectTicket -> Unit
-            is KujiCampaignIntent.MultiDraw -> Unit
-            is KujiCampaignIntent.SwitchBox -> Unit
+            is KujiCampaignIntent.JoinQueue -> joinQueue()
+            is KujiCampaignIntent.LeaveQueue -> leaveQueue()
+            is KujiCampaignIntent.SelectTicket -> drawKuji(ticketIds = intent.ticketIds)
+            is KujiCampaignIntent.MultiDraw -> drawKuji(quantity = intent.quantity)
+            is KujiCampaignIntent.SwitchBox -> switchBox(intent.toBoxId)
         }
     }
 
@@ -191,5 +199,126 @@ public class KujiCampaignViewModel(
             .onFailure { error ->
                 setState(state.value.copy(error = error.message ?: "Failed to load ticket board"))
             }
+    }
+
+    private fun drawKuji(
+        ticketIds: List<String> = emptyList(),
+        quantity: Int = 1,
+    ) {
+        val campaignId = state.value.campaign?.id ?: return
+        val boxId = state.value.selectedBox?.id ?: return
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching {
+                drawDataSource.drawKuji(
+                    campaignId = campaignId,
+                    boxId = boxId,
+                    ticketIds = ticketIds,
+                    quantity = quantity,
+                )
+            }
+                .onSuccess { result ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            lastDrawResult = result,
+                        ),
+                    )
+                    // Refresh the ticket board so drawn positions are reflected.
+                    loadTicketBoard(campaignId, boxId)
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Draw failed",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun joinQueue() {
+        val boxId = state.value.selectedBox?.id ?: return
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching { drawDataSource.joinQueue(JoinQueueRequest(ticketBoxId = boxId)) }
+                .onSuccess { entry ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            queueEntry = entry,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to join queue",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun leaveQueue() {
+        val boxId = state.value.selectedBox?.id ?: return
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching { drawDataSource.leaveQueue(LeaveQueueRequest(ticketBoxId = boxId)) }
+                .onSuccess {
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            queueEntry = null,
+                            isMyTurn = false,
+                            sessionCountdown = null,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to leave queue",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun switchBox(toBoxId: String) {
+        val fromBoxId = state.value.selectedBox?.id ?: return
+        viewModelScope.launch {
+            setState(state.value.copy(isLoading = true, error = null))
+            runCatching {
+                drawDataSource.switchBox(
+                    SwitchBoxRequest(fromBoxId = fromBoxId, toBoxId = toBoxId),
+                )
+            }
+                .onSuccess { entry ->
+                    // Also apply the UI box selection.
+                    val newBox = state.value.boxes.firstOrNull { it.id == toBoxId }
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            queueEntry = entry,
+                            selectedBox = newBox ?: state.value.selectedBox,
+                            tickets = emptyList(),
+                        ),
+                    )
+                    val campaignId = state.value.campaign?.id ?: return@onSuccess
+                    loadTicketBoard(campaignId, toBoxId)
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isLoading = false,
+                            error = error.message ?: "Failed to switch box",
+                        ),
+                    )
+                }
+        }
     }
 }

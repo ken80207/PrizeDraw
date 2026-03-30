@@ -4,6 +4,7 @@ import com.prizedraw.contracts.dto.campaign.PrizeDefinitionDto
 import com.prizedraw.contracts.dto.campaign.UnlimitedCampaignDto
 import com.prizedraw.contracts.dto.draw.UnlimitedDrawResultDto
 import com.prizedraw.data.remote.CampaignRemoteDataSource
+import com.prizedraw.data.remote.DrawRemoteDataSource
 import com.prizedraw.viewmodels.base.BaseViewModel
 import kotlinx.coroutines.launch
 
@@ -65,22 +66,23 @@ public sealed class UnlimitedDrawIntent {
 /**
  * ViewModel driving the unlimited draw MVI flow.
  *
- * Handles campaign loading via [CampaignRemoteDataSource]. The [UnlimitedDrawIntent.Draw]
- * intent is pending implementation of [com.prizedraw.data.remote.DrawRemoteDataSource] (T117).
+ * Handles campaign loading via [campaignDataSource] and draw execution via
+ * [drawDataSource]. When the player is unauthenticated (no stored token) the
+ * draw call receives HTTP 401; this is converted to an error state rather than
+ * a crash.
  *
  * @param campaignDataSource Data source for unlimited campaign HTTP calls.
+ * @param drawDataSource Data source for draw execution.
  */
 public class UnlimitedDrawViewModel(
     private val campaignDataSource: CampaignRemoteDataSource,
+    private val drawDataSource: DrawRemoteDataSource,
 ) : BaseViewModel<UnlimitedDrawState, UnlimitedDrawIntent>(UnlimitedDrawState()) {
 
     override fun onIntent(intent: UnlimitedDrawIntent) {
         when (intent) {
             is UnlimitedDrawIntent.LoadCampaign -> loadCampaign(intent.id)
-            is UnlimitedDrawIntent.Draw -> {
-                // TODO(T117): implement draw via DrawRemoteDataSource once wired.
-                setState(state.value.copy(error = "Draw not yet implemented (T117)."))
-            }
+            is UnlimitedDrawIntent.Draw -> executeDraw(intent.quantity, intent.playerCouponId)
             is UnlimitedDrawIntent.DismissError -> setState(state.value.copy(error = null))
             is UnlimitedDrawIntent.AcknowledgeResult -> setState(state.value.copy(lastResult = null))
         }
@@ -104,6 +106,46 @@ public class UnlimitedDrawViewModel(
                         state.value.copy(
                             isLoading = false,
                             error = error.message ?: "Failed to load campaign",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun executeDraw(
+        quantity: Int,
+        playerCouponId: String?,
+    ) {
+        val campaignId = state.value.campaign?.id ?: run {
+            setState(state.value.copy(error = "Campaign not loaded"))
+            return
+        }
+        // Guard against duplicate in-flight draws.
+        if (state.value.isDrawing) return
+
+        viewModelScope.launch {
+            setState(state.value.copy(isDrawing = true, error = null))
+            runCatching {
+                drawDataSource.drawUnlimited(
+                    campaignId = campaignId,
+                    count = quantity,
+                    playerCouponId = playerCouponId,
+                )
+            }
+                .onSuccess { result ->
+                    setState(
+                        state.value.copy(
+                            isDrawing = false,
+                            lastResult = result,
+                            drawHistory = listOf(result) + state.value.drawHistory,
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    setState(
+                        state.value.copy(
+                            isDrawing = false,
+                            error = error.message ?: "Draw failed",
                         ),
                     )
                 }
