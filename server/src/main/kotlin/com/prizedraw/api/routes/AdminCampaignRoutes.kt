@@ -94,15 +94,17 @@ private fun Route.adminCampaignCreateRoutes() {
         val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
         val req = call.receive<CreateKujiCampaignAdminRequest>()
         val campaign =
-            createKuji.execute(
-                staffId = staff.staffId,
-                title = req.title,
-                description = req.description,
-                coverImageUrl = req.coverImageUrl,
-                pricePerDraw = req.pricePerDraw,
-                drawSessionSeconds = req.drawSessionSeconds,
-                boxes = req.boxes,
-            )
+            org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction {
+                createKuji.execute(
+                    staffId = staff.staffId,
+                    title = req.title,
+                    description = req.description,
+                    coverImageUrl = req.coverImageUrl,
+                    pricePerDraw = req.pricePerDraw,
+                    drawSessionSeconds = req.drawSessionSeconds,
+                    boxes = req.boxes,
+                )
+            }
         call.respond(HttpStatusCode.Created, campaign.toDto())
     }
 
@@ -110,15 +112,17 @@ private fun Route.adminCampaignCreateRoutes() {
         val staff = call.requireStaff(StaffRole.OPERATOR) ?: return@post
         val req = call.receive<CreateUnlimitedCampaignAdminRequest>()
         val (campaign, marginResult) =
-            createUnlimitedImpl.executeWithPrizeTable(
-                staffId = staff.staffId,
-                title = req.title,
-                description = req.description,
-                coverImageUrl = req.coverImageUrl,
-                pricePerDraw = req.pricePerDraw,
-                rateLimitPerSecond = req.rateLimitPerSecond,
-                prizeTable = req.prizeTable,
-            )
+            org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction {
+                createUnlimitedImpl.executeWithPrizeTable(
+                    staffId = staff.staffId,
+                    title = req.title,
+                    description = req.description,
+                    coverImageUrl = req.coverImageUrl,
+                    pricePerDraw = req.pricePerDraw,
+                    rateLimitPerSecond = req.rateLimitPerSecond,
+                    prizeTable = req.prizeTable,
+                )
+            }
         val response =
             mapOf(
                 "campaign" to campaign.toDto(),

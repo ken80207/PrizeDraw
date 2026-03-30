@@ -63,7 +63,7 @@ public fun Application.configureSecurity() {
             authenticate { credential ->
                 if (devBypassAuth) {
                     return@authenticate StaffPrincipal(
-                        staffId = StaffId(UUID.fromString("00000000-0000-0000-0000-000000000002")),
+                        staffId = StaffId(UUID.fromString("00000000-0000-0000-0000-000000000901")),
                         role = com.prizedraw.contracts.enums.StaffRole.OWNER,
                     )
                 }
@@ -100,7 +100,7 @@ public fun Application.configureSecurity() {
                     if (call.principal<StaffPrincipal>() == null) {
                         call.authentication.principal(
                             StaffPrincipal(
-                                staffId = StaffId(UUID.fromString("00000000-0000-0000-0000-000000000002")),
+                                staffId = StaffId(UUID.fromString("00000000-0000-0000-0000-000000000901")),
                                 role = com.prizedraw.contracts.enums.StaffRole.OWNER,
                             ),
                         )
