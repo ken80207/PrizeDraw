@@ -100,6 +100,87 @@
 - [ ] 管理員 (ADMIN): 看到全部 17 項
 - [ ] 客服直接訪問 /staff 被阻擋
 
+## Browser QA Smoke Tests (gstack /qa)
+
+每次 `/qa` 跑的 headless browser 測試項目。這些是即時驗證，不是 Playwright tests。
+
+### Web Player (localhost:3003)
+
+| 頁面 | 驗證項目 | 預期結果 |
+|------|---------|---------|
+| `/login` | Mock login 按鈕（玩家小明/小花/小王） | 點擊後導航到首頁，sidebar 顯示用戶名 |
+| `/` (首頁) | Banner carousel + 一番賞/無限賞卡片 | 顯示真實活動資料（來自 API） |
+| `/leaderboard` | 排行榜 tab 切換 + 排名資料 | 顯示玩家排名（抽獎達人/幸運之星/交易風雲） |
+| `/trade` | 市集列表 + 篩選 | 顯示空狀態或商品列表（無 error） |
+| `/prizes` | 賞品庫存 + filter tabs | 顯示空狀態或賞品（i18n 正確） |
+| `/wallet` | 錢包餘額 + 交易紀錄 | 顯示真實點數餘額和交易歷史 |
+| `/settings` | 帳號設定 | 頁面載入無 error |
+| `/campaigns/{id}` | 一番賞活動頁 | 票券板 + 排隊按鈕 |
+| `/campaigns/unlimited/{id}` | 無限賞活動頁 | 機率表 + 抽獎按鈕 + 聊天室 |
+| WebSocket `/ws/feed` | 即時連線 | ws://localhost:3003/ws/feed 成功連線 |
+| WebSocket `/ws/kuji/{id}` | 即時連線 | ws://localhost:3003/ws/kuji/{id} 成功連線 |
+| Auth 持久性 | 登入後跨頁導航 | 所有頁面保持登入狀態（不被重導到 /login） |
+| Console errors | 頁面載入無 JS error | 0 個 500/404 console errors |
+
+### Admin Dashboard (localhost:3001)
+
+| 頁面 | 驗證項目 | 預期結果 |
+|------|---------|---------|
+| `/login` | 3 種角色 dev login | Admin/Employee/Support 按鈕各自登入成功 |
+| `/dashboard` | 總覽 stats | 今日營收、活躍玩家、進行中活動、待辦事項 |
+| `/campaigns` | 活動列表 + 建立 | 顯示真實活動，有建立一番賞/無限賞按鈕 |
+| `/campaigns/create` | 建立活動表單 | 填寫表單 → 儲存草稿/發布 → 前端可見 |
+| `/grade-templates` | 等級模板 | 頁面載入無 error |
+| `/shipping` | 出貨管理 | 頁面載入無 error |
+| `/withdrawals` | 提領審核 | 頁面載入無 error |
+| `/players` | 玩家管理 | 顯示 3 名玩家真實資料 |
+| `/trade` | 交易監控 | 頁面載入無 error |
+| `/prizes` | 賞品管理 | 頁面載入無 error |
+| `/coupons` | 優惠券 | 頁面載入無 error |
+| `/leaderboard` | 排行榜 | 頁面載入無 error |
+| `/banners` | 輪播橫幅 | 頁面載入無 error |
+| `/payments` | 金流紀錄 | 空狀態或付款紀錄列表 |
+| `/staff` | 人員管理 | 頁面載入無 error |
+| `/audit` | 稽核紀錄 | 顯示操作 log（含篩選） |
+| `/announcements` | 公告管理 | 頁面載入無 error |
+| `/feature-flags` | Feature Flags | 10 個 flags 可切換 |
+| `/settings` | 系統設定 | key-value 設定表 |
+
+### 角色權限矩陣
+
+| 頁面 | CS (客服) | Operator (營運) | Admin (管理員) |
+|------|-----------|----------------|---------------|
+| 總覽 | ✅ | ✅ | ✅ |
+| 活動管理 | ❌ | ✅ | ✅ |
+| 等級模板 | ❌ | ✅ | ✅ |
+| 出貨管理 | ✅ | ✅ | ✅ |
+| 提領審核 | ❌ | ❌ | ✅ |
+| 玩家管理 | ✅ | ✅ | ✅ |
+| 交易監控 | ❌ | ✅ | ✅ |
+| 賞品管理 | ❌ | ✅ | ✅ |
+| 優惠券 | ❌ | ✅ | ✅ |
+| 排行榜 | ✅ | ✅ | ✅ |
+| 輪播橫幅 | ❌ | ✅ | ✅ |
+| 金流紀錄 | ❌ | ❌ | ✅ |
+| 人員管理 | ❌ | ❌ | ✅ |
+| 稽核紀錄 | ❌ | ❌ | ✅ |
+| 公告管理 | ❌ | ✅ | ✅ |
+| Feature Flags | ❌ | ❌ | ✅ |
+| 系統設定 | ❌ | ❌ | ✅ |
+
+> Sidebar links: CS=4, Operator=10+1(公告), Admin=17
+
+### E2E 活動生命週期驗證
+
+| 步驟 | 操作 | 驗證 |
+|------|------|------|
+| 1 | Admin 建立一番賞活動 (API) | 回傳 campaign ID |
+| 2 | Admin 上架活動 (PATCH status→ACTIVE) | DB status = ACTIVE |
+| 3 | Player 前端首頁 | 新活動出現在活動列表 |
+| 4 | Admin 建立無限賞活動 | 同上 |
+| 5 | Admin 停售活動 (PATCH status→SUSPENDED) | Player 列表消失 |
+| 6 | 完售：3 張票抽完 | Player 看到售罄，Admin 看到 SOLD_OUT |
+
 ## 執行方式
 
 ```bash
