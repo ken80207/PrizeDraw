@@ -6,25 +6,19 @@
 FROM node:20-alpine AS base
 RUN npm install -g pnpm
 
-# ---- Dependencies Stage ----
-FROM base AS deps
-WORKDIR /app
-
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY web/package.json ./web/
-RUN pnpm install --frozen-lockfile --filter web
-
-# ---- Builder Stage ----
+# ---- Build Stage ----
 FROM base AS builder
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/web/node_modules ./web/node_modules
+# Copy workspace config and web app
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/ ./web/
 
+# Install deps and build
+WORKDIR /app/web
+RUN pnpm install --frozen-lockfile
 ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN cd web && pnpm run build
+RUN pnpm run build
 
 # ---- Runtime Stage ----
 FROM base AS runner
