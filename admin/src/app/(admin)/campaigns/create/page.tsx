@@ -220,7 +220,7 @@ function CampaignCreateInner() {
   };
 
   useEffect(() => {
-    apiClient.get("/api/v1/admin/grade-templates").then(setGradeTemplates).catch(() => {});
+    apiClient.get("/api/v1/admin/grade-templates").then((data) => setGradeTemplates(data as typeof gradeTemplates)).catch(() => {});
   }, []);
 
   const applyTemplate = () => {
