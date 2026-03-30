@@ -277,7 +277,7 @@ jobs:
           POSTGRES_DB=prizedraw_staging
           POSTGRES_USER=prizedraw
           POSTGRES_PASSWORD=${{ secrets.PRIZEDRAW_DB_PASSWORD }}
-          POSTGRES_PORT=5433
+          POSTGRES_PORT=5435
           REDIS_PASSWORD=${{ secrets.PRIZEDRAW_REDIS_PASSWORD }}
           MINIO_ROOT_USER=${{ secrets.PRIZEDRAW_MINIO_USER }}
           MINIO_ROOT_PASSWORD=${{ secrets.PRIZEDRAW_MINIO_PASSWORD }}
